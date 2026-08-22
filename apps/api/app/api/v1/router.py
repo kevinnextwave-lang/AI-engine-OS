@@ -13,6 +13,7 @@ from app.api.v1.routes import (
     projects,
     prompts,
     seo,
+    visibility,
 )
 
 api_router = APIRouter()
@@ -38,3 +39,4 @@ api_router.include_router(execution.set_router)
 api_router.include_router(execution.batch_router)
 api_router.include_router(intelligence.run_router)
 api_router.include_router(intelligence.batch_router)
+api_router.include_router(visibility.router)

@@ -235,6 +235,14 @@ Output is a strict `ParsedResponse` (mentions, competitor mentions, claims, cita
 
 API: `GET /prompt-runs/{id}/intelligence`, `POST /prompt-runs/{id}/reprocess`, `POST /prompt-run-batches/{id}/reprocess` (tenant derived from the run/batch row; DATA_READ / DATA_MANAGE).
 
+## AI Visibility Engine (Milestone 3E)
+
+`apps/api/app/visibility/` computes the **AI Visibility Score** — this product's own composite metric, documented in full in `docs/ai-visibility-score.md` (`ai-visibility-score/v1`). Nothing is persisted: `observations.py` loads one row per completed, parsed prompt run (joined to prompt, brand/competitor mentions and citations); `metrics.py` is pure computation (mention rate, recommendation rate, position score, citation rate, sentiment, competitive score, weights 25/25/15/15/10/10 with unavailable components renormalised); `engine.py` adds the time dimension (7/30/90-day current vs previous period, change, trend, weekly series) and breakdowns (provider, model, prompt, category, funnel stage, competitor share).
+
+Data sufficiency is first-class: below 5 eligible responses the score and rates are `null`, not 0; small samples are rounded coarsely; every payload carries `data_quality` (sample size, sufficiency, providers, models, prompts, date range, parser versions). Unconfigured competitors never lower the score.
+
+Routes (`routes/visibility.py`, read-only, `DATA_READ`): `GET /projects/{id}/visibility`, `/visibility/trends`, `/visibility/by-engine`, `/visibility/by-prompt`, `/visibility/competitors`, all with `?window=7d|30d|90d`. Tests seed parsed observations directly (`tests/visibility/seed.py`) — no providers, no parser.
+
 ## Background jobs
 
 Celery app in `apps/api/app/workers/celery_app.py` with Redis as broker/backend. Tasks are routed by module name to the `crawler`, `ai_search`, `agents`, and `analytics` queues. `app.workers.tasks.crawler.run_crawl_job` runs crawls on the `crawler` queue (acks-late, 6h hard limit); `app.workers.tasks.analytics.run_seo_audit` runs SEO audits and `app.workers.tasks.analytics.run_entity_analysis` rebuilds entity intelligence and `app.workers.tasks.analytics.run_ai_readiness_audit` runs readiness audits on the `analytics` queue; `app.workers.tasks.ai_search.run_prompt` executes prompt runs on the priority-enabled `ai_search` queue (30 min limit); `ping` remains for health checks.
