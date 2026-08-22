@@ -22,6 +22,7 @@ from app.models.intelligence import BrandMention, CompetitorMention, ResponseCit
 from app.models.project import Project
 from app.models.prompts import AiResponse, PromptRun
 from app.repositories.projects import CompetitorRepository, DomainRepository
+from app.sources.service import SourceIntelligenceService
 
 log = get_logger(__name__)
 
@@ -58,6 +59,11 @@ class ResponseIntelligenceService:
         ctx = await self.build_context(project)
         parsed = await parse_response(response.response_text, ctx, self._interpreter)
         await self._replace_rows(response, project.id, parsed, ctx)
+        await self._session.flush()
+        # Citation Intelligence (4A): link new citations into the source graph.
+        sources = SourceIntelligenceService(self._session)
+        await sources.resolve_for_response(response.id, project.id)
+        await sources.aggregate_project_sources(project.id)
         response.parser_version = parsed.parser_version
         response.parsed_at = datetime.now(UTC)
         response.parse_summary = summary_of(parsed)

@@ -210,3 +210,39 @@ def run_prompt_run_task(self, run_id: str) -> str:  # type: ignore[no-untyped-de
 def dispatch_prompt_run(run_id: uuid.UUID, priority: int = 5) -> None:
     """Enqueue one prompt run. Callers must have COMMITTED the run row first."""
     run_prompt_run_task.apply_async(args=(str(run_id),), queue="ai_search", priority=priority)
+
+
+@celery_app.task(
+    name="app.workers.tasks.analytics.backfill_sources",
+    bind=True,
+    acks_late=True,
+    max_retries=0,
+    soft_time_limit=60 * 60,
+    time_limit=60 * 60 + 60,
+)
+def backfill_sources_task(self, project_id: str | None = None, force: bool = False) -> str:  # type: ignore[no-untyped-def]
+    """Citation Intelligence backfill: resolve historical citations into
+    source_domains / source_pages / project_sources. No AI calls."""
+    configure_logging()
+
+    async def _main() -> str:
+        from app.db.session import dispose_engine, get_session_factory
+        from app.sources.service import SourceIntelligenceService
+
+        try:
+            async with get_session_factory()() as session:
+                stats = await SourceIntelligenceService(session).backfill(
+                    project_id=uuid.UUID(project_id) if project_id else None, force=force
+                )
+                return f"resolved={stats.resolved} skipped={stats.skipped}"
+        finally:
+            await dispose_engine()
+
+    return asyncio.run(_main())
+
+
+def dispatch_source_backfill(project_id: uuid.UUID | None = None, *, force: bool = False) -> None:
+    backfill_sources_task.apply_async(
+        kwargs={"project_id": str(project_id) if project_id else None, "force": force},
+        queue="analytics",
+    )
