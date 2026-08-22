@@ -1,13 +1,21 @@
-"""Project service. organization_id always comes from an authorized dependency."""
+"""Project onboarding: projects, their domains and competitors.
+
+organization_id always arrives from an authorized dependency (membership
+validated), never from an unchecked request value.
+"""
 
 import secrets
 import uuid
+from collections.abc import Sequence
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.errors import NotFoundError
+from app.core.errors import ConflictError, NotFoundError
+from app.core.urls import normalize_website_url
+from app.models.competitor import Competitor
+from app.models.domain import Domain
 from app.models.project import Project, ProjectStatus
-from app.repositories.projects import ProjectRepository
+from app.repositories.projects import CompetitorRepository, DomainRepository, ProjectRepository
 from app.services.organizations import slugify
 
 
@@ -15,6 +23,10 @@ class ProjectService:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
         self._projects = ProjectRepository(session)
+        self._domains = DomainRepository(session)
+        self._competitors = CompetitorRepository(session)
+
+    # -- projects ----------------------------------------------------------
 
     async def _unique_slug(self, organization_id: uuid.UUID, name: str) -> str:
         base = slugify(name)
@@ -28,10 +40,13 @@ class ProjectService:
         *,
         organization_id: uuid.UUID,
         name: str,
+        website_url: str,
         description: str | None = None,
         industry: str | None = None,
         country: str | None = None,
     ) -> Project:
+        """Create a project and its primary domain from the website URL."""
+        normalized = normalize_website_url(website_url)
         project = Project(
             organization_id=organization_id,
             name=name.strip(),
@@ -40,7 +55,25 @@ class ProjectService:
             industry=industry,
             country=country.upper() if country else None,
         )
-        return await self._projects.add(project)
+        await self._projects.add(project)
+        await self._domains.add(
+            Domain(
+                project_id=project.id,
+                url=normalized.url,
+                hostname=normalized.hostname,
+                is_primary=True,
+            )
+        )
+        return await self.reload(project.id)
+
+    async def reload(self, project_id: uuid.UUID) -> Project:
+        project = await self._projects.get_by_id(project_id)
+        if project is None:  # pragma: no cover - defensive
+            raise NotFoundError("Project not found")
+        return project
+
+    async def list_for_organizations(self, organization_ids: Sequence[uuid.UUID]) -> list[Project]:
+        return await self._projects.list_for_organizations(organization_ids)
 
     async def list_for_organization(self, organization_id: uuid.UUID) -> list[Project]:
         return await self._projects.list_for_organization(organization_id)
@@ -66,11 +99,58 @@ class ProjectService:
         if status is not None:
             project.status = status
         await self._session.flush()
-        await self._session.refresh(project)  # pick up DB-side updated_at
-        return project
+        return await self.reload(project.id)
 
     async def delete(self, project: Project) -> None:
-        if project is None:  # pragma: no cover - defensive
-            raise NotFoundError("Project not found")
         await self._session.delete(project)
         await self._session.flush()
+
+    # -- domains -----------------------------------------------------------
+
+    async def list_domains(self, project: Project) -> list[Domain]:
+        return await self._domains.list_for_project(project.id)
+
+    async def add_domain(self, project: Project, *, url: str, is_primary: bool = False) -> Domain:
+        normalized = normalize_website_url(url)
+        if await self._domains.get_by_hostname(project.id, normalized.hostname):
+            raise ConflictError(f"Domain {normalized.hostname} is already part of this project")
+        if is_primary and await self._domains.get_primary(project.id):
+            raise ConflictError(
+                "This project already has a primary domain; remove or demote it first"
+            )
+        return await self._domains.add(
+            Domain(
+                project_id=project.id,
+                url=normalized.url,
+                hostname=normalized.hostname,
+                is_primary=is_primary,
+            )
+        )
+
+    # -- competitors -------------------------------------------------------
+
+    async def list_competitors(self, project: Project) -> list[Competitor]:
+        return await self._competitors.list_for_project(project.id)
+
+    async def add_competitor(self, project: Project, *, name: str, website_url: str) -> Competitor:
+        normalized = normalize_website_url(website_url)
+        if await self._competitors.get_by_hostname(project.id, normalized.hostname):
+            raise ConflictError(f"Competitor {normalized.hostname} is already tracked")
+        if await self._domains.get_by_hostname(project.id, normalized.hostname):
+            raise ConflictError(
+                f"{normalized.hostname} is one of this project's own domains, not a competitor"
+            )
+        return await self._competitors.add(
+            Competitor(
+                project_id=project.id,
+                name=name.strip(),
+                website_url=normalized.url,
+                hostname=normalized.hostname,
+            )
+        )
+
+    async def remove_competitor(self, project: Project, competitor_id: uuid.UUID) -> None:
+        competitor = await self._competitors.get_in_project(project.id, competitor_id)
+        if competitor is None:
+            raise NotFoundError("Competitor not found")
+        await self._competitors.delete(competitor)

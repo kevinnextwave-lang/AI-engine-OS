@@ -10,9 +10,15 @@ import type {
   ApiErrorBody,
   LoginRequest,
   Member,
+  Competitor,
+  CompetitorCreateRequest,
+  Domain,
+  DomainCreateRequest,
   Organization,
   Project,
   ProjectCreateRequest,
+  ProjectListResponse,
+  ProjectUpdateRequest,
   RegisterRequest,
   TokenResponse,
   User,
@@ -132,13 +138,35 @@ export const api = {
     members: (id: string) => request<Member[]>(`/organizations/${id}/members`),
   },
   projects: {
-    list: (organizationId: string) =>
-      request<Project[]>(`/organizations/${organizationId}/projects`),
-    create: (organizationId: string, body: ProjectCreateRequest) =>
-      request<Project>(`/organizations/${organizationId}/projects`, {
-        method: "POST",
-        body: JSON.stringify(body),
-      }),
+    list: (organizationId?: string) =>
+      request<ProjectListResponse>(
+        organizationId ? `/projects?organization_id=${organizationId}` : "/projects",
+      ),
+    create: (body: ProjectCreateRequest) =>
+      request<Project>("/projects", { method: "POST", body: JSON.stringify(body) }),
     get: (id: string) => request<Project>(`/projects/${id}`),
+    update: (id: string, body: ProjectUpdateRequest) =>
+      request<Project>(`/projects/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+    delete: (id: string) => request<{ message: string }>(`/projects/${id}`, { method: "DELETE" }),
+    domains: {
+      list: (projectId: string) => request<Domain[]>(`/projects/${projectId}/domains`),
+      add: (projectId: string, body: DomainCreateRequest) =>
+        request<Domain>(`/projects/${projectId}/domains`, {
+          method: "POST",
+          body: JSON.stringify(body),
+        }),
+    },
+    competitors: {
+      list: (projectId: string) => request<Competitor[]>(`/projects/${projectId}/competitors`),
+      add: (projectId: string, body: CompetitorCreateRequest) =>
+        request<Competitor>(`/projects/${projectId}/competitors`, {
+          method: "POST",
+          body: JSON.stringify(body),
+        }),
+      remove: (projectId: string, competitorId: string) =>
+        request<{ message: string }>(`/projects/${projectId}/competitors/${competitorId}`, {
+          method: "DELETE",
+        }),
+    },
   },
 };

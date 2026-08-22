@@ -56,6 +56,15 @@ class MembershipRepository:
         )
         return (await self._session.execute(stmt)).scalar_one_or_none()
 
+    async def list_for_user(self, user_id: uuid.UUID) -> list[Membership]:
+        stmt = (
+            select(Membership)
+            .options(selectinload(Membership.organization))
+            .where(Membership.user_id == user_id)
+            .order_by(Membership.created_at)
+        )
+        return list((await self._session.scalars(stmt)).all())
+
     async def list_for_organization(self, org_id: uuid.UUID) -> list[Membership]:
         stmt = (
             select(Membership)

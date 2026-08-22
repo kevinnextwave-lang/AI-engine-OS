@@ -88,6 +88,10 @@ Permission matrix (`core/permissions.py`): **Owner** everything, including billi
 - `AppShell` = persistent sidebar (≥ md), sheet drawer (mobile), top bar with `OrganizationSwitcher` and `UserMenu`. The selected organization lives in `OrganizationProvider` and is remembered per browser.
 - `lib/api.ts` is the only place that talks HTTP; it retries once after a transparent refresh on `401`.
 
+## Project onboarding (Milestone 1D)
+
+`/api/v1/projects` (list/create), `/api/v1/projects/{id}` (get/patch/delete), `/api/v1/projects/{id}/domains` (list/add), `/api/v1/projects/{id}/competitors` (list/add/remove). Creating a project requires `name` and `website_url`; the URL is normalized by `core/urls.py` (https default, lowercase punycode host, default port and fragment stripped, no IPs/localhost/credentials) and stored as the project's primary domain. Hostnames are unique per project for both domains and competitors; at most one primary domain per project. The project collection resolves the organization from the caller's memberships (`organization_id` in the body is a selector validated against membership, required only when the user belongs to several organizations). Item routes derive the organization from the project row. Domain/competitor writes need `data:manage` (member+); project deletion needs `projects:delete` (admin+).
+
 ## Background jobs
 
 Celery app in `apps/api/app/workers/celery_app.py` with Redis as broker/backend. Tasks are routed by module name to the `crawler`, `ai_search`, `agents`, and `analytics` queues. Only a `ping` task exists today; the job system proper is a later milestone.

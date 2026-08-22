@@ -228,7 +228,11 @@ async def test_organization_isolation(client: AsyncClient) -> None:
     ):
         assert (await client.get(path, headers=hb)).status_code == 404, path
     assert (
-        await client.post(f"/api/v1/organizations/{org_a}/projects", json={"name": "X"}, headers=hb)
+        await client.post(
+            f"/api/v1/organizations/{org_a}/projects",
+            json={"name": "Xy", "website_url": "x.com"},
+            headers=hb,
+        )
     ).status_code == 404
 
 
@@ -239,7 +243,9 @@ async def test_idor_on_project_ids(client: AsyncClient) -> None:
     ha, hb = auth_header(a["access_token"]), auth_header(b["access_token"])
 
     created = await client.post(
-        f"/api/v1/organizations/{org_a}/projects", json={"name": "Secret Site"}, headers=ha
+        f"/api/v1/organizations/{org_a}/projects",
+        json={"name": "Secret Site", "website_url": "secret.example"},
+        headers=ha,
     )
     assert created.status_code == 201
     pid = created.json()["id"]
@@ -265,7 +271,7 @@ async def test_organization_id_in_body_is_ignored(client: AsyncClient) -> None:
 
     resp = await client.post(
         f"/api/v1/organizations/{org_b}/projects",
-        json={"name": "Sneaky", "organization_id": org_a},
+        json={"name": "Sneaky", "website_url": "sneaky.io", "organization_id": org_a},
         headers=auth_header(b["access_token"]),
     )
     assert resp.status_code == 201
@@ -299,7 +305,7 @@ async def test_rbac_matrix(client: AsyncClient, db_session: AsyncSession) -> Non
     # Viewer is read-only.
     r = await client.post(
         f"/api/v1/organizations/{org}/projects",
-        json={"name": "Nope"},
+        json={"name": "Nope", "website_url": "nope.io"},
         headers=tokens[MembershipRole.VIEWER],
     )
     assert r.status_code == 403 and r.json()["error"]["code"] == "forbidden"
@@ -309,7 +315,7 @@ async def test_rbac_matrix(client: AsyncClient, db_session: AsyncSession) -> Non
     for role in (MembershipRole.MEMBER, MembershipRole.ADMIN, MembershipRole.OWNER):
         r = await client.post(
             f"/api/v1/organizations/{org}/projects",
-            json={"name": f"P-{role.value}"},
+            json={"name": f"P-{role.value}", "website_url": f"{role.value}.example.com"},
             headers=tokens[role],
         )
         assert r.status_code == 201, role

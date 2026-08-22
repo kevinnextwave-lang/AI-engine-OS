@@ -59,6 +59,27 @@ export interface LoginRequest {
 
 export type ProjectStatus = "active" | "paused" | "archived";
 
+export interface Domain {
+  id: string;
+  project_id: string;
+  url: string;
+  hostname: string;
+  is_primary: boolean;
+  verified: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Competitor {
+  id: string;
+  project_id: string;
+  name: string;
+  website_url: string;
+  hostname: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Project {
   id: string;
   organization_id: string;
@@ -68,15 +89,42 @@ export interface Project {
   industry: string | null;
   country: string | null;
   status: ProjectStatus;
+  primary_domain: Domain | null;
   created_at: string;
   updated_at: string;
 }
 
+export interface ProjectListResponse {
+  items: Project[];
+  total: number;
+}
+
 export interface ProjectCreateRequest {
   name: string;
+  website_url: string;
+  /** Required only when the user belongs to more than one organization. */
+  organization_id?: string;
   description?: string;
   industry?: string;
   country?: string;
+}
+
+export interface ProjectUpdateRequest {
+  name?: string;
+  description?: string;
+  industry?: string;
+  country?: string;
+  status?: ProjectStatus;
+}
+
+export interface DomainCreateRequest {
+  url: string;
+  is_primary?: boolean;
+}
+
+export interface CompetitorCreateRequest {
+  name: string;
+  website_url: string;
 }
 
 export interface StatusResponse {

@@ -1,7 +1,7 @@
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, Index, String
+from sqlalchemy import ForeignKey, Index, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -15,6 +15,7 @@ class Competitor(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     __tablename__ = "competitors"
     __table_args__ = (
+        UniqueConstraint("project_id", "hostname", name="uq_competitors_project_hostname"),
         Index("ix_competitors_hostname", "hostname"),
         Index("ix_competitors_created_at", "created_at"),
     )

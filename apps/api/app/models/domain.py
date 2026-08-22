@@ -1,7 +1,7 @@
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, ForeignKey, Index, String
+from sqlalchemy import Boolean, ForeignKey, Index, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -15,6 +15,7 @@ class Domain(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     __tablename__ = "domains"
     __table_args__ = (
+        UniqueConstraint("project_id", "hostname", name="uq_domains_project_hostname"),
         Index("ix_domains_hostname", "hostname"),
         Index("ix_domains_created_at", "created_at"),
         # At most one primary domain per project (partial unique index).
