@@ -96,6 +96,10 @@ class Settings(BaseSettings):
     ai_rate_limit_openai_per_minute: int = 60
     ai_rate_limit_anthropic_per_minute: int = 50
     ai_rate_limit_google_per_minute: int = 60
+    # Response intelligence Stage 2 (LLM-assisted interpretation); off by default.
+    ai_parser_llm_enabled: bool = False
+    ai_parser_provider: str = "openai"
+    ai_parser_model: str | None = None
     ai_run_max_tokens: int = 1024
     ai_run_temperature: float | None = 0.2
 

@@ -7,6 +7,7 @@ from app.api.v1.routes import (
     entities,
     execution,
     health,
+    intelligence,
     organizations,
     pages,
     projects,
@@ -35,3 +36,5 @@ api_router.include_router(prompts.set_router)
 api_router.include_router(prompts.prompt_router)
 api_router.include_router(execution.set_router)
 api_router.include_router(execution.batch_router)
+api_router.include_router(intelligence.run_router)
+api_router.include_router(intelligence.batch_router)

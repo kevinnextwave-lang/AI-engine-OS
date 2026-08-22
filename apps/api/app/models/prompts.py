@@ -273,6 +273,10 @@ class AiResponse(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     provider_request_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
     raw_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    # Set by the response intelligence parser; reprocessing overwrites these, never the row.
+    parser_version: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    parsed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    parse_summary: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
 
 
 class AiUsageRecord(UUIDPrimaryKeyMixin, TimestampMixin, Base):
