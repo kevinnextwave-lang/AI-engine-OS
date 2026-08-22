@@ -7,10 +7,17 @@ from tests.conftest import auth_header, register, unique_email
 REFRESH_COOKIE = "asg_refresh_token"
 
 
-async def test_health(client: AsyncClient) -> None:
+async def test_health_v1_exact_shape(client: AsyncClient) -> None:
+    resp = await client.get("/api/v1/health")
+    assert resp.status_code == 200
+    assert resp.json() == {"status": "ok"}
+
+
+async def test_root_health_for_platform_probes(client: AsyncClient) -> None:
     resp = await client.get("/health")
     assert resp.status_code == 200
     assert resp.json()["status"] == "ok"
+    assert resp.json()["version"]
 
 
 async def test_register_returns_tokens_and_sets_cookie(client: AsyncClient) -> None:

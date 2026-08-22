@@ -15,7 +15,8 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 os.environ.setdefault("APP_ENV", "test")
-os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-0123456789abcdef")
+os.environ.setdefault("JWT_SECRET", "test-secret-key-0123456789abcdef")
+os.environ.setdefault("JWT_REFRESH_SECRET", "test-refresh-key-0123456789abcdef")
 os.environ.setdefault("REDIS_URL", "redis://localhost:1/0")  # unreachable -> memory limiter
 os.environ["DATABASE_URL"] = os.environ.get(
     "TEST_DATABASE_URL",

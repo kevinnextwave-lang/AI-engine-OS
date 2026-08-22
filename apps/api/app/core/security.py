@@ -2,10 +2,11 @@
 
 - Passwords: Argon2id (argon2-cffi defaults, OWASP-recommended).
 - Access tokens: short-lived JWTs carrying the user id (sub) and a type claim.
-- Refresh tokens: opaque random strings; only a SHA-256 hash is stored server-side.
+- Refresh tokens: opaque random strings; only an HMAC-SHA256 hash is stored server-side.
 """
 
 import hashlib
+import hmac
 import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -50,7 +51,7 @@ def create_access_token(user_id: uuid.UUID, *, expires_minutes: int | None = Non
         "exp": int(expire.timestamp()),
         "jti": secrets.token_urlsafe(8),
     }
-    return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+    return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 
 def decode_access_token(token: str) -> dict[str, Any]:
@@ -58,7 +59,7 @@ def decode_access_token(token: str) -> dict[str, Any]:
     settings = get_settings()
     payload: dict[str, Any] = jwt.decode(
         token,
-        settings.jwt_secret_key,
+        settings.jwt_secret,
         algorithms=[settings.jwt_algorithm],
         options={"require": ["sub", "exp", "iat", "type"]},
     )
@@ -73,8 +74,12 @@ def generate_refresh_token() -> str:
 
 
 def hash_token(token: str) -> str:
-    """Deterministic hash for storing refresh tokens at rest."""
-    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+    """Keyed hash (HMAC-SHA256 with JWT_REFRESH_SECRET) for storing refresh tokens at rest.
+
+    A database leak alone is not enough to forge a valid refresh token.
+    """
+    key = get_settings().jwt_refresh_secret.encode("utf-8")
+    return hmac.new(key, token.encode("utf-8"), hashlib.sha256).hexdigest()
 
 
 def refresh_token_expiry() -> datetime:

@@ -27,7 +27,8 @@ jobs:
           --health-retries 10
     env:
       APP_ENV: test
-      JWT_SECRET_KEY: ci-only-secret-key-0123456789abcdef
+      JWT_SECRET: ci-only-secret-key-0123456789abcdef
+      JWT_REFRESH_SECRET: ci-only-refresh-key-0123456789abcdef
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/ai_search_growth_os_test
       TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/ai_search_growth_os_test
       REDIS_URL: redis://localhost:1/0
@@ -50,18 +51,15 @@ jobs:
       - run: pytest -q
 
   web:
-    name: Web — lint, typecheck, build
+    name: Web + packages — lint, typecheck, build
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/web
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: apps/web/package-lock.json
+          cache-dependency-path: package-lock.json
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck

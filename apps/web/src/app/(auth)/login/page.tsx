@@ -5,11 +5,17 @@ import { useRouter } from "next/navigation";
 import * as React from "react";
 
 import { useAuth } from "@/components/auth-provider";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { ApiError } from "@/lib/api";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Input,
+  Label,
+} from "@ai-search-growth-os/ui";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -25,7 +31,7 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       await login(email, password);
-      router.replace("/dashboard");
+      router.replace("/app");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
     } finally {
@@ -73,7 +79,7 @@ export default function LoginPage() {
           </Button>
           <p className="text-muted-foreground text-center text-sm">
             No account?{" "}
-            <Link href="/register" className="text-foreground underline underline-offset-4">
+            <Link href="/signup" className="text-foreground underline underline-offset-4">
               Create one
             </Link>
           </p>

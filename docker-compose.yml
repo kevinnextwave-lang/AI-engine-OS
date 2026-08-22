@@ -44,7 +44,8 @@ services:
 
   worker:
     build:
-      context: ./apps/api
+      context: .
+      dockerfile: workers/Dockerfile
     env_file:
       - ./apps/api/.env
     environment:
@@ -55,7 +56,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A app.workers.celery_app:celery_app worker --loglevel=INFO
 
 volumes:
   postgres_data:

@@ -17,11 +17,11 @@ test:
 
 lint:
 	cd apps/api && ruff check . && ruff format --check .
-	cd apps/web && npm run lint
+	npm run lint
 
 typecheck:
 	cd apps/api && mypy app
-	cd apps/web && npm run typecheck
+	npm run typecheck
 
 web:
-	cd apps/web && npm run dev
+	npm run dev:web

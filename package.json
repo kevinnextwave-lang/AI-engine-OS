@@ -1,0 +1,17 @@
+{
+  "name": "ai-search-growth-os",
+  "private": true,
+  "workspaces": [
+    "apps/web",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev --workspace apps/web",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "build": "npm run build --workspace apps/web"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

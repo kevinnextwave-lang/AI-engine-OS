@@ -34,7 +34,10 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
 
     # Auth
-    jwt_secret_key: str = Field(default="dev-only-insecure-secret-change-me", min_length=16)
+    jwt_secret: str = Field(default="dev-only-insecure-secret-change-me", min_length=16)
+    jwt_refresh_secret: str = Field(
+        default="dev-only-insecure-refresh-secret-change-me", min_length=16
+    )
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 30
@@ -87,6 +90,13 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     settings = Settings()
-    if settings.is_production and settings.jwt_secret_key.startswith("dev-only"):
-        raise RuntimeError("JWT_SECRET_KEY must be set to a strong secret in production")
+    if settings.is_production:
+        for name, value in (
+            ("JWT_SECRET", settings.jwt_secret),
+            ("JWT_REFRESH_SECRET", settings.jwt_refresh_secret),
+        ):
+            if value.startswith("dev-only"):
+                raise RuntimeError(f"{name} must be set to a strong secret in production")
+        if settings.jwt_secret == settings.jwt_refresh_secret:
+            raise RuntimeError("JWT_SECRET and JWT_REFRESH_SECRET must differ")
     return settings

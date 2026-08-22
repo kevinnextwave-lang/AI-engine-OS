@@ -40,7 +40,7 @@ def test_token_with_wrong_type_rejected() -> None:
     s = get_settings()
     forged = jwt.encode(
         {"sub": str(uuid.uuid4()), "type": "refresh", "iat": 0, "exp": 4102444800},
-        s.jwt_secret_key,
+        s.jwt_secret,
         algorithm=s.jwt_algorithm,
     )
     with pytest.raises(jwt.InvalidTokenError):

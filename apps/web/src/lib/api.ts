@@ -6,12 +6,27 @@
  *   `credentials: "include"` and call /auth/refresh when a 401 comes back.
  */
 
+import type {
+  ApiErrorBody,
+  LoginRequest,
+  Member,
+  Organization,
+  RegisterRequest,
+  TokenResponse,
+  User,
+} from "@ai-search-growth-os/types";
+
+export type {
+  ApiErrorBody,
+  Member,
+  MembershipRole,
+  Organization,
+  TokenResponse,
+  User,
+} from "@ai-search-growth-os/types";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const API_PREFIX = "/api/v1";
-
-export interface ApiErrorBody {
-  error: { code: string; message: string; details?: unknown };
-}
 
 export class ApiError extends Error {
   constructor(
@@ -23,39 +38,6 @@ export class ApiError extends Error {
     super(message);
     this.name = "ApiError";
   }
-}
-
-export interface User {
-  id: string;
-  email: string;
-  full_name: string | null;
-  is_active: boolean;
-  created_at: string;
-}
-
-export interface TokenResponse {
-  access_token: string;
-  token_type: "bearer";
-  expires_in: number;
-  user: User;
-}
-
-export type MembershipRole = "owner" | "admin" | "member" | "viewer";
-
-export interface Organization {
-  id: string;
-  name: string;
-  slug: string;
-  created_at: string;
-  role: MembershipRole;
-}
-
-export interface Member {
-  user_id: string;
-  email: string;
-  full_name: string | null;
-  role: MembershipRole;
-  joined_at: string;
 }
 
 let accessToken: string | null = null;
@@ -133,14 +115,9 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
 
 export const api = {
   auth: {
-    register: (body: {
-      email: string;
-      password: string;
-      full_name?: string;
-      organization_name: string;
-    }) =>
+    register: (body: RegisterRequest) =>
       rawRequest<TokenResponse>("/auth/register", { method: "POST", body: JSON.stringify(body) }, false),
-    login: (body: { email: string; password: string }) =>
+    login: (body: LoginRequest) =>
       rawRequest<TokenResponse>("/auth/login", { method: "POST", body: JSON.stringify(body) }, false),
     logout: () => rawRequest<{ message: string }>("/auth/logout", { method: "POST" }, false),
     me: () => request<User>("/auth/me"),

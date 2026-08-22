@@ -9,7 +9,7 @@ from redis.asyncio import Redis
 
 from app import __version__
 from app.api.v1.router import api_router
-from app.api.v1.routes.health import router as health_router
+from app.api.v1.routes.health import root_router as health_router
 from app.core.config import get_settings
 from app.core.errors import register_exception_handlers
 from app.core.logging import configure_logging, get_logger

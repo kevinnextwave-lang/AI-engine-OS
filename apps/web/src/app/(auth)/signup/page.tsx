@@ -5,13 +5,19 @@ import { useRouter } from "next/navigation";
 import * as React from "react";
 
 import { useAuth } from "@/components/auth-provider";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { ApiError } from "@/lib/api";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Input,
+  Label,
+} from "@ai-search-growth-os/ui";
 
-export default function RegisterPage() {
+export default function SignupPage() {
   const { register } = useAuth();
   const router = useRouter();
   const [form, setForm] = React.useState({
@@ -37,7 +43,7 @@ export default function RegisterPage() {
         organization_name: form.organization_name,
         full_name: form.full_name || undefined,
       });
-      router.replace("/dashboard");
+      router.replace("/app");
     } catch (err) {
       if (err instanceof ApiError && err.code === "validation_error") {
         setError("Please check your details. Passwords must be at least 10 characters.");
@@ -59,7 +65,12 @@ export default function RegisterPage() {
         <form onSubmit={onSubmit} className="flex flex-col gap-4">
           <div className="grid gap-2">
             <Label htmlFor="full_name">Full name</Label>
-            <Input id="full_name" autoComplete="name" value={form.full_name} onChange={update("full_name")} />
+            <Input
+              id="full_name"
+              autoComplete="name"
+              value={form.full_name}
+              onChange={update("full_name")}
+            />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="organization_name">Organization</Label>

@@ -9,6 +9,10 @@ class MessageResponse(APIModel):
     message: str
 
 
+class StatusResponse(APIModel):
+    status: str
+
+
 class HealthResponse(APIModel):
     status: str
     environment: str

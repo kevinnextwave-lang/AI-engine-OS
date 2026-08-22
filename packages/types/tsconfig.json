@@ -1,0 +1,5 @@
+{
+  "extends": "@ai-search-growth-os/config/tsconfig.base.json",
+  "compilerOptions": { "noEmit": true },
+  "include": ["src"]
+}
