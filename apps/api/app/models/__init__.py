@@ -37,11 +37,16 @@ from app.models.page_intelligence import (
 )
 from app.models.project import Project, ProjectStatus
 from app.models.prompts import (
+    AiResponse,
+    AiUsageRecord,
+    BatchStatus,
+    ExecutionPriority,
     FunnelStage,
     Prompt,
     PromptCategory,
     PromptIntent,
     PromptRun,
+    PromptRunBatch,
     PromptRunStatus,
     PromptSet,
     PromptSetStatus,
@@ -101,6 +106,11 @@ __all__ = [
     "PageStructuredData",
     "Project",
     "Prompt",
+    "AiResponse",
+    "AiUsageRecord",
+    "BatchStatus",
+    "ExecutionPriority",
+    "PromptRunBatch",
     "PromptCategory",
     "PromptIntent",
     "PromptRun",

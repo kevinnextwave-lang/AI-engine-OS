@@ -37,6 +37,8 @@ class AiModel(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     display_name: Mapped[str] = mapped_column(String(150), nullable=False)
     # e.g. {"supports_temperature": true, "max_output_tokens": 8192, "context_window": 128000}
     capabilities: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    # {"input_per_million": 0.15, "output_per_million": 0.6, "currency": "USD", "version": "..."}
+    pricing: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     is_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
 

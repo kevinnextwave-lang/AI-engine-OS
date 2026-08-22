@@ -28,6 +28,11 @@ celery_app.conf.update(
     task_acks_late=True,
     worker_prefetch_multiplier=1,
     task_default_queue="default",
+    # Redis priority support for the ai_search queue (0 = lowest, 9 = highest)
+    broker_transport_options={
+        "priority_steps": list(range(10)),
+        "queue_order_strategy": "priority",
+    },
     task_routes={
         "app.workers.tasks.crawler.*": {"queue": "crawler"},
         "app.workers.tasks.ai_search.*": {"queue": "ai_search"},

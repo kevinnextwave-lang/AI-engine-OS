@@ -54,7 +54,7 @@ npm run dev:web
 
 Routes: `/` → `/login` · `/signup` · `/app` · `/app/projects` · `/app/settings`.
 
-Crawling requires the worker: `cd apps/api && celery -A app.workers.celery_app:celery_app worker -Q default,crawler,analytics --loglevel=INFO`.
+Crawling requires the worker: `cd apps/api && celery -A app.workers.celery_app:celery_app worker -Q default,crawler,analytics,ai_search --loglevel=INFO`.
 
 ## Quality gates
 
