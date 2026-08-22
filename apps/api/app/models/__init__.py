@@ -67,6 +67,15 @@ from app.models.seo import (
     SeoObservation,
     Severity,
 )
+from app.models.sources import (
+    CitationEntity,
+    CitationEntityType,
+    CitationRelationship,
+    DomainType,
+    ProjectSource,
+    SourceDomain,
+    SourcePage,
+)
 from app.models.user import User
 
 __all__ = [
@@ -136,4 +145,11 @@ __all__ = [
     "Severity",
     "StructuredDataFormat",
     "User",
+    "CitationEntity",
+    "CitationEntityType",
+    "CitationRelationship",
+    "DomainType",
+    "ProjectSource",
+    "SourceDomain",
+    "SourcePage",
 ]
