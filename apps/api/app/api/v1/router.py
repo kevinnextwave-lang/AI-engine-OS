@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.v1.routes import (
+    ai_readiness,
     auth,
     crawl,
     entities,
@@ -25,3 +26,5 @@ api_router.include_router(seo.project_router)
 api_router.include_router(seo.router)
 api_router.include_router(entities.project_router)
 api_router.include_router(entities.page_router)
+api_router.include_router(ai_readiness.project_router)
+api_router.include_router(ai_readiness.router)

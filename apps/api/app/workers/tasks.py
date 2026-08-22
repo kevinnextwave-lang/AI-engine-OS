@@ -123,3 +123,42 @@ def run_entity_analysis_task(self, project_id: str) -> str:  # type: ignore[no-u
 def dispatch_entity_analysis(project_id: uuid.UUID) -> None:
     """Enqueue an entity analysis for a project (idempotent rebuild)."""
     run_entity_analysis_task.apply_async(args=(str(project_id),), queue="analytics")
+
+
+@celery_app.task(
+    name="app.workers.tasks.analytics.run_ai_readiness_audit",
+    bind=True,
+    acks_late=True,
+    max_retries=0,
+    soft_time_limit=60 * 30,
+    time_limit=60 * 30 + 60,
+)
+def run_ai_readiness_audit_task(self, audit_id: str) -> str:  # type: ignore[no-untyped-def]
+    """Run one AI readiness audit over the project's stored crawl and entity data."""
+    configure_logging()
+
+    async def _main() -> str:
+        from app.ai_readiness.engine import run_readiness_audit
+        from app.db.session import dispose_engine, get_session_factory
+        from app.models.ai_readiness import AiReadinessAudit
+        from app.models.seo import AuditStatus
+
+        try:
+            async with get_session_factory()() as session:
+                audit = await session.get(AiReadinessAudit, uuid.UUID(audit_id))
+                if audit is None:
+                    log.warning("ai_readiness_audit_missing", audit_id=audit_id)
+                    return "missing"
+                if audit.status != AuditStatus.QUEUED:
+                    return audit.status.value
+                audit = await run_readiness_audit(session, audit)
+                return audit.status.value
+        finally:
+            await dispose_engine()
+
+    return asyncio.run(_main())
+
+
+def dispatch_ai_readiness_audit(audit_id: uuid.UUID) -> None:
+    """Enqueue an AI readiness audit. Callers must have COMMITTED the audit row first."""
+    run_ai_readiness_audit_task.apply_async(args=(str(audit_id),), queue="analytics")

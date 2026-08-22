@@ -159,6 +159,14 @@ class WebsitePageRepository:
             stmt = stmt.where(WebsitePage.id != exclude_page_id)
         return (await self._session.execute(stmt)).scalars().first()
 
+    async def count_for_project(self, project_id: uuid.UUID) -> int:
+        total = await self._session.scalar(
+            select(func.count())
+            .select_from(WebsitePage)
+            .where(WebsitePage.project_id == project_id)
+        )
+        return int(total or 0)
+
     async def get_many(self, page_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, WebsitePage]:
         if not page_ids:
             return {}

@@ -1,6 +1,7 @@
 """Import all models here so Alembic and SQLAlchemy see the full metadata."""
 
 from app.db.base import Base
+from app.models.ai_readiness import AiReadinessAudit, AiReadinessObservation, ReadinessCategory
 from app.models.auth_audit_log import AuthAuditLog, AuthEvent
 from app.models.competitor import Competitor
 from app.models.crawl import (
@@ -46,6 +47,9 @@ from app.models.seo import (
 from app.models.user import User
 
 __all__ = [
+    "AiReadinessAudit",
+    "AiReadinessObservation",
+    "ReadinessCategory",
     "AuditStatus",
     "AuthAuditLog",
     "AuthEvent",
