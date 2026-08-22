@@ -70,12 +70,50 @@ export interface Domain {
   updated_at: string;
 }
 
+export type CompetitorSource = "manual" | "discovered" | "imported" | "ai_detected";
+export type CompetitorStatus = "active" | "ignored" | "archived";
+export type CompetitorConfidence = "high" | "medium" | "low";
+export type CompetitorDomainType = "primary" | "product" | "support" | "blog" | "community" | "other";
+
+export interface CompetitorAlias {
+  id: string;
+  alias: string;
+  normalized_alias: string;
+  created_at: string;
+}
+
+export interface CompetitorDomain {
+  id: string;
+  domain: string;
+  domain_type: CompetitorDomainType;
+  is_primary: boolean;
+  created_at: string;
+}
+
+export interface CompetitorProduct {
+  id: string;
+  name: string;
+  description: string | null;
+  url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Competitor {
   id: string;
   project_id: string;
   name: string;
+  domain: string;
+  normalized_domain: string;
   website_url: string;
   hostname: string;
+  description: string | null;
+  source: CompetitorSource;
+  status: CompetitorStatus;
+  confidence: CompetitorConfidence;
+  aliases: CompetitorAlias[];
+  domains: CompetitorDomain[];
+  products: CompetitorProduct[];
   created_at: string;
   updated_at: string;
 }
@@ -123,6 +161,11 @@ export interface DomainCreateRequest {
 }
 
 export interface CompetitorCreateRequest {
+  description?: string | null;
+  source?: CompetitorSource;
+  status?: CompetitorStatus;
+  confidence?: CompetitorConfidence;
+  aliases?: string[];
   name: string;
   website_url: string;
 }

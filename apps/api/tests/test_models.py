@@ -225,7 +225,12 @@ async def test_competitor_belongs_to_project_and_traces_to_organization(
     org = _org()
     project = _project(org)
     competitor = Competitor(
-        project=project, name="Rival", website_url="https://rival.io", hostname="rival.io"
+        project=project,
+        name="Rival",
+        normalized_name="rival",
+        website_url="https://rival.io",
+        hostname="rival.io",
+        normalized_domain="rival.io",
     )
     db_session.add(competitor)
     await db_session.flush()
@@ -250,7 +255,12 @@ async def test_deleting_project_cascades_to_domains_and_competitors(
     project = _project(_org())
     domain = Domain(project=project, url="https://a.com", hostname="a.com")
     competitor = Competitor(
-        project=project, name="B", website_url="https://b.com", hostname="b.com"
+        project=project,
+        name="B",
+        normalized_name="b",
+        website_url="https://b.com",
+        hostname="b.com",
+        normalized_domain="b.com",
     )
     db_session.add_all([domain, competitor])
     await db_session.flush()

@@ -10,6 +10,7 @@ from collections.abc import Sequence
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.competitors.service import CompetitorInput, CompetitorService
 from app.core.errors import ConflictError, NotFoundError
 from app.core.urls import normalize_website_url
 from app.models.competitor import Competitor
@@ -127,30 +128,16 @@ class ProjectService:
             )
         )
 
-    # -- competitors -------------------------------------------------------
+    # -- competitors (5A: see app.competitors.service) ----------------------
 
     async def list_competitors(self, project: Project) -> list[Competitor]:
-        return await self._competitors.list_for_project(project.id)
+        return await CompetitorService(self._session).list_for_project(project.id)
 
     async def add_competitor(self, project: Project, *, name: str, website_url: str) -> Competitor:
-        normalized = normalize_website_url(website_url)
-        if await self._competitors.get_by_hostname(project.id, normalized.hostname):
-            raise ConflictError(f"Competitor {normalized.hostname} is already tracked")
-        if await self._domains.get_by_hostname(project.id, normalized.hostname):
-            raise ConflictError(
-                f"{normalized.hostname} is one of this project's own domains, not a competitor"
-            )
-        return await self._competitors.add(
-            Competitor(
-                project_id=project.id,
-                name=name.strip(),
-                website_url=normalized.url,
-                hostname=normalized.hostname,
-            )
+        return await CompetitorService(self._session).create(
+            project.id, CompetitorInput(name=name, website_url=website_url)
         )
 
     async def remove_competitor(self, project: Project, competitor_id: uuid.UUID) -> None:
-        competitor = await self._competitors.get_in_project(project.id, competitor_id)
-        if competitor is None:
-            raise NotFoundError("Competitor not found")
-        await self._competitors.delete(competitor)
+        svc = CompetitorService(self._session)
+        await svc.delete(await svc.get_in_project(project.id, competitor_id))
