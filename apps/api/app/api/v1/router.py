@@ -9,6 +9,7 @@ from app.api.v1.routes import (
     organizations,
     pages,
     projects,
+    prompts,
     seo,
 )
 
@@ -28,3 +29,6 @@ api_router.include_router(entities.project_router)
 api_router.include_router(entities.page_router)
 api_router.include_router(ai_readiness.project_router)
 api_router.include_router(ai_readiness.router)
+api_router.include_router(prompts.project_router)
+api_router.include_router(prompts.set_router)
+api_router.include_router(prompts.prompt_router)

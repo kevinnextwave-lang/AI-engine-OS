@@ -36,6 +36,17 @@ from app.models.page_intelligence import (
     StructuredDataFormat,
 )
 from app.models.project import Project, ProjectStatus
+from app.models.prompts import (
+    FunnelStage,
+    Prompt,
+    PromptCategory,
+    PromptIntent,
+    PromptRun,
+    PromptRunStatus,
+    PromptSet,
+    PromptSetStatus,
+    PromptSource,
+)
 from app.models.refresh_token import RefreshToken
 from app.models.seo import (
     AuditStatus,
@@ -89,6 +100,15 @@ __all__ = [
     "PageMetadata",
     "PageStructuredData",
     "Project",
+    "Prompt",
+    "PromptCategory",
+    "PromptIntent",
+    "PromptRun",
+    "PromptRunStatus",
+    "PromptSet",
+    "PromptSetStatus",
+    "PromptSource",
+    "FunnelStage",
     "ProjectStatus",
     "RefreshToken",
     "SeoAudit",
