@@ -13,6 +13,13 @@ from app.models.crawl import (
     WebsitePage,
 )
 from app.models.domain import Domain
+from app.models.entities import (
+    Entity,
+    EntityLink,
+    EntityObservation,
+    EntityScope,
+    SchemaIssue,
+)
 from app.models.membership import Membership, MembershipRole, OrganizationMember
 from app.models.organization import Organization, OrganizationPlan, OrganizationStatus
 from app.models.page_intelligence import (
@@ -52,6 +59,11 @@ __all__ = [
     "PageVersion",
     "WebsitePage",
     "Domain",
+    "Entity",
+    "EntityLink",
+    "EntityObservation",
+    "EntityScope",
+    "SchemaIssue",
     "LinkStatus",
     "LinkType",
     "Membership",

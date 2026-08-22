@@ -479,27 +479,130 @@ def _extract_structured_data(tree: HTMLParser) -> list[StructuredDataFact]:
                 "json_ld", _schema_types_from_jsonld(data), data, True, None, position
             )
         )
-    microdata_types: list[str] = []
-    for node in tree.css("[itemscope][itemtype]"):
-        for t in (node.attributes.get("itemtype") or "").split():
-            microdata_types.append(_short_type(t))
-    if microdata_types and len(facts) < MAX_STRUCTURED_BLOCKS:
+    microdata_items = _extract_attribute_items(tree, "itemscope", "itemtype", "itemprop")
+    if microdata_items and len(facts) < MAX_STRUCTURED_BLOCKS:
         facts.append(
             StructuredDataFact(
-                "microdata", list(dict.fromkeys(microdata_types)), None, True, None, len(facts)
+                "microdata",
+                _types_from_items(microdata_items),
+                microdata_items,
+                True,
+                None,
+                len(facts),
             )
         )
-    rdfa_types: list[str] = []
-    for node in tree.css("[typeof]"):
-        for t in (node.attributes.get("typeof") or "").split():
-            rdfa_types.append(_short_type(t))
-    if rdfa_types and len(facts) < MAX_STRUCTURED_BLOCKS:
+    rdfa_items = _extract_attribute_items(tree, None, "typeof", "property")
+    if rdfa_items and len(facts) < MAX_STRUCTURED_BLOCKS:
         facts.append(
             StructuredDataFact(
-                "rdfa", list(dict.fromkeys(rdfa_types)), None, True, None, len(facts)
+                "rdfa", _types_from_items(rdfa_items), rdfa_items, True, None, len(facts)
             )
         )
     return facts
+
+
+_ATTRIBUTE_ITEM_MAX_DEPTH = 6
+_ATTRIBUTE_ITEM_MAX_ITEMS = 100
+
+
+def _attribute_value(node: Node) -> str | None:
+    attrs = node.attributes
+    if attrs.get("content") is not None:
+        return attrs.get("content")
+    tag = node.tag
+    if tag in ("a", "link", "area"):
+        return attrs.get("href")
+    if tag in ("img", "audio", "video", "source", "embed", "iframe", "track"):
+        return attrs.get("src")
+    if tag == "object":
+        return attrs.get("data")
+    if tag == "time" and attrs.get("datetime") is not None:
+        return attrs.get("datetime")
+    if tag in ("data", "meter") and attrs.get("value") is not None:
+        return attrs.get("value")
+    return _text(node)
+
+
+def _extract_attribute_items(
+    tree: HTMLParser, scope_attr: str | None, type_attr: str, prop_attr: str
+) -> list[dict[str, Any]]:
+    """Microdata (itemscope/itemtype/itemprop) or RDFa Lite (typeof/property) items as
+    JSON-LD-shaped dicts: {"@type": [...], "<prop>": value | [values] | nested item}."""
+    count = 0
+
+    def is_scope(node: Node) -> bool:
+        attrs = node.attributes
+        return (scope_attr in attrs) if scope_attr else (type_attr in attrs)
+
+    def build(node: Node, depth: int) -> dict[str, Any]:
+        nonlocal count
+        count += 1
+        item: dict[str, Any] = {}
+        types = [_short_type(t) for t in (node.attributes.get(type_attr) or "").split()]
+        if types:
+            item["@type"] = types[0] if len(types) == 1 else types
+        if node.attributes.get("itemid") or node.attributes.get("resource"):
+            item["@id"] = node.attributes.get("itemid") or node.attributes.get("resource")
+        if depth >= _ATTRIBUTE_ITEM_MAX_DEPTH or count > _ATTRIBUTE_ITEM_MAX_ITEMS:
+            return item
+        child = node.child
+        while child is not None:
+            if child.tag not in ("-text", "-comment", "script", "style"):
+                collect(child, item, depth)
+            child = child.next
+        return item
+
+    def collect(node: Node, item: dict[str, Any], depth: int) -> None:
+        prop_names = (node.attributes.get(prop_attr) or "").split()
+        if prop_names:
+            value: Any = build(node, depth + 1) if is_scope(node) else _attribute_value(node)
+            for name in prop_names:
+                key = _short_type(name)
+                existing = item.get(key)
+                if existing is None:
+                    item[key] = value
+                elif isinstance(existing, list):
+                    existing.append(value)
+                else:
+                    item[key] = [existing, value]
+            if is_scope(node):
+                return  # nested item's properties belong to it, not to us
+        elif is_scope(node):
+            return  # a scope without itemprop is a separate top-level item
+        child = node.child
+        while child is not None:
+            if child.tag not in ("-text", "-comment", "script", "style"):
+                collect(child, item, depth)
+            child = child.next
+
+    items: list[dict[str, Any]] = []
+    for node in tree.root.traverse(include_text=False) if tree.root else []:
+        if not is_scope(node) or node.attributes.get(prop_attr):
+            continue
+        # Top-level only: skip scopes nested inside another scope.
+        parent, nested = node.parent, False
+        while parent is not None:
+            if is_scope(parent):
+                nested = True
+                break
+            parent = parent.parent
+        if nested:
+            continue
+        items.append(build(node, 0))
+        if len(items) >= MAX_STRUCTURED_BLOCKS:
+            break
+    return items
+
+
+def _types_from_items(items: list[dict[str, Any]]) -> list[str]:
+    types: list[str] = []
+    for item in items:
+        t = item.get("@type")
+        if isinstance(t, str):
+            types.append(t)
+        elif isinstance(t, list):
+            types.extend(t)
+    return list(dict.fromkeys(types))
 
 
 def _extract_validity(tree: HTMLParser, html: bytes, base: str) -> ValidityFacts:
