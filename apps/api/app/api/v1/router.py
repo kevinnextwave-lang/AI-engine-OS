@@ -7,6 +7,7 @@ from app.api.v1.routes import (
     entities,
     execution,
     gaps,
+    graph,
     health,
     intelligence,
     organizations,
@@ -47,3 +48,4 @@ api_router.include_router(visibility.router)
 api_router.include_router(sources.router)
 api_router.include_router(gaps.project_router)
 api_router.include_router(gaps.gap_router)
+api_router.include_router(graph.router)
