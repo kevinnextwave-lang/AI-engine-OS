@@ -255,7 +255,9 @@ async def test_source_profile_api_scoped_to_caller(
     assert a["citation_count"] == 4 and a["global_citation_count"] == 5
     assert a["projects_observed"] == 1 and a["global_projects_observed"] == 2
     assert a["pages_cited"] == 2 and [p["citation_count"] for p in a["pages"]] == [3, 1]
-    assert a["brands_cited"] == [] and a["competitors_cited"] == []
+    # slug evidence: /products/ledgerly → brand, /products/xero → competitor (A configured Xero)
+    assert a["brands_cited"] == [{"name": "Ledgerly", "citations": 3}]
+    assert a["competitors_cited"] == [{"name": "Xero", "citations": 1}]
     assert a["relevance"]["name"] == "Source Relevance Score" and 0 < a["relevance"]["score"] <= 100
     assert a["relevance"]["scope"] == "global"
     assert a["first_seen_at"] and a["last_seen_at"]

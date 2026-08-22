@@ -246,3 +246,38 @@ def dispatch_source_backfill(project_id: uuid.UUID | None = None, *, force: bool
         kwargs={"project_id": str(project_id) if project_id else None, "force": force},
         queue="analytics",
     )
+
+
+@celery_app.task(
+    name="app.workers.tasks.analytics.analyze_citation_gaps",
+    bind=True,
+    acks_late=True,
+    max_retries=0,
+    soft_time_limit=60 * 20,
+    time_limit=60 * 20 + 60,
+)
+def analyze_citation_gaps_task(self, project_id: str, window_days: int = 90) -> str:  # type: ignore[no-untyped-def]
+    """Recompute one project's citation gaps from stored citations (no AI calls)."""
+    configure_logging()
+
+    async def _main() -> str:
+        from app.db.session import dispose_engine, get_session_factory
+        from app.gaps.engine import CitationGapEngine
+
+        try:
+            async with get_session_factory()() as session:
+                result = await CitationGapEngine(session).analyze(
+                    uuid.UUID(project_id), window_days=window_days
+                )
+                await session.commit()
+                return f"sources={result.sources_observed} written={result.gaps_written}"
+        finally:
+            await dispose_engine()
+
+    return asyncio.run(_main())
+
+
+def dispatch_citation_gap_analysis(project_id: uuid.UUID, *, window_days: int = 90) -> None:
+    analyze_citation_gaps_task.apply_async(
+        kwargs={"project_id": str(project_id), "window_days": window_days}, queue="analytics"
+    )
