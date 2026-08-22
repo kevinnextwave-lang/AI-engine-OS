@@ -3,6 +3,15 @@
 from app.db.base import Base
 from app.models.auth_audit_log import AuthAuditLog, AuthEvent
 from app.models.competitor import Competitor
+from app.models.crawl import (
+    CrawlJob,
+    CrawlStatus,
+    CrawlType,
+    CrawlUrl,
+    CrawlUrlStatus,
+    PageVersion,
+    WebsitePage,
+)
 from app.models.domain import Domain
 from app.models.membership import Membership, MembershipRole, OrganizationMember
 from app.models.organization import Organization, OrganizationPlan, OrganizationStatus
@@ -15,6 +24,13 @@ __all__ = [
     "AuthEvent",
     "Base",
     "Competitor",
+    "CrawlJob",
+    "CrawlStatus",
+    "CrawlType",
+    "CrawlUrl",
+    "CrawlUrlStatus",
+    "PageVersion",
+    "WebsitePage",
     "Domain",
     "Membership",
     "MembershipRole",

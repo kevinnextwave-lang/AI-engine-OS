@@ -13,3 +13,5 @@ redis>=5.0
 celery>=5.4
 structlog>=24.1
 python-multipart>=0.0.9
+httpx[brotli]>=0.27
+selectolax>=0.3.21

@@ -55,6 +55,27 @@ class Settings(BaseSettings):
     rate_limit_auth_per_minute: int = 10
     rate_limit_default_per_minute: int = 120
 
+    # Crawler (defaults; plan limits in app/crawler/limits.py may cap these)
+    crawl_user_agent: str = (
+        "AI-Search-Growth-OS-Crawler/1.0 (+https://aisearchgrowth.example/crawler)"
+    )
+    crawl_concurrency: int = 5
+    crawl_requests_per_second: float = 2.0
+    crawl_min_delay_seconds: float = 0.0
+    crawl_default_max_pages: int = 200
+    crawl_default_max_depth: int = 5
+    crawl_connect_timeout_seconds: float = 5.0
+    crawl_read_timeout_seconds: float = 15.0
+    crawl_total_timeout_seconds: float = 30.0
+    crawl_max_response_bytes: int = 5 * 1024 * 1024
+    crawl_max_redirects: int = 5
+    crawl_max_retries: int = 2
+    crawl_retry_backoff_seconds: float = 0.5
+    crawl_allow_subdomains: bool = False
+    crawl_html_storage: Literal["none", "local"] = "none"
+    crawl_html_storage_path: str = "./var/crawl-html"
+    crawl_status_check_interval: int = 10  # URLs between cancellation checks
+
     # Stripe (config only in Milestone 1)
     stripe_secret_key: str | None = None
     stripe_webhook_secret: str | None = None

@@ -92,9 +92,35 @@ Permission matrix (`core/permissions.py`): **Owner** everything, including billi
 
 `/api/v1/projects` (list/create), `/api/v1/projects/{id}` (get/patch/delete), `/api/v1/projects/{id}/domains` (list/add), `/api/v1/projects/{id}/competitors` (list/add/remove). Creating a project requires `name` and `website_url`; the URL is normalized by `core/urls.py` (https default, lowercase punycode host, default port and fragment stripped, no IPs/localhost/credentials) and stored as the project's primary domain. Hostnames are unique per project for both domains and competitors; at most one primary domain per project. The project collection resolves the organization from the caller's memberships (`organization_id` in the body is a selector validated against membership, required only when the user belongs to several organizations). Item routes derive the organization from the project row. Domain/competitor writes need `data:manage` (member+); project deletion needs `projects:delete` (admin+).
 
+## Website intelligence — crawler (Milestone 2 / Prompt 7)
+
+```
+POST /projects/{id}/crawl ──> crawl_jobs (queued) ──commit──> Celery "crawler" queue
+                                                                  │
+   worker: app.crawler.runner.run_crawl_job(job_id)               ▼
+   ┌───────────┐   ┌──────────┐   ┌──────────────┐   ┌────────────┐   ┌─────────────┐
+   │ Frontier  │──>│ Robots + │──>│ Fetcher      │──>│ Parser     │──>│ Persistence │
+   │ (priority │   │ per-host │   │ (SSRF-checked│   │ (selectolax│   │ crawl_urls, │
+   │  + dedupe)│<──│ limiter) │   │  redirects,  │   │  links,    │   │ website_    │
+   │           │   └──────────┘   │  retries,    │   │  text,     │   │ pages, page_│
+   └───────────┘  links/canonical │  size cap)   │   │  hashes)   │   │ versions    │
+                                  └──────────────┘   └────────────┘   └─────────────┘
+```
+
+- `app/crawler/` is self-contained (models, repositories and logging aside) so it can move to its own service later. Everything is async; the API only creates/cancels job rows.
+- **Normalization** (`crawler/urls.py`): lowercase scheme/host, default ports and fragments stripped, dot-segments resolved, known tracking parameters removed (never all), remaining query sorted, trailing slash removed except root.
+- **Safety** (`crawler/safety.py`): http/https only; blocked hostnames (`localhost`, `*.internal`, metadata names); DNS resolved and every address must be public (no private/loopback/link-local/multicast/CGNAT/metadata ranges, IPv4-mapped IPv6 unwrapped). Every redirect hop is re-checked. A blocked root fails the job.
+- **Fetcher**: connect/read/total timeouts, streamed size cap, manual redirects (limit), retries with exponential backoff on transport errors and 408/429/5xx, `AI-Search-Growth-OS-Crawler/1.0` user agent, gzip/deflate/brotli. Only `text/html` and `application/xhtml+xml` bodies are downloaded; other types are recorded as skipped.
+- **Politeness**: per-host concurrency + spacing (`requests_per_second`, `min_delay`), robots.txt with crawl-delay, cached per origin; unreachable robots (5xx) = disallow all.
+- **Frontier**: priority heap (homepage 0, sitemap 1, navigation 2, content 3; slots reserved for high-value/stale/prompt-related) with a seen-set; nofollow links and `meta robots nofollow` pages do not expand.
+- **Limits** come from `crawler/limits.py` per organization plan, capped by settings; the job stores the effective config.
+- **Persistence**: `website_pages` is the latest version per (project, normalized_url) with `is_duplicate_of_id` for identical content hashes; `page_versions` appends a snapshot per crawl (extracted text only when content changed; raw HTML via the `HtmlStorage` interface — `none`/`local` today, object storage later).
+- **Cancellation**: `cancel_requested` flag + status; the engine re-reads it every N URLs and stops scheduling; in-flight fetches finish and are recorded. Queued jobs are cancelled immediately.
+- **Logs**: `crawl_started`, `url_discovered` (debug), `url_skipped`, `fetch_failed`, `page_processed`, `crawl_cancel_observed`, `crawl_completed` — URLs and counts only, never headers or cookies.
+
 ## Background jobs
 
-Celery app in `apps/api/app/workers/celery_app.py` with Redis as broker/backend. Tasks are routed by module name to the `crawler`, `ai_search`, `agents`, and `analytics` queues. Only a `ping` task exists today; the job system proper is a later milestone.
+Celery app in `apps/api/app/workers/celery_app.py` with Redis as broker/backend. Tasks are routed by module name to the `crawler`, `ai_search`, `agents`, and `analytics` queues. `app.workers.tasks.crawler.run_crawl_job` runs crawls on the `crawler` queue (acks-late, 6h hard limit); `ping` remains for health checks.
 
 ## Environments
 
