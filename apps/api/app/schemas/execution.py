@@ -79,3 +79,15 @@ class PromptRunListResponse(APIModel):
     total: int
     limit: int
     offset: int
+
+
+class ProviderStatus(APIModel):
+    """Which AI providers this deployment can run. Never carries credentials."""
+
+    key: str
+    configured: bool
+    default_model: str | None
+
+
+class ProviderStatusList(APIModel):
+    items: list[ProviderStatus]

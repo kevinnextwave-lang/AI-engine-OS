@@ -95,11 +95,25 @@ class SeriesPoint(BaseModel):
     sufficiency: Sufficiency
 
 
+class MentionSeriesPoint(BaseModel):
+    start: str
+    end: str
+    mention_rate: float | None
+    sample_size: int
+    sufficiency: Sufficiency
+
+
 class VisibilityTrends(BaseModel):
     method: str
     generated_at: str
     windows: dict[Window, WindowTrend]
     series: list[SeriesPoint]
+    series_by_provider: dict[str, list[SeriesPoint]] = Field(
+        description="Same buckets as `series`, per provider key"
+    )
+    series_by_competitor: dict[str, list[MentionSeriesPoint]] = Field(
+        description="Mention rate per bucket for 'brand' and each configured competitor"
+    )
     minimum_sample: int
 
 
@@ -126,6 +140,9 @@ class PromptScore(BaseModel):
     text: str
     category: str
     funnel_stage: str
+    last_completed_at: str | None = Field(
+        description="Newest eligible response for this prompt inside the window"
+    )
     sample_size: int
     sufficiency: Sufficiency
     score: float | None

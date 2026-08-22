@@ -419,3 +419,367 @@ export interface AiReadinessAuditListResponse {
   items: AiReadinessAudit[];
   total: number;
 }
+
+// --- Prompts & execution (Milestones 3B/3C) ------------------------------------
+
+export type PromptCategory =
+  | "discovery"
+  | "comparison"
+  | "recommendation"
+  | "pricing"
+  | "product"
+  | "alternative"
+  | "problem_solution"
+  | "industry";
+export type FunnelStage = "awareness" | "consideration" | "decision" | "purchase" | "retention";
+export type PromptRunStatus = "queued" | "running" | "completed" | "failed" | "cancelled";
+export type BatchStatus = "queued" | "running" | "completed" | "partially_completed" | "failed" | "cancelled";
+
+export interface PromptSet {
+  id: string;
+  project_id: string;
+  name: string;
+  description: string | null;
+  category: PromptCategory | null;
+  status: string;
+  prompt_count: number;
+  active_prompt_count: number;
+  last_generated_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PromptSetListResponse {
+  items: PromptSet[];
+  total: number;
+}
+
+export interface PromptRunSummary {
+  id: string;
+  status: PromptRunStatus;
+  provider_key: string | null;
+  model_key: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+}
+
+export interface PromptVisibilityResult {
+  brand_mentioned: boolean;
+  position: number | null;
+  sentiment: string;
+  competitors_mentioned: string[];
+  parser_version: string;
+}
+
+export interface PromptRow {
+  id: string;
+  prompt_set_id: string;
+  project_id: string;
+  prompt: string;
+  category: PromptCategory;
+  intent: string;
+  funnel_stage: FunnelStage;
+  language: string;
+  country: string | null;
+  priority: number;
+  status: string;
+  is_active: boolean;
+  source: string;
+  quality_score: number | null;
+  last_run: PromptRunSummary | null;
+  visibility_result: PromptVisibilityResult | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PromptListResponse {
+  items: PromptRow[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface RunPromptSetRequest {
+  providers: string[];
+  models?: Record<string, string>;
+  priority?: "low" | "normal" | "high";
+  prompt_ids?: string[];
+}
+
+export interface ProviderStatus {
+  key: string;
+  configured: boolean;
+  default_model: string | null;
+}
+
+export interface ProviderStatusList {
+  items: ProviderStatus[];
+}
+
+export interface PromptRunBatch {
+  id: string;
+  project_id: string;
+  prompt_set_id: string;
+  status: BatchStatus;
+  total_runs: number;
+  completed_runs: number;
+  failed_runs: number;
+  cancelled_runs: number;
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+}
+
+export interface AiResponseView {
+  response_text: string;
+  finish_reason: string | null;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  total_tokens: number | null;
+  latency_ms: number | null;
+}
+
+export interface PromptRun {
+  id: string;
+  prompt_id: string;
+  batch_id: string | null;
+  provider_key: string | null;
+  model_key: string | null;
+  status: PromptRunStatus;
+  attempts: number;
+  latency_ms: number | null;
+  error_code: string | null;
+  error_message: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  response: AiResponseView | null;
+}
+
+export interface PromptRunListResponse {
+  items: PromptRun[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+// --- Response intelligence (Milestone 3D) --------------------------------------
+
+export type Sentiment = "positive" | "neutral" | "negative" | "mixed" | "unknown";
+export type RecommendationStrength = "strong" | "moderate" | "weak" | "none" | "unknown";
+
+export interface MentionView {
+  id: string;
+  brand_name: string;
+  mention_text: string;
+  position: number | null;
+  sentiment: Sentiment;
+  recommendation_strength: RecommendationStrength;
+  context: string;
+  source: string;
+  parser_version: string;
+}
+
+export interface CompetitorMentionView extends MentionView {
+  competitor_id: string | null;
+}
+
+export interface ClaimView {
+  id: string;
+  subject: string;
+  predicate: string;
+  object: string;
+  confidence: number;
+  context: string;
+}
+
+export interface CitationView {
+  id: string;
+  url: string | null;
+  domain: string | null;
+  anchor_text: string | null;
+  citation_position: number | null;
+  citation_type: string;
+}
+
+export interface ResponseIntelligence {
+  prompt_run_id: string;
+  ai_response_id: string;
+  parser_version: string | null;
+  parsed_at: string | null;
+  summary: Record<string, unknown> | null;
+  mentions: MentionView[];
+  competitor_mentions: CompetitorMentionView[];
+  claims: ClaimView[];
+  citations: CitationView[];
+}
+
+// --- AI Visibility Score (Milestone 3E) ----------------------------------------
+
+export type VisibilityWindow = "7d" | "30d" | "90d";
+export type Sufficiency = "insufficient" | "low" | "moderate" | "high";
+export type TrendDirection = "up" | "down" | "flat" | "unavailable";
+
+export interface VisibilityDataQuality {
+  sample_size: number;
+  sufficiency: Sufficiency;
+  providers: number;
+  provider_keys: string[];
+  models: number;
+  prompts: number;
+  date_range: { start: string | null; end: string | null };
+  parser_versions: string[];
+  minimum_sample: number;
+}
+
+export interface VisibilityComponent {
+  key: string;
+  value: number | null;
+  weight: number;
+  sample: number;
+  note: string;
+}
+
+export interface VisibilityScore {
+  method: string;
+  score: number | null;
+  mention_rate: number | null;
+  recommendation_rate: number | null;
+  average_position: number | null;
+  citation_rate: number | null;
+  sentiment: Record<string, number>;
+  components: VisibilityComponent[];
+  data_quality: VisibilityDataQuality;
+}
+
+export interface VisibilityPeriod {
+  start: string;
+  end: string;
+}
+
+export interface VisibilityScorePeriod extends VisibilityScore {
+  period: VisibilityPeriod;
+}
+
+export interface VisibilityOverview {
+  method: string;
+  window: VisibilityWindow;
+  generated_at: string;
+  current: VisibilityScorePeriod;
+  previous: VisibilityScorePeriod;
+  change: number | null;
+  trend: TrendDirection;
+  reason: string | null;
+  competitors_configured: number;
+}
+
+export interface VisibilityWindowTrend {
+  current_score: number | null;
+  previous_score: number | null;
+  current_sample_size: number;
+  previous_sample_size: number;
+  sufficiency: Sufficiency;
+  change: number | null;
+  trend: TrendDirection;
+  reason: string | null;
+}
+
+export interface VisibilitySeriesPoint {
+  start: string;
+  end: string;
+  score: number | null;
+  mention_rate: number | null;
+  recommendation_rate: number | null;
+  citation_rate: number | null;
+  sample_size: number;
+  sufficiency: Sufficiency;
+}
+
+export interface VisibilityMentionSeriesPoint {
+  start: string;
+  end: string;
+  mention_rate: number | null;
+  sample_size: number;
+  sufficiency: Sufficiency;
+}
+
+export interface VisibilityTrends {
+  method: string;
+  generated_at: string;
+  windows: Record<VisibilityWindow, VisibilityWindowTrend>;
+  series: VisibilitySeriesPoint[];
+  /** Same buckets as `series`, per provider key. */
+  series_by_provider: Record<string, VisibilitySeriesPoint[]>;
+  /** Mention rate per bucket for "brand" and each configured competitor. */
+  series_by_competitor: Record<string, VisibilityMentionSeriesPoint[]>;
+  minimum_sample: number;
+}
+
+export interface VisibilityProviderScore extends VisibilityScore {
+  provider: string;
+}
+
+export interface VisibilityModelScore extends VisibilityScore {
+  provider: string;
+  model: string;
+}
+
+export interface VisibilityByEngine {
+  method: string;
+  window: VisibilityWindow;
+  period: VisibilityPeriod;
+  overall: VisibilityScore;
+  providers: VisibilityProviderScore[];
+  models: VisibilityModelScore[];
+}
+
+export interface VisibilityPromptScore {
+  prompt_id: string;
+  text: string;
+  category: PromptCategory;
+  funnel_stage: FunnelStage;
+  /** Newest eligible response for this prompt inside the window. */
+  last_completed_at: string | null;
+  sample_size: number;
+  sufficiency: Sufficiency;
+  score: number | null;
+  mentions: number;
+  mention_rate: number | null;
+  recommendation_rate: number | null;
+  average_position: number | null;
+  citation_rate: number | null;
+  sentiment: Record<string, number>;
+  providers: number;
+}
+
+export interface VisibilityByPrompt {
+  method: string;
+  window: VisibilityWindow;
+  period: VisibilityPeriod;
+  prompts: VisibilityPromptScore[];
+  categories: (VisibilityScore & { category: PromptCategory })[];
+  funnel_stages: (VisibilityScore & { funnel_stage: FunnelStage })[];
+}
+
+export interface VisibilityCompetitorRow {
+  name: string;
+  is_brand: boolean;
+  mentions: number;
+  mention_rate: number | null;
+  recommendation_rate: number | null;
+  average_position: number | null;
+  positioned_mentions: number;
+  sentiment_score: number | null;
+  sentiment: Record<string, number>;
+  share_of_voice: number | null;
+}
+
+export interface VisibilityCompetitors {
+  method: string;
+  window: VisibilityWindow;
+  period: VisibilityPeriod;
+  competitors_configured: number;
+  competitive_score: number | null;
+  data_quality: VisibilityDataQuality;
+  rows: VisibilityCompetitorRow[];
+  note: string;
+}

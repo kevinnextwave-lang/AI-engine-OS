@@ -41,6 +41,19 @@ import type {
   RegisterRequest,
   TokenResponse,
   User,
+  PromptListResponse,
+  PromptRunBatch,
+  PromptRunListResponse,
+  PromptSetListResponse,
+  ProviderStatusList,
+  ResponseIntelligence,
+  RunPromptSetRequest,
+  VisibilityByEngine,
+  VisibilityByPrompt,
+  VisibilityCompetitors,
+  VisibilityOverview,
+  VisibilityTrends,
+  VisibilityWindow,
 } from "@ai-search-growth-os/types";
 
 export type {
@@ -249,5 +262,35 @@ export const api = {
       q.set("limit", String(params.limit ?? 500));
       return request<AiReadinessAuditDetail>(`/ai-readiness-audits/${auditId}?${q}`);
     },
+  },
+  ai: {
+    providers: () => request<ProviderStatusList>("/ai/providers"),
+  },
+  prompts: {
+    listSets: (projectId: string) =>
+      request<PromptSetListResponse>(`/projects/${projectId}/prompt-sets`),
+    list: (promptSetId: string, limit = 200) =>
+      request<PromptListResponse>(`/prompt-sets/${promptSetId}/prompts?limit=${limit}`),
+    run: (promptSetId: string, body: RunPromptSetRequest) =>
+      request<PromptRunBatch>(`/prompt-sets/${promptSetId}/run`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    runs: (promptId: string, limit = 50) =>
+      request<PromptRunListResponse>(`/prompts/${promptId}/runs?limit=${limit}`),
+  },
+  intelligence: {
+    forRun: (runId: string) => request<ResponseIntelligence>(`/prompt-runs/${runId}/intelligence`),
+  },
+  visibility: {
+    overview: (projectId: string, window: VisibilityWindow) =>
+      request<VisibilityOverview>(`/projects/${projectId}/visibility?window=${window}`),
+    trends: (projectId: string) => request<VisibilityTrends>(`/projects/${projectId}/visibility/trends`),
+    byEngine: (projectId: string, window: VisibilityWindow) =>
+      request<VisibilityByEngine>(`/projects/${projectId}/visibility/by-engine?window=${window}`),
+    byPrompt: (projectId: string, window: VisibilityWindow) =>
+      request<VisibilityByPrompt>(`/projects/${projectId}/visibility/by-prompt?window=${window}`),
+    competitors: (projectId: string, window: VisibilityWindow) =>
+      request<VisibilityCompetitors>(`/projects/${projectId}/visibility/competitors?window=${window}`),
   },
 };

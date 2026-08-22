@@ -147,6 +147,22 @@ class PromptRunRepository:
         )
         return list(rows.all()), int(total or 0)
 
+    async def list_for_prompt(
+        self, prompt_id: uuid.UUID, *, limit: int = 50, offset: int = 0
+    ) -> tuple[list[PromptRun], int]:
+        """A prompt's run history, newest first."""
+        base = select(PromptRun).where(PromptRun.prompt_id == prompt_id)
+        total = await self._session.scalar(select(func.count()).select_from(base.subquery()))
+        rows = await self._session.scalars(
+            base.order_by(
+                func.coalesce(PromptRun.completed_at, PromptRun.created_at).desc(),
+                PromptRun.created_at.desc(),
+            )
+            .limit(limit)
+            .offset(offset)
+        )
+        return list(rows.all()), int(total or 0)
+
     async def responses_for_runs(self, run_ids: list[uuid.UUID]) -> dict[uuid.UUID, AiResponse]:
         if not run_ids:
             return {}
