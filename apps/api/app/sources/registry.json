@@ -1,0 +1,278 @@
+{
+  "version": "source-registry/2026-08",
+  "note": "Known domains by category. Matched by exact host or any subdomain. Edit freely; keep it evidence-based.",
+  "known_review_domains": [
+    "g2.com",
+    "capterra.com",
+    "trustpilot.com",
+    "trustradius.com",
+    "getapp.com",
+    "softwareadvice.com",
+    "yelp.com",
+    "gartner.com",
+    "peerspot.com",
+    "sitejabber.com",
+    "consumerreports.org",
+    "tripadvisor.com",
+    "glassdoor.com",
+    "producthunt.com"
+  ],
+  "known_social_domains": [
+    "twitter.com",
+    "x.com",
+    "linkedin.com",
+    "facebook.com",
+    "instagram.com",
+    "youtube.com",
+    "tiktok.com",
+    "threads.net",
+    "pinterest.com",
+    "bsky.app",
+    "mastodon.social"
+  ],
+  "known_community_domains": [
+    "reddit.com",
+    "quora.com",
+    "indiehackers.com",
+    "lobste.rs",
+    "slashdot.org"
+  ],
+  "known_forum_domains": [
+    "stackoverflow.com",
+    "stackexchange.com",
+    "superuser.com",
+    "serverfault.com",
+    "news.ycombinator.com",
+    "discourse.org",
+    "community.atlassian.com",
+    "forums.macrumors.com"
+  ],
+  "known_media_domains": [
+    "nytimes.com",
+    "forbes.com",
+    "techcrunch.com",
+    "theverge.com",
+    "wired.com",
+    "bbc.co.uk",
+    "bbc.com",
+    "reuters.com",
+    "bloomberg.com",
+    "wsj.com",
+    "cnbc.com",
+    "theguardian.com",
+    "zdnet.com",
+    "venturebeat.com",
+    "arstechnica.com",
+    "businessinsider.com",
+    "ft.com",
+    "economist.com",
+    "washingtonpost.com",
+    "cnn.com",
+    "engadget.com",
+    "hbr.org",
+    "inc.com",
+    "entrepreneur.com",
+    "fastcompany.com"
+  ],
+  "known_directory_domains": [
+    "crunchbase.com",
+    "clutch.co",
+    "yellowpages.com",
+    "builtwith.com",
+    "similarweb.com",
+    "alternativeto.net",
+    "saasworthy.com",
+    "goodfirms.co",
+    "dnb.com",
+    "zoominfo.com"
+  ],
+  "known_research_domains": [
+    "arxiv.org",
+    "researchgate.net",
+    "semanticscholar.org",
+    "scholar.google.com",
+    "nature.com",
+    "sciencedirect.com",
+    "springer.com",
+    "ieee.org",
+    "acm.org",
+    "jstor.org",
+    "pubmed.ncbi.nlm.nih.gov",
+    "ssrn.com",
+    "statista.com",
+    "pewresearch.org",
+    "mckinsey.com"
+  ],
+  "known_blog_platforms": [
+    "medium.com",
+    "substack.com",
+    "wordpress.com",
+    "blogspot.com",
+    "dev.to",
+    "hashnode.dev",
+    "ghost.io",
+    "tumblr.com",
+    "wixsite.com",
+    "squarespace.com"
+  ],
+  "known_authority_domains": [
+    "wikipedia.org",
+    "britannica.com",
+    "who.int",
+    "un.org",
+    "oecd.org",
+    "worldbank.org",
+    "imf.org",
+    "europa.eu",
+    "nist.gov",
+    "w3.org",
+    "ietf.org",
+    "iso.org",
+    "mozilla.org"
+  ],
+  "government_suffixes": [
+    ".gov",
+    ".gov.uk",
+    ".gouv.fr",
+    ".gov.au",
+    ".gc.ca",
+    ".gov.in",
+    ".go.jp",
+    ".gov.br",
+    ".mil",
+    ".admin.ch",
+    ".bund.de"
+  ],
+  "education_suffixes": [
+    ".edu",
+    ".ac.uk",
+    ".edu.au",
+    ".ac.jp",
+    ".ac.nz",
+    ".ac.za",
+    ".edu.cn"
+  ],
+  "hostname_patterns": {
+    "blog": [
+      "blog.",
+      "blogs.",
+      "engineering."
+    ],
+    "forum": [
+      "forum.",
+      "forums.",
+      "discuss.",
+      "discussions."
+    ],
+    "community": [
+      "community.",
+      "answers."
+    ],
+    "media": [
+      "news.",
+      "press."
+    ],
+    "research": [
+      "research.",
+      "labs."
+    ],
+    "review": [
+      "reviews."
+    ]
+  },
+  "path_patterns": {
+    "review": [
+      "/reviews",
+      "/review/",
+      "/compare/",
+      "/vs-",
+      "/alternatives"
+    ],
+    "forum": [
+      "/forum",
+      "/forums",
+      "/thread",
+      "/threads",
+      "/t/",
+      "/discussion"
+    ],
+    "community": [
+      "/r/",
+      "/community",
+      "/questions/",
+      "/answers/"
+    ],
+    "blog": [
+      "/blog",
+      "/posts/",
+      "/post/",
+      "/articles/"
+    ],
+    "media": [
+      "/news/",
+      "/press-release",
+      "/story/"
+    ],
+    "research": [
+      "/research/",
+      "/paper/",
+      "/papers/",
+      "/report/",
+      "/whitepaper",
+      "/study/"
+    ],
+    "directory": [
+      "/directory/",
+      "/listing/",
+      "/companies/",
+      "/profile/"
+    ]
+  },
+  "title_keywords": {
+    "review": [
+      "review",
+      "reviews",
+      "rating",
+      "ratings",
+      "pros and cons",
+      "vs."
+    ],
+    "forum": [
+      "forum",
+      "thread",
+      "discussion"
+    ],
+    "community": [
+      "community",
+      "q&a",
+      "questions"
+    ],
+    "media": [
+      "news",
+      "breaking",
+      "exclusive",
+      "report:"
+    ],
+    "research": [
+      "study",
+      "research",
+      "survey",
+      "whitepaper",
+      "white paper",
+      "analysis",
+      "report"
+    ],
+    "blog": [
+      "blog",
+      "how to",
+      "guide",
+      "tutorial"
+    ],
+    "directory": [
+      "directory",
+      "listing",
+      "top 10",
+      "best companies"
+    ]
+  }
+}

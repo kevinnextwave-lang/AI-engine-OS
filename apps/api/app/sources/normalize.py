@@ -102,91 +102,18 @@ def display_name_for(hostname: str) -> str:
     return ".".join(parts)
 
 
-# Evidence-based classification. Anything not listed is UNKNOWN on purpose.
-_KNOWN: dict[str, DomainType] = {
-    # social
-    "twitter.com": DomainType.SOCIAL,
-    "x.com": DomainType.SOCIAL,
-    "linkedin.com": DomainType.SOCIAL,
-    "facebook.com": DomainType.SOCIAL,
-    "instagram.com": DomainType.SOCIAL,
-    "youtube.com": DomainType.SOCIAL,
-    "tiktok.com": DomainType.SOCIAL,
-    "threads.net": DomainType.SOCIAL,
-    # review
-    "g2.com": DomainType.REVIEW,
-    "capterra.com": DomainType.REVIEW,
-    "trustpilot.com": DomainType.REVIEW,
-    "trustradius.com": DomainType.REVIEW,
-    "getapp.com": DomainType.REVIEW,
-    "softwareadvice.com": DomainType.REVIEW,
-    "yelp.com": DomainType.REVIEW,
-    "gartner.com": DomainType.REVIEW,
-    # community / forum
-    "reddit.com": DomainType.COMMUNITY,
-    "quora.com": DomainType.COMMUNITY,
-    "stackoverflow.com": DomainType.FORUM,
-    "stackexchange.com": DomainType.FORUM,
-    "news.ycombinator.com": DomainType.FORUM,
-    "discourse.org": DomainType.FORUM,
-    # directory
-    "crunchbase.com": DomainType.DIRECTORY,
-    "producthunt.com": DomainType.DIRECTORY,
-    "clutch.co": DomainType.DIRECTORY,
-    "yellowpages.com": DomainType.DIRECTORY,
-    # media
-    "nytimes.com": DomainType.MEDIA,
-    "forbes.com": DomainType.MEDIA,
-    "techcrunch.com": DomainType.MEDIA,
-    "theverge.com": DomainType.MEDIA,
-    "wired.com": DomainType.MEDIA,
-    "bbc.co.uk": DomainType.MEDIA,
-    "bbc.com": DomainType.MEDIA,
-    "reuters.com": DomainType.MEDIA,
-    "bloomberg.com": DomainType.MEDIA,
-    "wsj.com": DomainType.MEDIA,
-    "cnbc.com": DomainType.MEDIA,
-    "theguardian.com": DomainType.MEDIA,
-    "zdnet.com": DomainType.MEDIA,
-    # research
-    "arxiv.org": DomainType.RESEARCH,
-    "researchgate.net": DomainType.RESEARCH,
-    "semanticscholar.org": DomainType.RESEARCH,
-    "scholar.google.com": DomainType.RESEARCH,
-    "nature.com": DomainType.RESEARCH,
-    "sciencedirect.com": DomainType.RESEARCH,
-    # blog platforms
-    "medium.com": DomainType.BLOG,
-    "substack.com": DomainType.BLOG,
-    "wordpress.com": DomainType.BLOG,
-    "blogspot.com": DomainType.BLOG,
-    "dev.to": DomainType.BLOG,
-    "hashnode.dev": DomainType.BLOG,
-}
-_GOV_SUFFIXES = (".gov", ".gov.uk", ".gouv.fr", ".gov.au", ".gc.ca", ".mil")
-_EDU_SUFFIXES = (".edu", ".ac.uk", ".edu.au", ".ac.jp", ".ac.nz")
-
-
 def classify_domain(
     normalized_hostname: str, *, company_hosts: frozenset[str] = frozenset()
 ) -> DomainType:
-    """Only classifies on clear evidence: a project/competitor host (company),
-    a government/education TLD, or a well-known platform. Otherwise UNKNOWN."""
-    host = normalized_hostname
-    if host in company_hosts or any(host.endswith("." + c) for c in company_hosts):
-        return DomainType.COMPANY
-    for suffix in _GOV_SUFFIXES:
-        if host.endswith(suffix):
-            return DomainType.GOVERNMENT
-    for suffix in _EDU_SUFFIXES:
-        if host.endswith(suffix):
-            return DomainType.EDUCATION
-    parts = host.split(".")
-    for i in range(len(parts) - 1):
-        candidate = ".".join(parts[i:])
-        if candidate in _KNOWN:
-            return _KNOWN[candidate]
-    return DomainType.UNKNOWN
+    """Hostname-only classification (registry, TLD, project hosts). The full
+    signal-based classifier lives in `app.sources.classify`; this is the cheap
+    path used when a domain is first seen."""
+    from app.sources.classify import classify
+    from app.sources.registry import get_registry
+
+    return classify(
+        normalized_hostname, registry=get_registry(), company_hosts=company_hosts
+    ).domain_type
 
 
 def host_matches(host: str, candidates: set[str]) -> str | None:

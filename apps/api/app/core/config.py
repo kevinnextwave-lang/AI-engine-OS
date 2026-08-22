@@ -98,6 +98,10 @@ class Settings(BaseSettings):
     ai_rate_limit_google_per_minute: int = 60
     # Response intelligence Stage 2 (LLM-assisted interpretation); off by default.
     ai_parser_llm_enabled: bool = False
+    # Citation Intelligence (4B): optional JSON overriding/extending app/sources/registry.json.
+    source_registry_path: str | None = None
+    # Minimum confidence before a domain is given a type other than "unknown".
+    source_classification_threshold: float = 0.5
     ai_parser_provider: str = "openai"
     ai_parser_model: str | None = None
     ai_run_max_tokens: int = 1024
