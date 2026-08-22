@@ -14,6 +14,24 @@ DEFAULT_PROVIDERS: tuple[tuple[str, str], ...] = (
     ("google", "Google AI"),
 )
 
+# Default list prices (USD per million tokens). Editable in ai_models.pricing; the
+# version tag is copied onto every usage record so later price changes stay auditable.
+PRICING_VERSION = "2025-06-list"
+DEFAULT_PRICING: dict[str, dict[str, Any]] = {
+    "gpt-4o-mini": {"input_per_million": 0.15, "output_per_million": 0.60},
+    "gpt-4o": {"input_per_million": 2.50, "output_per_million": 10.00},
+    "claude-3-5-haiku-latest": {"input_per_million": 0.80, "output_per_million": 4.00},
+    "claude-sonnet-4-0": {"input_per_million": 3.00, "output_per_million": 15.00},
+    "gemini-2.0-flash": {"input_per_million": 0.10, "output_per_million": 0.40},
+    "gemini-2.5-pro": {"input_per_million": 1.25, "output_per_million": 10.00},
+}
+
+
+def default_pricing(model_key: str) -> dict[str, Any]:
+    base = DEFAULT_PRICING.get(model_key, {"input_per_million": 0.0, "output_per_million": 0.0})
+    return {**base, "currency": "USD", "version": PRICING_VERSION}
+
+
 # (provider_key, model_key, display_name, capabilities)
 DEFAULT_MODELS: tuple[tuple[str, str, str, dict[str, Any]], ...] = (
     (
@@ -110,6 +128,7 @@ async def ensure_catalog(session: AsyncSession) -> None:
                     model_key=model_key,
                     display_name=display,
                     capabilities=caps,
+                    pricing=default_pricing(model_key),
                     is_enabled=True,
                 )
             )

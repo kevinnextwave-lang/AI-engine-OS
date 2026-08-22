@@ -84,6 +84,24 @@ class Settings(BaseSettings):
     ai_default_timeout_seconds: float = 60.0
     ai_default_max_tokens: int = 1024
     ai_store_response_text: bool = True
+    # Prompt execution (Milestone 3C)
+    ai_search_system_prompt: str = (
+        "You are a helpful assistant. Answer the user's question directly and name specific "
+        "products, companies or sources where relevant."
+    )
+    ai_run_max_attempts: int = 4
+    ai_run_retry_base_seconds: float = 5.0
+    ai_run_retry_max_seconds: float = 300.0
+    # Requests per minute per provider; 0 disables throttling for that provider.
+    ai_rate_limit_openai_per_minute: int = 60
+    ai_rate_limit_anthropic_per_minute: int = 50
+    ai_rate_limit_google_per_minute: int = 60
+    ai_run_max_tokens: int = 1024
+    ai_run_temperature: float | None = 0.2
+
+    def ai_rate_limit_for(self, provider_key: str) -> int:
+        return int(getattr(self, f"ai_rate_limit_{provider_key}_per_minute", 0) or 0)
+
     crawl_max_redirects: int = 5
     crawl_max_retries: int = 2
     crawl_retry_backoff_seconds: float = 0.5

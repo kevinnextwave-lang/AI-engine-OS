@@ -162,3 +162,51 @@ def run_ai_readiness_audit_task(self, audit_id: str) -> str:  # type: ignore[no-
 def dispatch_ai_readiness_audit(audit_id: uuid.UUID) -> None:
     """Enqueue an AI readiness audit. Callers must have COMMITTED the audit row first."""
     run_ai_readiness_audit_task.apply_async(args=(str(audit_id),), queue="analytics")
+
+
+@celery_app.task(
+    name="app.workers.tasks.ai_search.run_prompt",
+    bind=True,
+    acks_late=True,
+    max_retries=None,  # attempts are bounded by AI_RUN_MAX_ATTEMPTS inside execute_prompt_run
+    soft_time_limit=60 * 10,
+    time_limit=60 * 10 + 30,
+)
+def run_prompt_run_task(self, run_id: str) -> str:  # type: ignore[no-untyped-def]
+    """Execute one prompt run. Retries with backoff are driven by the executor's
+    Outcome so the worker never sleeps while waiting on a provider."""
+    configure_logging()
+
+    async def _main() -> tuple[str, float | None]:
+        from redis.asyncio import Redis
+
+        from app.ai.execution import execute_prompt_run
+        from app.ai.registry import ProviderRegistry
+        from app.ai.throttle import RedisProviderThrottle
+        from app.core.config import get_settings
+        from app.db.session import dispose_engine, get_session_factory
+
+        settings = get_settings()
+        redis = Redis.from_url(settings.redis_url)
+        try:
+            async with get_session_factory()() as session:
+                outcome = await execute_prompt_run(
+                    session,
+                    uuid.UUID(run_id),
+                    ProviderRegistry(settings),
+                    RedisProviderThrottle(redis),
+                )
+                return (outcome.status.value if outcome.status else "skipped"), outcome.retry_in
+        finally:
+            await redis.aclose()
+            await dispose_engine()
+
+    status, retry_in = asyncio.run(_main())
+    if retry_in is not None:
+        raise self.retry(countdown=retry_in)
+    return status
+
+
+def dispatch_prompt_run(run_id: uuid.UUID, priority: int = 5) -> None:
+    """Enqueue one prompt run. Callers must have COMMITTED the run row first."""
+    run_prompt_run_task.apply_async(args=(str(run_id),), queue="ai_search", priority=priority)

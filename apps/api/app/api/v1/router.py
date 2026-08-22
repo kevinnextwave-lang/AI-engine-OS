@@ -5,6 +5,7 @@ from app.api.v1.routes import (
     auth,
     crawl,
     entities,
+    execution,
     health,
     organizations,
     pages,
@@ -32,3 +33,5 @@ api_router.include_router(ai_readiness.router)
 api_router.include_router(prompts.project_router)
 api_router.include_router(prompts.set_router)
 api_router.include_router(prompts.prompt_router)
+api_router.include_router(execution.set_router)
+api_router.include_router(execution.batch_router)

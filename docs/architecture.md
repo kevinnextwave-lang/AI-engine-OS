@@ -206,9 +206,27 @@ Hierarchy `projects → prompt_sets → prompts → prompt_runs` (`app/models/pr
 
 `PromptService` builds the profile from project data (name, primary domain, industry, country, competitors table, Product/Service entities from the crawl) with request overrides winning, generates into a set, and handles manual CRUD with inference, duplicate rejection (409) and re-scoring on edits. API: `POST/GET /projects/{id}/prompt-sets`, `POST /prompt-sets/{id}/generate`, `GET|POST /prompt-sets/{id}/prompts`, `PATCH|DELETE /prompts/{id}`. Rows are table-ready (prompt, category, intent, funnel stage, priority, status, last run, visibility result). Set/prompt routes derive the project from the row; DATA_READ / DATA_MANAGE apply; other tenants get 404. No AI provider is called.
 
+## Prompt execution engine (Milestone 3C)
+
+```
+POST /prompt-sets/{id}/run ──> prompt_run_batches + prompt_runs (queued) ──commit──> Celery "ai_search" queue (priority 3/5/9)
+                                                                                         │
+     worker: app.ai.execution.execute_prompt_run(run_id)                                 ▼
+     throttle (per-provider RPM, Redis) → claim run (UPDATE … WHERE status='queued') → AIGenerationService
+     → ai_responses + ai_usage_records + batch counters → completed | failed | requeued with backoff
+```
+
+- **Tables.** `prompt_run_batches` (project, prompt set, status queued|running|completed|failed|cancelling|cancelled, priority, `targets`, total/completed/failed/cancelled counters, timestamps); `prompt_runs` gained batch, provider/model ids, attempts, latency, `error_code`, and the `cancelled` status; `ai_responses` (one per completed run: text, finish reason, tokens, latency, provider request id, neutral `raw_metadata`); `ai_usage_records` (organization, project, run, provider, model, tokens, `estimated_cost`, currency, `pricing_version`). `ai_models.pricing` holds per-million-token rates — the only place prices live (`app/ai/pricing.py::estimate_cost`; defaults seeded from `app/ai/catalog.py`).
+- **Batch creation** (`ExecutionService.run_prompt_set`): validates providers (known, enabled, credentials configured) and models (catalogue, enabled; defaults from settings), creates one run per active prompt × target, commits, then enqueues each run with the batch's Celery priority; if the broker fails mid-way the un-enqueued runs are marked `failed` (`dispatch_failed`) rather than left queued forever.
+- **Execution** (`execute_prompt_run`) never sleeps on a worker: a throttled provider or a retryable error returns `Outcome.retry_in`, and the Celery task re-schedules itself with `self.retry(countdown=…)` (exponential backoff, `AI_RUN_RETRY_BASE_SECONDS` × 2ⁿ capped by `AI_RUN_RETRY_MAX_SECONDS`, at most `AI_RUN_MAX_ATTEMPTS`). Rate-limit, timeout and provider errors retry; authentication, invalid-request, content-filter and unknown errors fail immediately. The claim is an atomic `UPDATE … WHERE status = 'queued'`, so a late worker can never resurrect a cancelled run.
+- **Cancellation** (`POST /prompt-run-batches/{id}/cancel`): batch → `cancelling`; every still-queued run → `cancelled` immediately; runs already inside a provider call finish, their answer and usage are kept, and the batch is finalized as `cancelled` when the last one reports back. A queued run that observes a cancelling batch before calling the provider cancels itself.
+- **Observability**: `prompt_batch_created`, `prompt_run_completed` (latency, tokens, cost), `prompt_run_retry`, `prompt_run_failed` — never prompts, responses or keys.
+
+API: `POST /prompt-sets/{id}/run` (DATA_MANAGE; 202 with the batch), `GET /prompt-sets/{id}/batches`, `GET /prompt-run-batches/{id}` (counters + aggregated usage), `GET /prompt-run-batches/{id}/runs` (runs with responses; filter `status`), `POST /prompt-run-batches/{id}/cancel`. Tenancy is derived from the prompt set / batch row. Worker command: `celery -A app.workers.celery_app:celery_app worker -Q ai_search`.
+
 ## Background jobs
 
-Celery app in `apps/api/app/workers/celery_app.py` with Redis as broker/backend. Tasks are routed by module name to the `crawler`, `ai_search`, `agents`, and `analytics` queues. `app.workers.tasks.crawler.run_crawl_job` runs crawls on the `crawler` queue (acks-late, 6h hard limit); `app.workers.tasks.analytics.run_seo_audit` runs SEO audits and `app.workers.tasks.analytics.run_entity_analysis` rebuilds entity intelligence and `app.workers.tasks.analytics.run_ai_readiness_audit` runs readiness audits on the `analytics` queue (30 min limit); `ping` remains for health checks.
+Celery app in `apps/api/app/workers/celery_app.py` with Redis as broker/backend. Tasks are routed by module name to the `crawler`, `ai_search`, `agents`, and `analytics` queues. `app.workers.tasks.crawler.run_crawl_job` runs crawls on the `crawler` queue (acks-late, 6h hard limit); `app.workers.tasks.analytics.run_seo_audit` runs SEO audits and `app.workers.tasks.analytics.run_entity_analysis` rebuilds entity intelligence and `app.workers.tasks.analytics.run_ai_readiness_audit` runs readiness audits on the `analytics` queue; `app.workers.tasks.ai_search.run_prompt` executes prompt runs on the priority-enabled `ai_search` queue (30 min limit); `ping` remains for health checks.
 
 ## Environments
 
