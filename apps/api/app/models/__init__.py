@@ -23,12 +23,23 @@ from app.models.page_intelligence import (
     PageImage,
     PageLink,
     PageMetadata,
+    PageStructuredData,
+    StructuredDataFormat,
 )
 from app.models.project import Project, ProjectStatus
 from app.models.refresh_token import RefreshToken
+from app.models.seo import (
+    AuditStatus,
+    ObservationCategory,
+    ObservationStatus,
+    SeoAudit,
+    SeoObservation,
+    Severity,
+)
 from app.models.user import User
 
 __all__ = [
+    "AuditStatus",
     "AuthAuditLog",
     "AuthEvent",
     "Base",
@@ -45,6 +56,8 @@ __all__ = [
     "LinkType",
     "Membership",
     "MembershipRole",
+    "ObservationCategory",
+    "ObservationStatus",
     "Organization",
     "OrganizationMember",
     "OrganizationPlan",
@@ -54,8 +67,13 @@ __all__ = [
     "PageImage",
     "PageLink",
     "PageMetadata",
+    "PageStructuredData",
     "Project",
     "ProjectStatus",
     "RefreshToken",
+    "SeoAudit",
+    "SeoObservation",
+    "Severity",
+    "StructuredDataFormat",
     "User",
 ]

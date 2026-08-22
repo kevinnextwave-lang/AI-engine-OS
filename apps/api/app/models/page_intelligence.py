@@ -125,6 +125,38 @@ class PageMetadata(UUIDPrimaryKeyMixin, _PageScoped, Base):
     open_graph: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     twitter: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     other: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    # Basic HTML validity indicators (facts, not verdicts).
+    has_doctype: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    title_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    canonical_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    canonical_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+
+
+class StructuredDataFormat(enum.StrEnum):
+    JSON_LD = "json_ld"
+    MICRODATA = "microdata"
+    RDFA = "rdfa"
+
+
+class PageStructuredData(UUIDPrimaryKeyMixin, _PageScoped, Base):
+    """One row per structured-data block found on a page."""
+
+    __tablename__ = "page_structured_data"
+    __table_args__ = (Index("ix_page_structured_data_page_position", "page_id", "position"),)
+
+    format: Mapped[StructuredDataFormat] = mapped_column(
+        Enum(
+            StructuredDataFormat,
+            name="structured_data_format",
+            values_callable=lambda e: [m.value for m in e],
+        ),
+        nullable=False,
+    )
+    schema_types: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    payload: Mapped[dict[str, Any] | list[Any] | None] = mapped_column(JSONB, nullable=True)
+    is_valid: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    error: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
 class PageContentMetrics(UUIDPrimaryKeyMixin, _PageScoped, Base):

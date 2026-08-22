@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1.routes import auth, crawl, health, organizations, pages, projects
+from app.api.v1.routes import auth, crawl, health, organizations, pages, projects, seo
 
 api_router = APIRouter()
 api_router.include_router(health.router)
@@ -12,3 +12,5 @@ api_router.include_router(crawl.project_router)
 api_router.include_router(crawl.router)
 api_router.include_router(pages.project_router)
 api_router.include_router(pages.router)
+api_router.include_router(seo.project_router)
+api_router.include_router(seo.router)

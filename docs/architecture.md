@@ -136,9 +136,22 @@ Internal link status is resolved by `resolve_internal_links` at the end of every
 
 API: `GET /projects/{id}/pages` (paginated; filters `http_status`, `language`, `q`, `duplicates`), `GET /pages/{id}` (summary + metadata + metrics + headings + images + clean text), `GET /pages/{id}/headings`, `GET /pages/{id}/links` (paginated; filters `type`, `status`). Page routes derive the project from the page row and then check membership.
 
+## Technical SEO analyzer (Milestone 2C)
+
+`apps/api/app/seo/` turns crawl + page-intelligence data into **observations** and a health score. Nothing is fetched; an audit is a pure read of what the crawl stored, run on the `analytics` queue (`app.workers.tasks.analytics.run_seo_audit`).
+
+- `context.py` — `build_context(session, crawl_job)` loads the project's pages, metadata, metrics, structured data, links (with an incoming-link index), and the job's `crawl_urls` (status, redirect chain, depth) plus `crawl_jobs.config["site"]` (robots/sitemap facts) into an in-memory `AuditContext`. `PageSnapshot.indexable` = 200 + not `noindex` + canonical self or absent.
+- `checks/` — pure functions `(AuditContext) -> list[Finding]`, one module per area: `metadata` (missing/duplicate/length of titles and descriptions), `headings` (H1 missing/multiple, skipped levels, duplicates, long), `canonical` (missing, conflicting, external, chained, non-200 target, mismatch), `http` (4xx/5xx grouped by status, redirect chains/loops) + `indexability` (robots.txt unreachable/missing, robots-blocked URLs, noindex share, no sitemap), `links` (orphans, weakly linked, broken internal links per page, excessive depth), `structured` (invalid blocks, detected types, pages without any) and `mobile_html` (viewport, lang, charset, doctype, multiple titles). Each finding carries a `code`, a context-dependent severity, evidence (URLs, counts, lengths) and a concrete recommendation — no generated text.
+- `scoring.py` — Technical SEO Health Score, computed only from the findings; methodology in `docs/technical-seo-health-score.md`, full breakdown stored on the audit.
+- `engine.py` — `run_audit`: `running` → context → checks → score → `seo_observations` rows + summary → `completed`, or `failed` with the error recorded.
+
+Tables: `seo_audits` (project, crawl job, status, pages analyzed, observation count, `health_score`, `score_breakdown`, `summary`) and `seo_observations` (audit, project, optional page, URL, category, code, severity, title, description, evidence JSONB, recommendation, triage `status` open/ignored/resolved + note + user). Inputs added to the crawler for this milestone: `crawl_urls.final_url`/`redirect_chain`, `page_metadata.has_doctype`/`title_count`/`canonical_count`/`canonical_url`, `page_structured_data` (JSON-LD/Microdata/RDFa blocks, parsed types, validity), and robots/sitemap facts in `crawl_jobs.config.site`.
+
+API: `POST /projects/{id}/seo-audits` (DATA_MANAGE; body `crawl_job_id` optional, defaults to the latest finished crawl; 409 if that crawl has not finished; commits then dispatches, dispatch failure → `failed`), `GET /projects/{id}/seo-audits`, `GET /seo-audits/{id}`, `GET /seo-audits/{id}/observations` (severity-ordered; filters `category`, `severity`, `status`; paginated), `PATCH /seo-observations/{id}` (DATA_MANAGE; status + note). Audit/observation routes derive the project from the row and check membership (404 for other tenants).
+
 ## Background jobs
 
-Celery app in `apps/api/app/workers/celery_app.py` with Redis as broker/backend. Tasks are routed by module name to the `crawler`, `ai_search`, `agents`, and `analytics` queues. `app.workers.tasks.crawler.run_crawl_job` runs crawls on the `crawler` queue (acks-late, 6h hard limit); `ping` remains for health checks.
+Celery app in `apps/api/app/workers/celery_app.py` with Redis as broker/backend. Tasks are routed by module name to the `crawler`, `ai_search`, `agents`, and `analytics` queues. `app.workers.tasks.crawler.run_crawl_job` runs crawls on the `crawler` queue (acks-late, 6h hard limit); `app.workers.tasks.analytics.run_seo_audit` runs SEO audits on the `analytics` queue (30 min limit); `ping` remains for health checks.
 
 ## Environments
 

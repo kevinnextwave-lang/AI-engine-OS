@@ -110,6 +110,7 @@ class CrawlEngine:
         self._db_lock = asyncio.Lock()
         self._since_check = 0
         self._skipped_urls: set[str] = set()
+        self._site_facts: dict[str, Any] = {}
 
     # -- public ------------------------------------------------------------
 
@@ -150,6 +151,8 @@ class CrawlEngine:
             job.error_message = f"{type(exc).__name__}: {exc}"[:2000]
         finally:
             job.completed_at = datetime.now(UTC)
+            if self._site_facts:
+                job.config = {**(job.config or {}), "site": self._site_facts}
             self._sync_counts()
             await self._session.commit()
             log.info(
@@ -172,8 +175,20 @@ class CrawlEngine:
             return
         rules = await self._robots.rules_for(self._root) if self._settings.respect_robots else None
         candidates = rules.sitemaps if rules else []
+        self._site_facts = {
+            "robots_txt": {
+                "checked": rules is not None,
+                "present": bool(rules and rules.parser is not None and not rules.fetch_error),
+                "error": rules.fetch_error if rules else None,
+                "crawl_delay": rules.crawl_delay if rules else None,
+                "sitemaps_declared": list(rules.sitemaps) if rules else [],
+            },
+            "sitemap_urls_found": 0,
+        }
         try:
-            for raw in await discover_sitemap_urls(self._fetcher, self._root, candidates):
+            sitemap_urls = await discover_sitemap_urls(self._fetcher, self._root, candidates)
+            self._site_facts["sitemap_urls_found"] = len(sitemap_urls)
+            for raw in sitemap_urls:
                 try:
                     url = normalize_crawl_url(raw)
                 except CrawlURLError:
@@ -405,6 +420,8 @@ class CrawlEngine:
                 http_status=result.status_code if result else None,
                 error_message=reason,
                 crawled_at=datetime.now(UTC),
+                final_url=result.final_url if result else None,
+                redirect_chain=list(result.redirect_chain) if result else None,
             )
 
     async def _persist_page(
@@ -481,6 +498,8 @@ class CrawlEngine:
                 page_id=page.id,
                 crawled_at=now,
                 response_time_ms=result.elapsed_ms,
+                final_url=result.final_url,
+                redirect_chain=list(result.redirect_chain),
             )
             self._sync_counts()
             await self._session.commit()

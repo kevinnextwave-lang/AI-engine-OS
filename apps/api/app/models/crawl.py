@@ -157,6 +157,9 @@ class CrawlUrl(UUIDPrimaryKeyMixin, Base):
     http_status: Mapped[int | None] = mapped_column(Integer, nullable=True)
     content_type: Mapped[str | None] = mapped_column(String(120), nullable=True)
     response_time_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    final_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    # Normalized URLs visited after the first request (empty when no redirect).
+    redirect_chain: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
     page_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("website_pages.id", ondelete="SET NULL"), nullable=True
     )

@@ -5,6 +5,7 @@ Observations (missing H1, skipped levels, ...) are recorded as facts; the
 scoring layer decides what they mean.
 """
 
+import json
 import re
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -20,6 +21,8 @@ MAX_CLEAN_TEXT_CHARS = 200_000
 MAX_HEADINGS = 500
 MAX_LINKS = 2_000
 MAX_IMAGES = 1_000
+MAX_STRUCTURED_BLOCKS = 50
+MAX_STRUCTURED_PAYLOAD_BYTES = 64_000
 LONG_HEADING_CHARS = 70
 WORDS_PER_MINUTE = 238  # adult silent reading average
 
@@ -97,6 +100,24 @@ class MetadataFacts:
 
 
 @dataclass
+class StructuredDataFact:
+    format: str  # json_ld | microdata | rdfa
+    schema_types: list[str]
+    payload: dict[str, Any] | list[Any] | None
+    is_valid: bool
+    error: str | None
+    position: int
+
+
+@dataclass
+class ValidityFacts:
+    has_doctype: bool
+    title_count: int
+    canonical_count: int
+    canonical_url: str | None
+
+
+@dataclass
 class ContentMetrics:
     word_count: int
     character_count: int
@@ -128,6 +149,8 @@ class PageIntelligence:
     heading_observations: HeadingObservations
     language: LanguageResult
     clean_text: str
+    structured_data: list[StructuredDataFact] = field(default_factory=list)
+    validity: ValidityFacts = field(default_factory=lambda: ValidityFacts(False, 0, 0, None))
 
 
 # --- helpers ------------------------------------------------------------------
@@ -401,6 +424,106 @@ def _extract_metadata(tree: HTMLParser) -> MetadataFacts:
     )
 
 
+def _schema_types_from_jsonld(data: Any) -> list[str]:
+    types: list[str] = []
+
+    def walk(node: Any, depth: int = 0) -> None:
+        if depth > 6:
+            return
+        if isinstance(node, dict):
+            t = node.get("@type")
+            if isinstance(t, str):
+                types.append(t)
+            elif isinstance(t, list):
+                types.extend(x for x in t if isinstance(x, str))
+            for key in ("@graph", "mainEntity", "itemListElement", "hasPart"):
+                if key in node:
+                    walk(node[key], depth + 1)
+        elif isinstance(node, list):
+            for item in node:
+                walk(item, depth + 1)
+
+    walk(data)
+    return list(dict.fromkeys(types))
+
+
+def _short_type(value: str) -> str:
+    value = value.strip()
+    return value.rsplit("/", 1)[-1].rsplit("#", 1)[-1].rsplit(":", 1)[-1] or value
+
+
+def _extract_structured_data(tree: HTMLParser) -> list[StructuredDataFact]:
+    facts: list[StructuredDataFact] = []
+    for node in tree.css('script[type="application/ld+json"]'):
+        if len(facts) >= MAX_STRUCTURED_BLOCKS:
+            break
+        raw = (node.text() or "").strip()
+        position = len(facts)
+        if not raw:
+            facts.append(StructuredDataFact("json_ld", [], None, False, "empty block", position))
+            continue
+        if len(raw.encode("utf-8")) > MAX_STRUCTURED_PAYLOAD_BYTES:
+            facts.append(
+                StructuredDataFact("json_ld", [], None, False, "block too large", position)
+            )
+            continue
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            facts.append(
+                StructuredDataFact("json_ld", [], None, False, f"invalid JSON: {exc.msg}", position)
+            )
+            continue
+        facts.append(
+            StructuredDataFact(
+                "json_ld", _schema_types_from_jsonld(data), data, True, None, position
+            )
+        )
+    microdata_types: list[str] = []
+    for node in tree.css("[itemscope][itemtype]"):
+        for t in (node.attributes.get("itemtype") or "").split():
+            microdata_types.append(_short_type(t))
+    if microdata_types and len(facts) < MAX_STRUCTURED_BLOCKS:
+        facts.append(
+            StructuredDataFact(
+                "microdata", list(dict.fromkeys(microdata_types)), None, True, None, len(facts)
+            )
+        )
+    rdfa_types: list[str] = []
+    for node in tree.css("[typeof]"):
+        for t in (node.attributes.get("typeof") or "").split():
+            rdfa_types.append(_short_type(t))
+    if rdfa_types and len(facts) < MAX_STRUCTURED_BLOCKS:
+        facts.append(
+            StructuredDataFact(
+                "rdfa", list(dict.fromkeys(rdfa_types)), None, True, None, len(facts)
+            )
+        )
+    return facts
+
+
+def _extract_validity(tree: HTMLParser, html: bytes, base: str) -> ValidityFacts:
+    head = html[:2048].lstrip().lower()
+    has_doctype = head.startswith(b"<!doctype")
+    title_count = len(tree.css("head title") or tree.css("title"))
+    canonicals = tree.css('link[rel~="canonical"]')
+    canonical_url: str | None = None
+    for node in canonicals:
+        href = node.attributes.get("href")
+        if href:
+            try:
+                canonical_url = normalize_crawl_url(href, base=base).normalized
+                break
+            except CrawlURLError:
+                continue
+    return ValidityFacts(
+        has_doctype=has_doctype,
+        title_count=title_count,
+        canonical_count=len(canonicals),
+        canonical_url=canonical_url,
+    )
+
+
 def _clean_text(tree: HTMLParser) -> tuple[str, int]:
     """Main-content text with boilerplate removed. Returns (text, paragraph_count)."""
     for node in tree.css(_BOILERPLATE_TAGS):
@@ -468,6 +591,8 @@ def analyze_page(
     links = _extract_links(tree, base, page_url, allowed_hosts, allow_subdomains)
     images = _extract_images(tree, base)
     metadata = _extract_metadata(tree)
+    structured = _extract_structured_data(tree)
+    validity = _extract_validity(tree, html, base)
     # Cleaning mutates the tree, so it runs last.
     clean_text, paragraph_count = _clean_text(tree)
     content = _content_metrics(clean_text, paragraph_count, len(html))
@@ -484,6 +609,8 @@ def analyze_page(
         heading_observations=observations,
         language=language,
         clean_text=clean_text,
+        structured_data=structured,
+        validity=validity,
     )
 
 

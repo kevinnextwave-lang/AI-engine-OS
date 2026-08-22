@@ -85,8 +85,14 @@ class CrawlUrlRepository:
         error_message: str | None = None,
         crawled_at: datetime | None = None,
         response_time_ms: int | None = None,
+        final_url: str | None = None,
+        redirect_chain: list[str] | None = None,
     ) -> None:
         values: dict[str, object] = {"status": status}
+        if final_url is not None:
+            values["final_url"] = final_url
+        if redirect_chain is not None:
+            values["redirect_chain"] = redirect_chain
         if response_time_ms is not None:
             values["response_time_ms"] = response_time_ms
         if http_status is not None:

@@ -14,6 +14,8 @@ from app.models.page_intelligence import (
     PageImage,
     PageLink,
     PageMetadata,
+    PageStructuredData,
+    StructuredDataFormat,
 )
 
 
@@ -28,7 +30,14 @@ class PageIntelligenceRepository:
         intel: PageIntelligence,
     ) -> None:
         """Replace every intelligence row for `page` with the new analysis."""
-        for model in (PageHeading, PageLink, PageImage, PageMetadata, PageContentMetrics):
+        for model in (
+            PageHeading,
+            PageLink,
+            PageImage,
+            PageMetadata,
+            PageContentMetrics,
+            PageStructuredData,
+        ):
             await self._session.execute(delete(model).where(model.page_id == page.id))
 
         common = {"page_id": page.id, "project_id": page.project_id, "page_version_id": version_id}
@@ -88,8 +97,24 @@ class PageIntelligenceRepository:
                 open_graph=m.open_graph,
                 twitter=m.twitter,
                 other=m.extra,
+                has_doctype=intel.validity.has_doctype,
+                title_count=intel.validity.title_count,
+                canonical_count=intel.validity.canonical_count,
+                canonical_url=intel.validity.canonical_url,
                 **common,
             )
+        )
+        self._session.add_all(
+            PageStructuredData(
+                format=StructuredDataFormat(sd.format),
+                schema_types=sd.schema_types,
+                payload=sd.payload,
+                is_valid=sd.is_valid,
+                error=sd.error,
+                position=sd.position,
+                **common,
+            )
+            for sd in intel.structured_data
         )
         c = intel.content
         self._session.add(
@@ -174,6 +199,14 @@ class PageIntelligenceRepository:
             base.order_by(PageLink.position).limit(limit).offset(offset)
         )
         return list(rows.all()), int(total or 0)
+
+    async def structured_data_for_page(self, page_id: uuid.UUID) -> list[PageStructuredData]:
+        stmt = (
+            select(PageStructuredData)
+            .where(PageStructuredData.page_id == page_id)
+            .order_by(PageStructuredData.position)
+        )
+        return list((await self._session.scalars(stmt)).all())
 
     async def images_for_page(self, page_id: uuid.UUID) -> list[PageImage]:
         stmt = select(PageImage).where(PageImage.page_id == page_id).order_by(PageImage.position)
