@@ -179,6 +179,25 @@ Tables: `ai_readiness_audits` (status, pages analyzed, observation count, `readi
 
 API: `POST /projects/{id}/ai-readiness-audits` (DATA_MANAGE; 422 without crawled pages; commit then dispatch on the `analytics` queue), `GET /projects/{id}/ai-readiness-audits`, `GET /ai-readiness-audits/{id}` (audit + severity-ordered observations; filters `category`, `severity`). Audit routes derive the project from the audit row; other tenants get 404.
 
+## AI provider abstraction (Milestone 3A)
+
+```
+AI Search Service (later)  →  app/services/ai.py::AIGenerationService
+                                   │  resolves provider + model from ai_providers / ai_models
+                                   ▼
+                          app/ai/base.py::AIProvider.generate(AIRequest) -> AIResponse
+                 ┌──────────────────┼──────────────────┐
+        providers/openai.py  providers/anthropic.py  providers/google.py   (REST via httpx, no SDKs)
+```
+
+- **Interface** (`app/ai/types.py`, `base.py`): `AIRequest` (request_id, model, prompt, system_prompt, temperature, max_tokens, timeout_seconds, metadata) → `AIResponse` (provider, model, response_text, finish_reason, input/output/total tokens, latency_ms, provider_request_id, small `raw_response` metadata, `error`). `AIProvider.generate` is the only entry point: it normalizes the request against the adapter's `ProviderCapabilities` (drops or clamps temperature, caps output tokens, folds system instructions into the prompt where unsupported), enforces a wall-clock timeout, converts every failure into an `AIError` with one of seven categories — `authentication_error`, `rate_limit`, `timeout`, `provider_error`, `invalid_request`, `content_filter`, `unknown_error` — and emits one structured `ai_generation` log line (provider, model, request id, success, latency, tokens, error category). Provider payloads and exception classes never leave `app/ai/providers/*`; `raw_response` carries only a few neutral fields, never the full body.
+- **Adapters** map parameters per vendor (OpenAI `max_completion_tokens`, Anthropic mandatory `max_tokens` and 0–1 temperature, Gemini `generationConfig`/`systemInstruction`) and finish reasons (`stop`/`end_turn`/`STOP`, `length`/`max_tokens`/`MAX_TOKENS`, content filters incl. Gemini `promptFeedback.blockReason`). API keys travel in headers only (never query strings) and are read from `SecretStr` settings: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_AI_API_KEY`; base URLs and default models are settings too (`*_DEFAULT_MODEL`).
+- **Registry** (`app/ai/registry.py`): builds an adapter per configured key; `get()` raises normalized errors for unknown or unconfigured providers. Adding a vendor = one adapter class + one factory entry; `register()` injects instances for tests.
+- **Catalogue** (`ai_providers`, `ai_models` with JSONB `capabilities`, both with `is_enabled`): seeded by the migration from `app/ai/catalog.py` (single source of truth, also used by tests). Model-level capabilities (`max_output_tokens`, `max_temperature`, `supports_temperature`) cap requests in the service. No credentials are stored in the database.
+- **Generation log** (`ai_generations`): one row per call — provider/model keys and ids, purpose, success, finish reason, error category/message, tokens, latency, provider request id, request metadata; prompt/response text is stored only when `AI_STORE_RESPONSE_TEXT` is true (the caller can override per call). Resolution failures (disabled provider/model, unknown model, missing credentials) are recorded and returned as failed `AIResponse`s so callers handle one shape.
+
+Not yet built: prompt generation, visibility scoring, any HTTP endpoint. Tests (`tests/ai/`) use `httpx.MockTransport` only; no real provider is called.
+
 ## Background jobs
 
 Celery app in `apps/api/app/workers/celery_app.py` with Redis as broker/backend. Tasks are routed by module name to the `crawler`, `ai_search`, `agents`, and `analytics` queues. `app.workers.tasks.crawler.run_crawl_job` runs crawls on the `crawler` queue (acks-late, 6h hard limit); `app.workers.tasks.analytics.run_seo_audit` runs SEO audits and `app.workers.tasks.analytics.run_entity_analysis` rebuilds entity intelligence and `app.workers.tasks.analytics.run_ai_readiness_audit` runs readiness audits on the `analytics` queue (30 min limit); `ping` remains for health checks.

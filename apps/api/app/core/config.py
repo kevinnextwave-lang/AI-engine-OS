@@ -6,7 +6,7 @@ All configuration flows through this module. Never read os.environ elsewhere.
 from functools import lru_cache
 from typing import Annotated, Literal
 
-from pydantic import Field, field_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
@@ -68,6 +68,22 @@ class Settings(BaseSettings):
     crawl_read_timeout_seconds: float = 15.0
     crawl_total_timeout_seconds: float = 30.0
     crawl_max_response_bytes: int = 5 * 1024 * 1024
+
+    # AI providers (credentials never leave the API process; never logged)
+    openai_api_key: SecretStr | None = None
+    anthropic_api_key: SecretStr | None = None
+    google_ai_api_key: SecretStr | None = None
+    openai_base_url: str = "https://api.openai.com/v1"
+    anthropic_base_url: str = "https://api.anthropic.com"
+    google_ai_base_url: str = "https://generativelanguage.googleapis.com/v1beta"
+    anthropic_api_version: str = "2023-06-01"
+    # Default model per provider; the catalogue lives in the ai_models table.
+    openai_default_model: str = "gpt-4o-mini"
+    anthropic_default_model: str = "claude-3-5-haiku-latest"
+    google_default_model: str = "gemini-2.0-flash"
+    ai_default_timeout_seconds: float = 60.0
+    ai_default_max_tokens: int = 1024
+    ai_store_response_text: bool = True
     crawl_max_redirects: int = 5
     crawl_max_retries: int = 2
     crawl_retry_backoff_seconds: float = 0.5
