@@ -84,8 +84,11 @@ class CrawlUrlRepository:
         page_id: uuid.UUID | None = None,
         error_message: str | None = None,
         crawled_at: datetime | None = None,
+        response_time_ms: int | None = None,
     ) -> None:
         values: dict[str, object] = {"status": status}
+        if response_time_ms is not None:
+            values["response_time_ms"] = response_time_ms
         if http_status is not None:
             values["http_status"] = http_status
         if content_type is not None:

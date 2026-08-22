@@ -3,7 +3,6 @@
 import asyncio
 import uuid
 
-import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -473,7 +472,7 @@ async def test_rate_limiting_spaces_requests_to_host(engine_session: AsyncSessio
     # The fake sleep returns instantly (clock doesn't advance), so each request after the
     # first must wait one more interval than the previous: 0.25, 0.5, 0.75, ...
     assert len(sleep.calls) >= 5
-    assert sleep.calls[0] == pytest.approx(0.25, abs=0.02)
+    assert 0.1 < sleep.calls[0] <= 0.25  # interval minus time spent processing
     assert all(b > a for a, b in zip(sleep.calls, sleep.calls[1:], strict=False))
 
 
@@ -494,3 +493,104 @@ async def test_pages_are_scoped_per_project(engine_session: AsyncSession) -> Non
     assert (
         len([r for r in rows if r.normalized_url == f"{ROOT}/"]) == 2
     )  # same URL, separate tenants
+
+
+# --- page intelligence (Milestone 2B) ---------------------------------------------
+
+
+async def test_crawl_persists_page_intelligence_and_resolves_links(
+    engine_session: AsyncSession,
+) -> None:
+    from app.models import (
+        LinkStatus,
+        PageContentMetrics,
+        PageHeading,
+        PageImage,
+        PageLink,
+        PageMetadata,
+    )
+
+    site = FakeSite(
+        {
+            f"{ROOT}/": FakePage(
+                html(
+                    "Home",
+                    ["/about", "/missing", "https://ext.com/x"],
+                    nav=["/contact"],
+                    extra_head='<meta property="og:title" content="OG Home">',
+                )
+                .replace("<h1>Home</h1>", "<h1>Home</h1><h3>Jumped</h3>")
+                .replace("</main>", '<img src="/a.png" alt=""><img src="/b.png"></main>')
+            ),
+            f"{ROOT}/about": FakePage(html("About", ["/"])),
+            f"{ROOT}/contact": FakePage(html("Contact")),
+        }
+    )
+    project = await make_project(engine_session)
+    job = await make_job(engine_session, project)
+    await engine_session.commit()
+    result = await run_crawl_job(engine_session, job.id, options(site))
+    assert result is not None
+
+    pages = {p.normalized_url: p for p in (await engine_session.scalars(select(WebsitePage))).all()}
+    home = pages[f"{ROOT}/"]
+    headings = (
+        await engine_session.scalars(
+            select(PageHeading).where(PageHeading.page_id == home.id).order_by(PageHeading.position)
+        )
+    ).all()
+    assert [(h.level, h.text) for h in headings] == [(1, "Home"), (3, "Jumped")]
+    metrics = await engine_session.scalar(
+        select(PageContentMetrics).where(PageContentMetrics.page_id == home.id)
+    )
+    assert metrics is not None
+    assert metrics.heading_observations["skipped_levels"] == [{"position": 1, "from": 1, "to": 3}]
+    assert metrics.image_count == 2 and metrics.images_missing_alt == 2
+    assert metrics.internal_link_count == 3 and metrics.external_link_count == 1
+    assert metrics.clean_text and "Content of Home" in metrics.clean_text
+    assert home.word_count == metrics.word_count
+    meta = await engine_session.scalar(select(PageMetadata).where(PageMetadata.page_id == home.id))
+    assert meta is not None and meta.open_graph == {"og:title": "OG Home"}
+    assert meta.language == "en" and meta.language_source == "html_lang" and meta.pathname == "/"
+    images = (
+        await engine_session.scalars(select(PageImage).where(PageImage.page_id == home.id))
+    ).all()
+    assert {i.src: i.alt for i in images} == {f"{ROOT}/a.png": "", f"{ROOT}/b.png": None}
+
+    links = {
+        link.href: link
+        for link in (
+            await engine_session.scalars(select(PageLink).where(PageLink.page_id == home.id))
+        ).all()
+    }
+    assert (
+        links["/about"].status == LinkStatus.OK
+        and links["/about"].target_page_id == pages[f"{ROOT}/about"].id
+    )
+    assert (
+        links["/missing"].status == LinkStatus.BROKEN
+        and links["/missing"].target_http_status == 404
+    )
+    assert links["https://ext.com/x"].status == LinkStatus.UNKNOWN  # external: never crawled
+    assert links["/contact"].in_navigation
+
+    # Re-crawl replaces rows instead of duplicating them; response time recorded.
+    job2 = await make_job(engine_session, project)
+    await engine_session.commit()
+    await run_crawl_job(engine_session, job2.id, options(FakeSite(site.pages)))
+    assert (
+        len(
+            (
+                await engine_session.scalars(
+                    select(PageHeading).where(PageHeading.page_id == home.id)
+                )
+            ).all()
+        )
+        == 2
+    )
+    urls = await urls_for(engine_session, job2)
+    assert urls[f"{ROOT}/"].response_time_ms is not None and urls[f"{ROOT}/"].response_time_ms >= 0
+    versions = (
+        await engine_session.scalars(select(PageVersion).where(PageVersion.page_id == home.id))
+    ).all()
+    assert all(v.response_time_ms is not None for v in versions)

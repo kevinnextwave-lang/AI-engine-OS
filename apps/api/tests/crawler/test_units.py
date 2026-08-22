@@ -49,7 +49,8 @@ def test_relative_resolution_and_duplicates_collapse() -> None:
 
 
 @pytest.mark.parametrize(
-    "raw", ["", "mailto:a@b.c", "javascript:void(0)", "ftp://x.com", "https://u:p@x.com/"]
+    "raw",
+    ["", "mailto:a@b.c", "javascript:void(0)", "ftp://x.com", "https://u:p@x.com/", "http://[bad"],
 )
 def test_normalize_rejects_unusable(raw: str) -> None:
     with pytest.raises(CrawlURLError):

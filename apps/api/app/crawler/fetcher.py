@@ -10,6 +10,7 @@
 
 import asyncio
 import random
+import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from urllib.parse import urljoin
@@ -49,6 +50,7 @@ class FetchResult:
     error: str | None = None
     skipped_reason: str | None = None
     attempts: int = 1
+    elapsed_ms: int | None = None
 
     @property
     def ok(self) -> bool:
@@ -105,10 +107,13 @@ class Fetcher:
 
     async def fetch(self, url: CrawlURL, *, allow_non_html: bool = False) -> FetchResult:
         """Fetch with redirects, retries and size limits. Never raises for HTTP errors."""
+        started = time.monotonic()
         try:
-            return await asyncio.wait_for(
+            result = await asyncio.wait_for(
                 self._fetch_with_redirects(url, allow_non_html), timeout=self._config.total_timeout
             )
+            result.elapsed_ms = int((time.monotonic() - started) * 1000)
+            return result
         except TimeoutError:
             return FetchResult(
                 requested_url=url.normalized,

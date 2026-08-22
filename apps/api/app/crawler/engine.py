@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.logging import get_logger
 from app.crawler.fetcher import Fetcher, FetchResult
 from app.crawler.frontier import Frontier, FrontierItem, Priority
+from app.crawler.intelligence import analyze_page
 from app.crawler.parser import ProcessedPage, process_html
 from app.crawler.ratelimit import HostRateLimiter
 from app.crawler.robots import RobotsCache
@@ -33,6 +34,7 @@ from app.models.crawl import (
     WebsitePage,
 )
 from app.repositories.crawl import CrawlJobRepository, CrawlUrlRepository, WebsitePageRepository
+from app.repositories.page_intelligence import PageIntelligenceRepository
 
 log = get_logger("crawler.engine")
 
@@ -101,6 +103,7 @@ class CrawlEngine:
         self._jobs = CrawlJobRepository(session)
         self._urls = CrawlUrlRepository(session)
         self._pages = WebsitePageRepository(session)
+        self._intel = PageIntelligenceRepository(session)
         self._root = normalize_crawl_url(job.root_url)
         self._stop = asyncio.Event()
         self._scheduled = 0
@@ -128,6 +131,7 @@ class CrawlEngine:
             await self._seed()
             await self._flush_discovered()
             await self._crawl_loop()
+            await self._finalize_links()
             if await self._jobs.is_cancel_requested(job.id):
                 job.status = CrawlStatus.CANCELLED
             elif self._stats.crawled == 0 and self._stats.failed > 0:
@@ -364,6 +368,12 @@ class CrawlEngine:
                 source="link",
             )
 
+    async def _finalize_links(self) -> None:
+        async with self._db_lock:
+            updated = await self._intel.resolve_internal_links(self._job.project_id)
+            await self._session.commit()
+        log.info("links_resolved", crawl_job_id=str(self._job.id), updated=updated)
+
     # -- persistence ----------------------------------------------------------
 
     async def _record_skip(
@@ -434,6 +444,14 @@ class CrawlEngine:
             )
             page.is_duplicate_of_id = duplicate.id if duplicate else None
 
+            intel = analyze_page(
+                result.body or b"",
+                normalize_crawl_url(result.final_url),
+                allowed_hosts=self._settings.allowed_hosts,
+                allow_subdomains=self._settings.allow_subdomains,
+            )
+            page.word_count = intel.content.word_count
+            page.language = intel.language.code or processed.language
             version = PageVersion(
                 page_id=page.id,
                 project_id=project_id,
@@ -443,11 +461,13 @@ class CrawlEngine:
                 content_hash=processed.content_hash,
                 title=processed.title,
                 meta_description=processed.meta_description,
-                word_count=processed.word_count,
-                extracted_text=processed.extracted_text if changed or is_new else None,
+                word_count=intel.content.word_count,
+                extracted_text=intel.clean_text if changed or is_new else None,
+                response_time_ms=result.elapsed_ms,
                 crawled_at=now,
             )
             await self._pages.add_version(version)
+            await self._intel.replace_for_page(page, version.id, intel)
             if result.body is not None:
                 version.html_storage_reference = await self._storage.store(
                     project_id, page.id, version.id, result.body
@@ -460,6 +480,7 @@ class CrawlEngine:
                 content_type=result.content_type,
                 page_id=page.id,
                 crawled_at=now,
+                response_time_ms=result.elapsed_ms,
             )
             self._sync_counts()
             await self._session.commit()

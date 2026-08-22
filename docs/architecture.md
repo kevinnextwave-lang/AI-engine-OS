@@ -118,6 +118,24 @@ POST /projects/{id}/crawl ──> crawl_jobs (queued) ──commit──> Celery
 - **Cancellation**: `cancel_requested` flag + status; the engine re-reads it every N URLs and stops scheduling; in-flight fetches finish and are recorded. Queued jobs are cancelled immediately.
 - **Logs**: `crawl_started`, `url_discovered` (debug), `url_skipped`, `fetch_failed`, `page_processed`, `crawl_cancel_observed`, `crawl_completed` — URLs and counts only, never headers or cookies.
 
+## Page intelligence (Milestone 2B)
+
+After each successful HTML fetch the engine runs `crawler/intelligence.py::analyze_page` (pure, no I/O) and `PageIntelligenceRepository.replace_for_page` swaps the page's rows in five normalized tables:
+
+| Table | One row per | Notes |
+|---|---|---|
+| `page_headings` | heading | level, document position, `parent_position` (hierarchy), text |
+| `page_links` | anchor | href, normalized target, anchor text, `internal`/`external`, `status` (`unknown`/`ok`/`broken`/`invalid`), nofollow/sponsored/ugc, in-navigation flag; duplicates kept with positions |
+| `page_images` | img | resolved src (incl. `data-src`/`srcset`), alt (`NULL` = attribute absent, `''` = empty), title, width/height, loading |
+| `page_metadata` | page | pathname, robots, viewport, author, charset, published/modified dates, `html_lang`, resolved `language` + `language_source` (`html_lang` → `metadata` → `detected`) + confidence; Open Graph / Twitter / other metas as JSONB (open-ended shape) |
+| `page_content_metrics` | page | word/character/paragraph/sentence counts, reading time, text-to-HTML ratio, heading/link/image counts, `heading_observations` JSONB (missing/multiple H1, skipped levels, duplicates, long headings — facts, not verdicts), `clean_text` |
+
+Clean text drops scripts/styles/templates, `nav`/`header`/`footer`/`aside`/`form`, ARIA landmark roles, and cookie/consent widgets (id/class hints), prefers `<main>`/`<article>`, and keeps lists/tables/headings as line-separated blocks. Raw HTML stays behind `HtmlStorage`. Language falls back to a small stop-word detector that abstains when unsure.
+
+Internal link status is resolved by `resolve_internal_links` at the end of every crawl (join on `website_pages`), so targets crawled later still get `ok`/`broken`. External links are never fetched. Orphan detection is deferred.
+
+API: `GET /projects/{id}/pages` (paginated; filters `http_status`, `language`, `q`, `duplicates`), `GET /pages/{id}` (summary + metadata + metrics + headings + images + clean text), `GET /pages/{id}/headings`, `GET /pages/{id}/links` (paginated; filters `type`, `status`). Page routes derive the project from the page row and then check membership.
+
 ## Background jobs
 
 Celery app in `apps/api/app/workers/celery_app.py` with Redis as broker/backend. Tasks are routed by module name to the `crawler`, `ai_search`, `agents`, and `analytics` queues. `app.workers.tasks.crawler.run_crawl_job` runs crawls on the `crawler` queue (acks-late, 6h hard limit); `ping` remains for health checks.

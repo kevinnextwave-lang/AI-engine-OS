@@ -156,6 +156,7 @@ class CrawlUrl(UUIDPrimaryKeyMixin, Base):
     )
     http_status: Mapped[int | None] = mapped_column(Integer, nullable=True)
     content_type: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    response_time_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     page_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("website_pages.id", ondelete="SET NULL"), nullable=True
     )
@@ -231,6 +232,7 @@ class PageVersion(UUIDPrimaryKeyMixin, Base):
     # Bounded extracted text for downstream analysis (capped by the processor).
     extracted_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     html_storage_reference: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    response_time_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     crawled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     page: Mapped["WebsitePage"] = relationship(back_populates="versions")

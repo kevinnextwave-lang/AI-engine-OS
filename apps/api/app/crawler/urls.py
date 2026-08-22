@@ -101,9 +101,12 @@ def normalize_crawl_url(raw: str, base: str | None = None) -> CrawlURL:
     value = (raw or "").strip()
     if not value:
         raise CrawlURLError("empty URL")
-    if base:
-        value = urljoin(base, value)
-    parts = urlsplit(value)
+    try:
+        if base:
+            value = urljoin(base, value)
+        parts = urlsplit(value)
+    except ValueError as exc:  # e.g. "Invalid IPv6 URL"
+        raise CrawlURLError(f"malformed URL: {exc}") from exc
     scheme = parts.scheme.lower()
     if scheme not in ("http", "https"):
         raise CrawlURLError(f"unsupported scheme: {scheme or 'none'}")

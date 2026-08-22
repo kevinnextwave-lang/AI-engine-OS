@@ -15,6 +15,15 @@ from app.models.crawl import (
 from app.models.domain import Domain
 from app.models.membership import Membership, MembershipRole, OrganizationMember
 from app.models.organization import Organization, OrganizationPlan, OrganizationStatus
+from app.models.page_intelligence import (
+    LinkStatus,
+    LinkType,
+    PageContentMetrics,
+    PageHeading,
+    PageImage,
+    PageLink,
+    PageMetadata,
+)
 from app.models.project import Project, ProjectStatus
 from app.models.refresh_token import RefreshToken
 from app.models.user import User
@@ -32,12 +41,19 @@ __all__ = [
     "PageVersion",
     "WebsitePage",
     "Domain",
+    "LinkStatus",
+    "LinkType",
     "Membership",
     "MembershipRole",
     "Organization",
     "OrganizationMember",
     "OrganizationPlan",
     "OrganizationStatus",
+    "PageContentMetrics",
+    "PageHeading",
+    "PageImage",
+    "PageLink",
+    "PageMetadata",
     "Project",
     "ProjectStatus",
     "RefreshToken",
