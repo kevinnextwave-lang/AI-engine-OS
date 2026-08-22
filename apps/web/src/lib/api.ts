@@ -11,6 +11,8 @@ import type {
   LoginRequest,
   Member,
   Organization,
+  Project,
+  ProjectCreateRequest,
   RegisterRequest,
   TokenResponse,
   User,
@@ -116,7 +118,7 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
 export const api = {
   auth: {
     register: (body: RegisterRequest) =>
-      rawRequest<TokenResponse>("/auth/register", { method: "POST", body: JSON.stringify(body) }, false),
+      rawRequest<TokenResponse>("/auth/signup", { method: "POST", body: JSON.stringify(body) }, false),
     login: (body: LoginRequest) =>
       rawRequest<TokenResponse>("/auth/login", { method: "POST", body: JSON.stringify(body) }, false),
     logout: () => rawRequest<{ message: string }>("/auth/logout", { method: "POST" }, false),
@@ -128,5 +130,15 @@ export const api = {
       request<Organization>("/organizations", { method: "POST", body: JSON.stringify(body) }),
     get: (id: string) => request<Organization>(`/organizations/${id}`),
     members: (id: string) => request<Member[]>(`/organizations/${id}/members`),
+  },
+  projects: {
+    list: (organizationId: string) =>
+      request<Project[]>(`/organizations/${organizationId}/projects`),
+    create: (organizationId: string, body: ProjectCreateRequest) =>
+      request<Project>(`/organizations/${organizationId}/projects`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    get: (id: string) => request<Project>(`/projects/${id}`),
   },
 };

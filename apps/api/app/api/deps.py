@@ -1,12 +1,14 @@
-"""FastAPI dependencies: DB session, current user, tenant scoping, rate limits.
+"""FastAPI dependencies: DB session, current user, tenant scoping, RBAC, rate limits.
 
-Tenant rule: organization_id comes ONLY from the URL path and is validated
-against the caller's memberships. The client can never pick an org it does
-not belong to (IDOR protection).
+Tenant rule: organization_id is NEVER read from a request body. It comes from
+the URL path (validated against the caller's memberships) or is derived from
+the requested resource (e.g. a project's organization). A caller who is not a
+member sees 404, so other tenants' existence is not leaked (IDOR protection).
 """
 
 import uuid
 from collections.abc import Callable, Coroutine
+from dataclasses import dataclass
 from typing import Annotated, Any
 
 import jwt
@@ -23,12 +25,16 @@ from app.core.errors import (
     PermissionDeniedError,
     RateLimitedError,
 )
+from app.core.permissions import Permission, role_has
 from app.core.rate_limit import InMemoryRateLimiter, RateLimiter, RedisRateLimiter
 from app.core.security import decode_access_token
 from app.db.session import get_db_session
 from app.models.membership import Membership, MembershipRole
+from app.models.organization import Organization, OrganizationStatus
+from app.models.project import Project
 from app.models.user import User
 from app.repositories.organizations import MembershipRepository
+from app.repositories.projects import ProjectRepository
 from app.repositories.users import UserRepository
 
 _bearer = HTTPBearer(auto_error=False)
@@ -101,7 +107,11 @@ async def get_current_user(
 CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
-# -- Tenant scoping -------------------------------------------------------
+# -- Organization scoping -------------------------------------------------
+
+
+def _org_is_usable(org: Organization) -> bool:
+    return org.deleted_at is None and org.status != OrganizationStatus.DELETED
 
 
 async def get_current_membership(
@@ -109,9 +119,9 @@ async def get_current_membership(
     user: CurrentUser,
     organization_id: Annotated[uuid.UUID, Path()],
 ) -> Membership:
+    """Membership of the caller in the organization named in the URL path."""
     membership = await MembershipRepository(session).get(organization_id, user.id)
-    if membership is None or membership.organization.deleted_at is not None:
-        # 404, not 403: don't reveal whether the org exists.
+    if membership is None or not _org_is_usable(membership.organization):
         raise NotFoundError("Organization not found")
     return membership
 
@@ -119,10 +129,80 @@ async def get_current_membership(
 CurrentMembership = Annotated[Membership, Depends(get_current_membership)]
 
 
+async def get_current_organization(membership: CurrentMembership) -> Organization:
+    """The organization from the URL path, guaranteed to include the caller."""
+    return membership.organization
+
+
+CurrentOrganization = Annotated[Organization, Depends(get_current_organization)]
+
+
 def require_role(minimum: MembershipRole) -> Callable[..., Coroutine[Any, Any, Membership]]:
+    """Require at least `minimum` role in the path organization."""
+
     async def _dependency(membership: CurrentMembership) -> Membership:
         if not membership.has_at_least(minimum):
             raise PermissionDeniedError()
         return membership
+
+    return _dependency
+
+
+def require_permission(
+    permission: Permission,
+) -> Callable[..., Coroutine[Any, Any, Membership]]:
+    """Require a specific permission (see core/permissions.py) in the path organization."""
+
+    async def _dependency(membership: CurrentMembership) -> Membership:
+        if not role_has(membership.role, permission):
+            raise PermissionDeniedError()
+        return membership
+
+    return _dependency
+
+
+# -- Project scoping ------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ProjectAccess:
+    project: Project
+    membership: Membership
+
+    @property
+    def organization(self) -> Organization:
+        return self.membership.organization
+
+
+async def get_project_access(
+    session: DBSession,
+    user: CurrentUser,
+    project_id: Annotated[uuid.UUID, Path()],
+) -> ProjectAccess:
+    """Resolve a project from the URL and the caller's membership in its organization.
+
+    The organization is derived from the project row — never from the request.
+    """
+    project = await ProjectRepository(session).get_by_id(project_id)
+    if project is None:
+        raise NotFoundError("Project not found")
+    membership = await MembershipRepository(session).get(project.organization_id, user.id)
+    if membership is None or not _org_is_usable(membership.organization):
+        raise NotFoundError("Project not found")
+    return ProjectAccess(project=project, membership=membership)
+
+
+CurrentProjectAccess = Annotated[ProjectAccess, Depends(get_project_access)]
+
+
+def require_project_access(
+    permission: Permission = Permission.PROJECTS_READ,
+) -> Callable[..., Coroutine[Any, Any, ProjectAccess]]:
+    """Require membership in the project's organization plus the given permission."""
+
+    async def _dependency(access: CurrentProjectAccess) -> ProjectAccess:
+        if not role_has(access.membership.role, permission):
+            raise PermissionDeniedError()
+        return access
 
     return _dependency

@@ -2,8 +2,9 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
 
-from app.api.deps import CurrentMembership, CurrentUser, DBSession, require_role
-from app.models.membership import Membership, MembershipRole
+from app.api.deps import CurrentMembership, CurrentUser, DBSession, require_permission
+from app.core.permissions import Permission
+from app.models.membership import Membership
 from app.schemas.organizations import (
     MemberResponse,
     OrganizationCreateRequest,
@@ -40,7 +41,7 @@ async def get_organization(membership: CurrentMembership) -> OrganizationWithRol
 
 @router.get("/{organization_id}/members", response_model=list[MemberResponse])
 async def list_members(
-    membership: Annotated[Membership, Depends(require_role(MembershipRole.MEMBER))],
+    membership: Annotated[Membership, Depends(require_permission(Permission.MEMBERS_READ))],
     session: DBSession,
 ) -> list[MemberResponse]:
     return await OrganizationService(session).list_members(membership.organization_id)

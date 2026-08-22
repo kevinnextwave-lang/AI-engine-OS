@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Request, Response, status
 
 from app.api.deps import CurrentUser, DBSession, SettingsDep, client_ip, rate_limit
 from app.core.config import Settings
-from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse, UserResponse
+from app.schemas.auth import LoginRequest, SignupRequest, TokenResponse, UserResponse
 from app.schemas.common import MessageResponse
 from app.services.auth import AuthResult, AuthService, ClientInfo
 
@@ -47,19 +47,27 @@ def _to_response(result: AuthResult, response: Response, settings: Settings) -> 
 
 
 @router.post(
+    "/signup",
+    response_model=TokenResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(rate_limit("auth:signup", per_minute=10))],
+)
+@router.post(
     "/register",
     response_model=TokenResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(rate_limit("auth:register", per_minute=10))],
+    dependencies=[Depends(rate_limit("auth:signup", per_minute=10))],
+    include_in_schema=False,  # legacy alias for /signup
 )
-async def register(
-    body: RegisterRequest,
+async def signup(
+    body: SignupRequest,
     request: Request,
     response: Response,
     session: DBSession,
     settings: SettingsDep,
 ) -> TokenResponse:
-    result = await AuthService(session).register(
+    """Validate email + password, create user, organization and owner membership, start session."""
+    result = await AuthService(session).signup(
         email=body.email,
         password=body.password,
         first_name=body.first_name,
@@ -110,16 +118,20 @@ async def logout(
     request: Request, response: Response, session: DBSession, settings: SettingsDep
 ) -> MessageResponse:
     token = request.cookies.get(settings.refresh_cookie_name)
-    await AuthService(session).logout(refresh_token=token)
+    await AuthService(session).logout(refresh_token=token, client=_client(request))
     _clear_refresh_cookie(response, settings)
     return MessageResponse(message="Logged out")
 
 
 @router.post("/logout-all", response_model=MessageResponse)
 async def logout_all(
-    user: CurrentUser, response: Response, session: DBSession, settings: SettingsDep
+    user: CurrentUser,
+    request: Request,
+    response: Response,
+    session: DBSession,
+    settings: SettingsDep,
 ) -> MessageResponse:
-    await AuthService(session).logout_everywhere(user_id=user.id)
+    await AuthService(session).logout_everywhere(user_id=user.id, client=_client(request))
     _clear_refresh_cookie(response, settings)
     return MessageResponse(message="Logged out of all sessions")
 

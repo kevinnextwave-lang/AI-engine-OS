@@ -56,11 +56,30 @@ The API never trusts a client-supplied organization id. `organization_id` is rea
 
 ## Authentication
 
+- Endpoints: `POST /api/v1/auth/signup` (validates email + password policy, creates user, organization and owner membership, starts a session), `login`, `refresh`, `logout`, `logout-all`, `GET /api/v1/auth/me`.
+- Password policy in `core/passwords.py`: 10–128 chars, at least one letter and one non-letter, not a repeated character, not a common password, must not contain the user's email local part.
 - Argon2id password hashing.
 - Access tokens: 15-minute JWTs (`JWT_SECRET`), returned in the JSON body and kept **in memory** by the SPA.
 - Refresh tokens: opaque 48-byte random strings in an `httpOnly` cookie scoped to `/api/v1/auth`. Stored as HMAC-SHA256(`JWT_REFRESH_SECRET`, token). Each refresh **rotates** the token; presenting a rotated token revokes its whole family (theft detection). Logout revokes the family; logout-all revokes every token for the user.
 - Rate limiting on auth endpoints: Redis fixed window, in-memory fallback if Redis is down.
-- Errors are always `{"error": {"code", "message", "details?"}}`.
+- Errors are always `{"error": {"code", "message", "details?"}}`. Invalid login returns the same body for unknown email and wrong password.
+- Every auth event (signup, login success/failure, refresh, refresh reuse, logout, logout-all) is written to `auth_audit_logs` with IP and user agent, and emitted as a structured log line. Secrets never appear in either.
+
+## Authorization
+
+Dependencies in `api/deps.py`:
+
+| Dependency | Resolves | Raises |
+|---|---|---|
+| `get_current_user` | user from Bearer JWT | 401 |
+| `get_current_membership` / `get_current_organization` | caller's membership in the path `organization_id` | 404 if not a member |
+| `require_role(min)` | membership with at least that role | 403 |
+| `require_permission(perm)` | membership whose role holds the permission | 403 |
+| `require_project_access(perm)` | project from path `project_id` **and** caller's membership in the project's organization | 404 if not a member, 403 if role lacks perm |
+
+`organization_id` is never read from a request body; it comes from the path or is derived from the requested resource.
+
+Permission matrix (`core/permissions.py`): **Owner** everything, including billing and ownership transfer. **Admin** manages the organization, members and projects (including delete), not billing/ownership. **Member** manages projects and data, cannot delete projects or manage members/organization/billing. **Viewer** read-only.
 
 ## Frontend
 

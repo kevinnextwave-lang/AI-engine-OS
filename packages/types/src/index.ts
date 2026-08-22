@@ -57,6 +57,28 @@ export interface LoginRequest {
   password: string;
 }
 
+export type ProjectStatus = "active" | "paused" | "archived";
+
+export interface Project {
+  id: string;
+  organization_id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  industry: string | null;
+  country: string | null;
+  status: ProjectStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProjectCreateRequest {
+  name: string;
+  description?: string;
+  industry?: string;
+  country?: string;
+}
+
 export interface StatusResponse {
   status: string;
 }
