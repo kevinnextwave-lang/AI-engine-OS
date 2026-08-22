@@ -12,10 +12,12 @@ Flow for one citation:
 citations (idempotent), so counts can always be regenerated.
 """
 
+import re
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
+from urllib.parse import urlsplit
 
 from sqlalchemy import Integer, cast, delete, func, literal_column, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -49,6 +51,31 @@ log = get_logger(__name__)
 # Confidence of a brand/competitor relationship derived from the cited host.
 EXACT_HOST_CONFIDENCE = 0.95
 SUBDOMAIN_CONFIDENCE = 0.8
+SLUG_CONFIDENCE = 0.7  # name appears in a third-party URL path / anchor text
+
+_NON_ALNUM = re.compile(r"[^a-z0-9]+")
+
+
+def _slug_text(url: str | None, anchor: str | None) -> str:
+    """Lower-cased path + query + anchor with separators collapsed to single spaces."""
+    parts: list[str] = []
+    if url:
+        try:
+            split = urlsplit(url)
+            parts.append(split.path)
+            parts.append(split.query)
+        except ValueError:
+            pass
+    if anchor:
+        parts.append(anchor)
+    return " " + _NON_ALNUM.sub(" ", " ".join(parts).lower()).strip() + " "
+
+
+def _name_in(name: str, haystack: str) -> bool:
+    """Whole-token match of the name (as a slug) inside the haystack; names
+    shorter than 3 characters are never matched (too ambiguous)."""
+    token = _NON_ALNUM.sub(" ", name.lower()).strip()
+    return len(token) >= 3 and f" {token} " in haystack
 
 
 @dataclass
@@ -289,8 +316,7 @@ class SourceIntelligenceService:
         await self._session.execute(
             delete(CitationEntity).where(CitationEntity.citation_id == citation.id)
         )
-        rel = self._relationship_for(host, hosts)
-        if rel is not None:
+        for rel in self._relationships_for(host, citation, hosts):
             self._session.add(
                 CitationEntity(citation_id=citation.id, project_id=hosts.project_id, **rel)
             )
@@ -299,27 +325,68 @@ class SourceIntelligenceService:
         return True
 
     @staticmethod
-    def _relationship_for(host: str, hosts: ProjectHosts) -> dict[str, object] | None:
+    def _relationships_for(
+        host: str, citation: ResponseCitation, hosts: ProjectHosts
+    ) -> list[dict[str, object]]:
+        """Clear evidence only. Two signals:
+        * the cited host is the brand's / a competitor's own site (0.95, 0.8 subdomain);
+        * the brand / competitor name appears as a slug in the cited URL path or in
+          the anchor text on a third-party site, e.g. g2.com/products/ledgerly (0.7).
+        A citation can relate to several entities (a comparison page). Anything
+        else gets no row."""
+        out: list[dict[str, object]] = []
         brand = host_matches(host, hosts.brand_hosts)
         if brand is not None:
-            return {
-                "entity_type": CitationEntityType.PROJECT.value,
-                "entity_id": hosts.project_id,
-                "entity_name": hosts.brand_name,
-                "relationship": CitationRelationship.BRAND.value,
-                "confidence": EXACT_HOST_CONFIDENCE if host == brand else SUBDOMAIN_CONFIDENCE,
-            }
+            out.append(
+                {
+                    "entity_type": CitationEntityType.PROJECT.value,
+                    "entity_id": hosts.project_id,
+                    "entity_name": hosts.brand_name,
+                    "relationship": CitationRelationship.BRAND.value,
+                    "confidence": EXACT_HOST_CONFIDENCE if host == brand else SUBDOMAIN_CONFIDENCE,
+                }
+            )
         comp_host = host_matches(host, set(hosts.competitor_hosts))
         if comp_host is not None:
             competitor = hosts.competitor_hosts[comp_host]
-            return {
-                "entity_type": CitationEntityType.COMPETITOR.value,
-                "entity_id": competitor.id,
-                "entity_name": competitor.name,
-                "relationship": CitationRelationship.COMPETITOR.value,
-                "confidence": EXACT_HOST_CONFIDENCE if host == comp_host else SUBDOMAIN_CONFIDENCE,
-            }
-        return None  # uncertain: no relationship row
+            out.append(
+                {
+                    "entity_type": CitationEntityType.COMPETITOR.value,
+                    "entity_id": competitor.id,
+                    "entity_name": competitor.name,
+                    "relationship": CitationRelationship.COMPETITOR.value,
+                    "confidence": (
+                        EXACT_HOST_CONFIDENCE if host == comp_host else SUBDOMAIN_CONFIDENCE
+                    ),
+                }
+            )
+        if out:
+            return out  # own sites are unambiguous; no need for slug matching
+        haystack = _slug_text(citation.url, citation.anchor_text)
+        if not haystack:
+            return out
+        if brand is None and _name_in(hosts.brand_name, haystack):
+            out.append(
+                {
+                    "entity_type": CitationEntityType.PROJECT.value,
+                    "entity_id": hosts.project_id,
+                    "entity_name": hosts.brand_name,
+                    "relationship": CitationRelationship.BRAND.value,
+                    "confidence": SLUG_CONFIDENCE,
+                }
+            )
+        for competitor in hosts.competitor_hosts.values():
+            if _name_in(competitor.name, haystack):
+                out.append(
+                    {
+                        "entity_type": CitationEntityType.COMPETITOR.value,
+                        "entity_id": competitor.id,
+                        "entity_name": competitor.name,
+                        "relationship": CitationRelationship.COMPETITOR.value,
+                        "confidence": SLUG_CONFIDENCE,
+                    }
+                )
+        return out
 
     async def resolve_for_response(
         self, ai_response_id: uuid.UUID, project_id: uuid.UUID

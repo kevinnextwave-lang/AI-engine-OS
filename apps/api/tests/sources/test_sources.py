@@ -278,7 +278,9 @@ async def test_project_source_aggregation(client: AsyncClient, db_session: Async
         assert d is not None
         by_domain.setdefault(d.normalized_hostname, []).append(r)
     g2_domain = next(r for r in by_domain["g2.com"] if r.source_page_id is None)
-    assert g2_domain.citation_count == 3 and g2_domain.brand_citation_count == 0
+    # g2.com/products/ledgerly carries the brand slug → brand citations (0.7), xero → competitor
+    assert g2_domain.citation_count == 3 and g2_domain.brand_citation_count == 2
+    assert g2_domain.competitor_citation_count == 1
     assert (g2_domain.last_cited_at - g2_domain.first_cited_at).days == 2
     g2_pages = sorted(
         (r.citation_count for r in by_domain["g2.com"] if r.source_page_id), reverse=True

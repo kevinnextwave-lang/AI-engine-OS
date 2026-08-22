@@ -22,6 +22,7 @@ from app.models.entities import (
     EntityScope,
     SchemaIssue,
 )
+from app.models.gaps import CitationGap, GapConfidence, GapStatus, GapType
 from app.models.intelligence import (
     BrandMention,
     CompetitorMention,
@@ -145,6 +146,10 @@ __all__ = [
     "Severity",
     "StructuredDataFormat",
     "User",
+    "CitationGap",
+    "GapConfidence",
+    "GapStatus",
+    "GapType",
     "CitationEntity",
     "CitationEntityType",
     "CitationRelationship",
