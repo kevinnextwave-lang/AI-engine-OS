@@ -47,6 +47,16 @@ import type {
   PromptSetListResponse,
   ProviderStatusList,
   ResponseIntelligence,
+  CitationGap,
+  CitationGapListResponse,
+  CitationGapSummary,
+  CitationGapUpdateRequest,
+  CitationListResponse,
+  GapAnalyzeResponse,
+  GraphClaimsResponse,
+  GraphOverview,
+  GraphSourcesResponse,
+  GraphSourceView,
   RunPromptSetRequest,
   VisibilityByEngine,
   VisibilityByPrompt,
@@ -293,4 +303,44 @@ export const api = {
     competitors: (projectId: string, window: VisibilityWindow) =>
       request<VisibilityCompetitors>(`/projects/${projectId}/visibility/competitors?window=${window}`),
   },
+  intelligenceGraph: {
+    overview: (projectId: string, params: GraphParams & { source_type?: string; top_sources?: number; top_prompts?: number; top_claims?: number } = {}) =>
+      request<GraphOverview>(`/projects/${projectId}/graph/overview?${qs(params)}`),
+    sources: (projectId: string, params: GraphParams & { view?: GraphSourceView; source_type?: string; limit?: number; offset?: number } = {}) =>
+      request<GraphSourcesResponse>(`/projects/${projectId}/graph/sources?${qs(params)}`),
+    claims: (projectId: string, params: GraphParams & { associated_with?: string; min_occurrences?: number; limit?: number; offset?: number } = {}) =>
+      request<GraphClaimsResponse>(`/projects/${projectId}/graph/claims?${qs(params)}`),
+  },
+  citations: {
+    list: (
+      projectId: string,
+      params: GraphParams & { source_domain_id?: string; relationship?: string; competitor?: string; prompt_id?: string; limit?: number; offset?: number } = {},
+    ) => request<CitationListResponse>(`/projects/${projectId}/citations?${qs(params)}`),
+  },
+  citationGaps: {
+    list: (
+      projectId: string,
+      params: { source_type?: string; gap_type?: string; status?: string; confidence?: string; competitor?: string; min_score?: number; max_score?: number; limit?: number; offset?: number } = {},
+    ) => request<CitationGapListResponse>(`/projects/${projectId}/citation-gaps?${qs(params)}`),
+    summary: (projectId: string) => request<CitationGapSummary>(`/projects/${projectId}/citation-gaps/summary`),
+    analyze: (projectId: string, windowDays?: number) =>
+      request<GapAnalyzeResponse>(`/projects/${projectId}/citation-gaps/analyze${windowDays ? `?window_days=${windowDays}` : ""}`, { method: "POST" }),
+    get: (gapId: string) => request<CitationGap>(`/citation-gaps/${gapId}`),
+    update: (gapId: string, body: CitationGapUpdateRequest) =>
+      request<CitationGap>(`/citation-gaps/${gapId}`, { method: "PATCH", body: JSON.stringify(body) }),
+  },
 };
+
+interface GraphParams {
+  start?: string;
+  end?: string;
+  provider?: string;
+}
+
+function qs(params: object): string {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(params as Record<string, string | number | undefined | null>)) {
+    if (v !== undefined && v !== "" && v !== null) q.set(k, String(v));
+  }
+  return q.toString();
+}

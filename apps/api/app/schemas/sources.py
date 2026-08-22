@@ -55,3 +55,35 @@ class SourceDomainProfile(BaseModel):
     first_seen_at: datetime
     last_seen_at: datetime
     relevance: SourceRelevanceView
+
+
+class CitationRelationshipView(BaseModel):
+    entity_name: str
+    relationship: str
+    confidence: float
+
+
+class CitationListItem(BaseModel):
+    id: uuid.UUID
+    url: str | None
+    domain: str | None
+    source_domain_id: uuid.UUID | None
+    source_page_id: uuid.UUID | None
+    source_type: str | None
+    anchor_text: str | None
+    citation_type: str
+    citation_position: int | None
+    cited_at: datetime | None = Field(description="When the AI response completed")
+    prompt_id: uuid.UUID
+    prompt: str
+    prompt_run_id: uuid.UUID
+    provider_key: str | None
+    model_key: str | None
+    relationships: list[CitationRelationshipView]
+
+
+class CitationListResponse(BaseModel):
+    items: list[CitationListItem]
+    total: int
+    limit: int
+    offset: int

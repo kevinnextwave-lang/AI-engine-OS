@@ -783,3 +783,274 @@ export interface VisibilityCompetitors {
   rows: VisibilityCompetitorRow[];
   note: string;
 }
+
+// --- Citation intelligence (Milestones 4A–4D) ----------------------------------
+
+export type DomainType =
+  | "company"
+  | "media"
+  | "review"
+  | "community"
+  | "directory"
+  | "government"
+  | "education"
+  | "social"
+  | "forum"
+  | "blog"
+  | "research"
+  | "other"
+  | "unknown";
+
+export type GapType =
+  | "brand_absent"
+  | "competitor_advantage"
+  | "source_underrepresented"
+  | "source_overrepresented"
+  | "shared_source"
+  | "emerging_source";
+export type GapStatus = "new" | "reviewing" | "accepted" | "dismissed" | "in_progress" | "completed";
+export type GapConfidence = "high" | "medium" | "low" | "insufficient";
+export type GapPriority = "high" | "medium" | "low";
+
+export interface CitationGap {
+  id: string;
+  project_id: string;
+  source_domain_id: string;
+  source_page_id: string | null;
+  domain: string;
+  display_name: string;
+  source_type: DomainType;
+  gap_type: GapType;
+  priority: GapPriority;
+  brand_citations: number;
+  competitor_citations: number;
+  competitors: Record<string, number>;
+  relevant_response_count: number;
+  opportunity_score: number;
+  confidence: GapConfidence;
+  explanation: string;
+  status: GapStatus;
+  note: string | null;
+  evidence: {
+    score?: number;
+    raw_score?: number;
+    type_multiplier?: number;
+    components?: Record<string, { value: number; weight: number }>;
+    inputs?: Record<string, unknown>;
+    window_days?: number;
+    source_relevance?: { score: number; components?: Record<string, { value: number; weight: number }> };
+    top_pages?: { url: string; citations: number }[];
+    [key: string]: unknown;
+  };
+  analysis_version: string;
+  analyzed_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CitationGapListResponse {
+  items: CitationGap[];
+  total: number;
+  limit: number;
+  offset: number;
+  analyzed_at: string | null;
+}
+
+export interface CitationGapSummary {
+  project_id: string;
+  analyzed_at: string | null;
+  analysis_version: string;
+  total: number;
+  by_gap_type: Record<string, number>;
+  by_status: Record<string, number>;
+  by_confidence: Record<string, number>;
+  by_source_type: Record<string, number>;
+  by_priority: Record<string, number>;
+  actionable: number;
+  top_opportunities: CitationGap[];
+  competitors_ahead: Record<string, number>;
+  data: {
+    eligible_responses: number;
+    relevant_prompts: number;
+    sources_observed: number;
+    window_days: number;
+    sufficient: boolean;
+    note: string;
+  };
+  method: string;
+}
+
+export interface CitationGapUpdateRequest {
+  status?: GapStatus;
+  note?: string | null;
+}
+
+export interface GapAnalyzeResponse {
+  project_id: string;
+  window_days: number;
+  eligible_responses: number;
+  total_prompts: number;
+  sources_observed: number;
+  gaps_written: number;
+  gaps_removed: number;
+  analyzed_at: string;
+}
+
+export interface CitationRelationshipView {
+  entity_name: string;
+  relationship: "brand" | "competitor" | string;
+  confidence: number;
+}
+
+export interface CitationListItem {
+  id: string;
+  url: string | null;
+  domain: string | null;
+  source_domain_id: string | null;
+  source_page_id: string | null;
+  source_type: DomainType | null;
+  anchor_text: string | null;
+  citation_type: string;
+  citation_position: number | null;
+  cited_at: string | null;
+  prompt_id: string;
+  prompt: string;
+  prompt_run_id: string;
+  provider_key: string | null;
+  model_key: string | null;
+  relationships: CitationRelationshipView[];
+}
+
+export interface CitationListResponse {
+  items: CitationListItem[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export type GraphNodeType =
+  | "project"
+  | "brand"
+  | "competitor"
+  | "prompt"
+  | "response"
+  | "model"
+  | "source_domain"
+  | "source_page"
+  | "claim";
+export type GraphEdgeType =
+  | "has_prompt"
+  | "tracks"
+  | "produces"
+  | "mentions"
+  | "cites"
+  | "claims"
+  | "associated_with"
+  | "competes_with"
+  | "belongs_to";
+
+export interface GraphNode {
+  id: string;
+  type: GraphNodeType;
+  label: string;
+  properties: Record<string, unknown>;
+}
+
+export interface GraphEdge {
+  source: string;
+  target: string;
+  type: GraphEdgeType;
+  weight: number;
+  properties: Record<string, unknown>;
+}
+
+export interface GraphWindow {
+  start: string;
+  end: string;
+}
+
+export interface GraphStatistics {
+  responses: number;
+  prompts: number;
+  models: number;
+  brand_mentions: number;
+  competitor_mentions: number;
+  claims: number;
+  citations: number;
+  source_domains: number;
+  source_pages: number;
+  brand_citations: number;
+  competitor_citations: number;
+  provider: string | null;
+  competitors_configured: number;
+  nodes_returned: number;
+  edges_returned: number;
+  truncated: boolean;
+}
+
+export interface GraphOverview {
+  version: string;
+  project_id: string;
+  window: GraphWindow;
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+  statistics: GraphStatistics;
+}
+
+export type GraphSourceView = "top" | "competitor" | "gap" | "rising";
+
+export interface GraphSourceNode {
+  source_domain_id: string;
+  domain: string;
+  display_name: string;
+  source_type: DomainType;
+  citations: number;
+  responses: number;
+  prompts: number;
+  brand_citations: number;
+  competitor_citations: number;
+  competitors: Record<string, number>;
+  first_cited_at: string | null;
+  last_cited_at: string | null;
+  competitor_share: number | null;
+  brand_ratio: number | null;
+  previous_citations: number | null;
+  growth: number | null;
+  top_pages: { source_page_id: string; url: string; citations: number }[];
+}
+
+export interface GraphSourcesResponse {
+  version: string;
+  project_id: string;
+  window: GraphWindow;
+  view: GraphSourceView;
+  items: GraphSourceNode[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface GraphClaimNode {
+  subject: string;
+  predicate: string;
+  object: string;
+  occurrences: number;
+  responses: number;
+  prompts: number;
+  avg_confidence: number;
+  associated_with: "brand" | "competitor" | "other";
+  entity_name: string | null;
+  first_seen_at: string | null;
+  last_seen_at: string | null;
+  examples: string[];
+}
+
+export interface GraphClaimsResponse {
+  version: string;
+  project_id: string;
+  window: GraphWindow;
+  items: GraphClaimNode[];
+  total: number;
+  limit: number;
+  offset: number;
+}
