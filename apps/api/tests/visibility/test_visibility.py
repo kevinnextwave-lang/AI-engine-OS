@@ -319,6 +319,12 @@ async def test_historical_trends(client: AsyncClient, db_session: AsyncSession) 
     assert sum(p["sample_size"] for p in series) == 14
     assert series[-1]["sample_size"] == 6 and series[-1]["score"] == 100.0
     assert series[-2]["sample_size"] == 6 and series[-2]["score"] == 0.0
+    assert list(trends["series_by_provider"]) == ["openai"]
+    assert trends["series_by_provider"]["openai"][-1]["score"] == 100.0
+    assert set(trends["series_by_competitor"]) == {"brand", "QuickBooks", "Xero"}
+    assert trends["series_by_competitor"]["brand"][-1]["mention_rate"] == 100.0
+    assert trends["series_by_competitor"]["QuickBooks"][-1]["mention_rate"] == 0.0
+    assert len(trends["series_by_competitor"]["Xero"]) == len(series)
 
     # API mirrors the engine (with the real clock the seeded data is still "recent")
     r = await client.get(f"/api/v1/projects/{pid}/visibility/trends", headers=h)
@@ -370,6 +376,7 @@ async def test_breakdown_by_engine_and_prompt(
     prompts = {p["text"]: p for p in bp["prompts"]}
     assert prompts["best accounting tools"]["mentions"] == 6
     assert prompts["best accounting tools"]["sufficiency"] == "low"
+    assert prompts["best accounting tools"]["last_completed_at"] is not None
     assert prompts["ledgerly pricing"]["mention_rate"] == 0.0
     assert {c["category"]: c["mention_rate"] for c in bp["categories"]} == {
         "recommendation": 100.0,
@@ -434,3 +441,29 @@ async def test_observations_never_cross_projects(
     await db_session.commit()
     body = (await client.get(f"/api/v1/projects/{pid_a}/visibility", headers=h)).json()
     assert body["current"]["data_quality"]["sample_size"] == 0
+
+
+async def test_prompt_run_history(client: AsyncClient, db_session: AsyncSession) -> None:
+    h, _, pid = await project_with_competitors(client)
+    s = Seeder(db_session, uuid.UUID(pid))
+    runs = [await s.observation(prompt="history", days_ago=d) for d in (3, 2, 1)]
+    await db_session.commit()
+    prompt_id = runs[0].prompt_id
+    body = (await client.get(f"/api/v1/prompts/{prompt_id}/runs", headers=h)).json()
+    assert body["total"] == 3 and len(body["items"]) == 3
+    assert [i["id"] for i in body["items"]] == [str(r.id) for r in reversed(runs)]  # newest first
+    assert all(i["response"]["response_text"] == "seeded" for i in body["items"])
+    other = await signup(client, org="Other Org")
+    r = await client.get(
+        f"/api/v1/prompts/{prompt_id}/runs", headers=auth_header(other["access_token"])
+    )
+    assert r.status_code == 404
+
+
+async def test_provider_status_lists_configuration_without_secrets(client: AsyncClient) -> None:
+    assert (await client.get("/api/v1/ai/providers")).status_code == 401
+    h, _, _ = await project_with_competitors(client)
+    body = (await client.get("/api/v1/ai/providers", headers=h)).json()
+    assert {i["key"] for i in body["items"]} >= {"openai", "anthropic", "google"}
+    for item in body["items"]:
+        assert set(item) == {"key", "configured", "default_model"}

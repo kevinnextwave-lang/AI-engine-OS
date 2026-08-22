@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, Path, Query, status
 
 from app.ai.registry import ProviderRegistry
 from app.api.deps import CurrentUser, DBSession, ProjectAccess, get_project_access
-from app.api.v1.routes.prompts import SetAccess, _require
+from app.api.v1.routes.prompts import PromptAccess, SetAccess, _require
 from app.core.errors import NotFoundError
 from app.core.permissions import Permission
 from app.models.prompts import PromptRunBatch, PromptRunStatus
@@ -22,13 +22,17 @@ from app.schemas.execution import (
     BatchResponse,
     PromptRunListResponse,
     PromptRunResponse,
+    ProviderStatus,
+    ProviderStatusList,
     RunPromptSetRequest,
 )
 from app.services.execution import ExecutionService, RunDispatcher
 from app.workers.tasks import dispatch_prompt_run
 
+providers_router = APIRouter(prefix="/ai/providers", tags=["execution"])
 set_router = APIRouter(prefix="/prompt-sets/{prompt_set_id}", tags=["execution"])
 batch_router = APIRouter(prefix="/prompt-run-batches/{batch_id}", tags=["execution"])
+prompt_router = APIRouter(prefix="/prompts/{prompt_id}", tags=["execution"])
 
 _ERRORS: dict[int | str, dict[str, Any]] = {
     401: {"description": "Not authenticated"},
@@ -71,6 +75,26 @@ async def _batch_response(session: DBSession, batch: PromptRunBatch) -> BatchRes
     item = BatchResponse.model_validate(batch)
     item.usage = await PromptRunRepository(session).usage_for_batch(batch.id)
     return item
+
+
+@providers_router.get(
+    "",
+    response_model=ProviderStatusList,
+    summary="AI providers known to this deployment and whether each is configured",
+    description="Configuration comes from server environment variables; no credential is exposed.",
+    responses={401: {"description": "Not authenticated"}},
+)
+async def list_providers(_user: CurrentUser, registry: RegistryDep) -> ProviderStatusList:
+    return ProviderStatusList(
+        items=[
+            ProviderStatus(
+                key=key,
+                configured=registry.is_configured(key),
+                default_model=registry.default_model(key),
+            )
+            for key in registry.known_keys
+        ]
+    )
 
 
 @set_router.post(
@@ -155,6 +179,32 @@ async def list_runs(
     runs, total = await repo.list_for_batch(
         batch.id, status=status_filter, limit=limit, offset=offset
     )
+    responses = await repo.responses_for_runs([r.id for r in runs])
+    items = []
+    for run in runs:
+        item = PromptRunResponse.model_validate(run)
+        resp = responses.get(run.id)
+        item.response = AiResponseView.model_validate(resp) if resp else None
+        items.append(item)
+    return PromptRunListResponse(items=items, total=total, limit=limit, offset=offset)
+
+
+@prompt_router.get(
+    "/runs",
+    response_model=PromptRunListResponse,
+    summary="A prompt's run history with responses (newest first)",
+    responses=_ERRORS,
+)
+async def list_prompt_runs(
+    prompt_access: PromptAccess,
+    session: DBSession,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> PromptRunListResponse:
+    prompt, access = prompt_access
+    _require(access, Permission.DATA_READ)
+    repo = PromptRunRepository(session)
+    runs, total = await repo.list_for_prompt(prompt.id, limit=limit, offset=offset)
     responses = await repo.responses_for_runs([r.id for r in runs])
     items = []
     for run in runs:

@@ -103,6 +103,9 @@ immediately before it. `change = current.score − previous.score` (1 decimal);
 `/visibility/trends` returns the three window comparisons plus a `series` of
 7-day buckets across the last 90 days, each with its own score, rates, sample
 size and sufficiency. Buckets below the minimum sample show `null` scores.
+`series_by_provider` repeats the same buckets per provider key, and
+`series_by_competitor` gives the mention rate per bucket for `brand` and each
+configured competitor (for the trend chart's provider/competitor views).
 
 ## 6. Breakdowns
 

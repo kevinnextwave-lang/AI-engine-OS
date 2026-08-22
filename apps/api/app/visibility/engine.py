@@ -14,7 +14,13 @@ from typing import Any, Literal
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.visibility import METHOD
-from app.visibility.metrics import MIN_SAMPLE, VisibilityMetrics, competitor_table, compute
+from app.visibility.metrics import (
+    MIN_SAMPLE,
+    VisibilityMetrics,
+    competitor_table,
+    compute,
+    sufficiency_for,
+)
 from app.visibility.observations import ObservationSet, ResponseObservation, load_observations
 
 WINDOWS = {"7d": 7, "30d": 30, "90d": 90}
@@ -112,14 +118,62 @@ class VisibilityEngine:
                 "sufficiency": current.sufficiency,
                 **compare(current, previous),
             }
-        series = self._series(data, days=WINDOWS["90d"], bucket_days=TREND_BUCKETS["90d"])
+        days, bucket = WINDOWS["90d"], TREND_BUCKETS["90d"]
+        series = self._series(data, days=days, bucket_days=bucket)
+        by_provider = {
+            key: self._series(
+                ObservationSet(
+                    [o for o in data.observations if o.provider_key == key],
+                    data.competitor_names,
+                    data.brand_domains,
+                ),
+                days=days,
+                bucket_days=bucket,
+            )
+            for key in sorted({o.provider_key for o in data.observations})
+        }
         return {
             "method": METHOD,
             "generated_at": self._now.isoformat(),
             "windows": windows,
             "series": series,
+            "series_by_provider": by_provider,
+            "series_by_competitor": self._competitor_series(data, days=days, bucket_days=bucket),
             "minimum_sample": MIN_SAMPLE,
         }
+
+    def _competitor_series(
+        self, data: ObservationSet, *, days: int, bucket_days: int
+    ) -> dict[str, list[dict[str, Any]]]:
+        """Mention rate per bucket for the brand and each configured competitor.
+        Rates follow the same sufficiency rounding as everything else."""
+        end = self._now
+        start = end - timedelta(days=days)
+        names = ["brand", *data.competitor_names]
+        out: dict[str, list[dict[str, Any]]] = {n: [] for n in names}
+        cursor = start
+        while cursor < end:
+            nxt = min(cursor + timedelta(days=bucket_days), end)
+            bucket = in_range(data.observations, cursor, nxt)
+            n = len(bucket)
+            rows = {
+                r["name"]: r
+                for r in competitor_table(
+                    ObservationSet(bucket, data.competitor_names, data.brand_domains)
+                )
+            }
+            for name in names:
+                out[name].append(
+                    {
+                        "start": cursor.isoformat(),
+                        "end": nxt.isoformat(),
+                        "mention_rate": rows[name]["mention_rate"],
+                        "sample_size": n,
+                        "sufficiency": sufficiency_for(n),
+                    }
+                )
+            cursor = nxt
+        return out
 
     def _series(self, data: ObservationSet, *, days: int, bucket_days: int) -> list[dict[str, Any]]:
         end = self._now
@@ -171,6 +225,11 @@ class VisibilityEngine:
         obs = in_range(data.observations, cur_start, end)
         prompts = _group(obs, lambda o: o.prompt_id, data.competitor_names)
         texts = {o.prompt_id: o for o in obs}
+        last_run: dict[uuid.UUID, str] = {}
+        for o in obs:
+            prev = last_run.get(o.prompt_id)
+            if prev is None or o.completed_at.isoformat() > prev:
+                last_run[o.prompt_id] = o.completed_at.isoformat()
         categories = _group(obs, lambda o: o.category, data.competitor_names)
         stages = _group(obs, lambda o: o.funnel_stage, data.competitor_names)
         return {
@@ -183,6 +242,7 @@ class VisibilityEngine:
                     "text": texts[pid].prompt_text,
                     "category": texts[pid].category,
                     "funnel_stage": texts[pid].funnel_stage,
+                    "last_completed_at": last_run.get(pid),
                     **_prompt_summary(m),
                 }
                 for pid, m in prompts.items()
