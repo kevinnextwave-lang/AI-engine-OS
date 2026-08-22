@@ -25,3 +25,8 @@ export {
   SheetTitle,
   SheetTrigger,
 } from "./sheet";
+export { Badge, badgeVariants } from "./badge";
+export { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./table";
+export { Progress } from "./progress";
+export { Skeleton } from "./skeleton";
+export { NativeSelect } from "./native-select";

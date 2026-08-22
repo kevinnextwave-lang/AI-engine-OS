@@ -1,16 +1,41 @@
-import { FolderKanbanIcon, LayoutDashboardIcon, SettingsIcon, type LucideIcon } from "lucide-react";
+import {
+  BrainCircuitIcon,
+  BracesIcon,
+  FileTextIcon,
+  FolderKanbanIcon,
+  GaugeIcon,
+  GlobeIcon,
+  LayoutDashboardIcon,
+  SettingsIcon,
+  WrenchIcon,
+  type LucideIcon,
+} from "lucide-react";
 
 export interface NavItem {
   href: string;
   label: string;
   icon: LucideIcon;
-  /** exact match only (used for the overview route so it isn't always active) */
+  /** exact match only (used for overview routes so they aren't always active) */
   exact?: boolean;
+  children?: NavItem[];
 }
 
 export const NAV_ITEMS: NavItem[] = [
   { href: "/app", label: "Overview", icon: LayoutDashboardIcon, exact: true },
   { href: "/app/projects", label: "Projects", icon: FolderKanbanIcon },
+  {
+    href: "/app/geo",
+    label: "GEO",
+    icon: GaugeIcon,
+    children: [
+      { href: "/app/geo", label: "Overview", icon: LayoutDashboardIcon, exact: true },
+      { href: "/app/geo/website-audit", label: "Website Audit", icon: GlobeIcon },
+      { href: "/app/geo/technical-seo", label: "Technical SEO", icon: WrenchIcon },
+      { href: "/app/geo/content", label: "Content", icon: FileTextIcon },
+      { href: "/app/geo/structured-data", label: "Structured Data", icon: BracesIcon },
+      { href: "/app/geo/ai-readiness", label: "AI Readiness", icon: BrainCircuitIcon },
+    ],
+  },
   { href: "/app/settings", label: "Settings", icon: SettingsIcon },
 ];
 

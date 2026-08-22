@@ -7,7 +7,26 @@
  */
 
 import type {
+  AiReadinessAudit,
+  AiReadinessAuditDetail,
+  AiReadinessAuditListResponse,
   ApiErrorBody,
+  CrawlJob,
+  CrawlJobListResponse,
+  CrawlStartRequest,
+  EntityConsistencyResponse,
+  EntityListResponse,
+  ProjectSchemaResponse,
+  ReadinessCategory,
+  SeoAudit,
+  SeoAuditListResponse,
+  SeoAuditStartRequest,
+  SeoCategory,
+  SeoObservation,
+  SeoObservationListResponse,
+  SeoObservationUpdateRequest,
+  Severity,
+  ObservationStatus,
   LoginRequest,
   Member,
   Competitor,
@@ -167,6 +186,68 @@ export const api = {
         request<{ message: string }>(`/projects/${projectId}/competitors/${competitorId}`, {
           method: "DELETE",
         }),
+    },
+  },
+  crawl: {
+    start: (projectId: string, body: CrawlStartRequest = {}) =>
+      request<CrawlJob>(`/projects/${projectId}/crawl`, { method: "POST", body: JSON.stringify(body) }),
+    list: (projectId: string, limit = 20) =>
+      request<CrawlJobListResponse>(`/projects/${projectId}/crawl-jobs?limit=${limit}`),
+    get: (crawlId: string) => request<CrawlJob>(`/crawl-jobs/${crawlId}`),
+  },
+  seo: {
+    startAudit: (projectId: string, body: SeoAuditStartRequest = {}) =>
+      request<SeoAudit>(`/projects/${projectId}/seo-audits`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    listAudits: (projectId: string, limit = 20) =>
+      request<SeoAuditListResponse>(`/projects/${projectId}/seo-audits?limit=${limit}`),
+    getAudit: (auditId: string) => request<SeoAudit>(`/seo-audits/${auditId}`),
+    observations: (
+      auditId: string,
+      params: { category?: SeoCategory; severity?: Severity; status?: ObservationStatus; limit?: number; offset?: number } = {},
+    ) => {
+      const q = new URLSearchParams();
+      if (params.category) q.set("category", params.category);
+      if (params.severity) q.set("severity", params.severity);
+      if (params.status) q.set("status", params.status);
+      q.set("limit", String(params.limit ?? 500));
+      if (params.offset) q.set("offset", String(params.offset));
+      return request<SeoObservationListResponse>(`/seo-audits/${auditId}/observations?${q}`);
+    },
+    updateObservation: (observationId: string, body: SeoObservationUpdateRequest) =>
+      request<SeoObservation>(`/seo-observations/${observationId}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
+  },
+  entities: {
+    list: (projectId: string, params: { type?: string; scope?: "page" | "project"; limit?: number } = {}) => {
+      const q = new URLSearchParams();
+      if (params.type) q.set("type", params.type);
+      if (params.scope) q.set("scope", params.scope);
+      q.set("limit", String(params.limit ?? 200));
+      return request<EntityListResponse>(`/projects/${projectId}/entities?${q}`);
+    },
+    schema: (projectId: string) => request<ProjectSchemaResponse>(`/projects/${projectId}/schema`),
+    consistency: (projectId: string) =>
+      request<EntityConsistencyResponse>(`/projects/${projectId}/entity-consistency`),
+    reanalyze: (projectId: string) =>
+      request<{ project_id: string; queued: boolean }>(`/projects/${projectId}/entity-analysis`, {
+        method: "POST",
+      }),
+  },
+  aiReadiness: {
+    startAudit: (projectId: string) =>
+      request<AiReadinessAudit>(`/projects/${projectId}/ai-readiness-audits`, { method: "POST" }),
+    listAudits: (projectId: string, limit = 20) =>
+      request<AiReadinessAuditListResponse>(`/projects/${projectId}/ai-readiness-audits?limit=${limit}`),
+    getAudit: (auditId: string, params: { category?: ReadinessCategory; limit?: number } = {}) => {
+      const q = new URLSearchParams();
+      if (params.category) q.set("category", params.category);
+      q.set("limit", String(params.limit ?? 500));
+      return request<AiReadinessAuditDetail>(`/ai-readiness-audits/${auditId}?${q}`);
     },
   },
 };
