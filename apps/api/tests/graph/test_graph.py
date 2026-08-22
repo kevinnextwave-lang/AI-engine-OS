@@ -375,3 +375,73 @@ async def test_organization_isolation(client: AsyncClient, db_session: AsyncSess
             headers=auth_header(stranger["access_token"]),
         )
     ).status_code == 404
+
+
+async def test_citation_list_and_provider_filter(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    h_a, pid, _ = await _seed_graph(client, db_session)
+    body = (await client.get(f"/api/v1/projects/{pid}/citations", headers=h_a)).json()
+    assert body["total"] == 68 and len(body["items"]) == 68
+    first = body["items"][0]
+    assert (
+        first["prompt"].startswith("prompt ")
+        and first["provider_key"] == "openai"
+        and first["cited_at"]
+    )
+    assert body["items"][0]["cited_at"] >= body["items"][-1]["cited_at"]  # newest first
+    g2 = next(i for i in body["items"] if i["domain"] == "g2.com")
+    assert g2["source_type"] == "review" and g2["relationships"][0]["relationship"] == "competitor"
+    by_domain = (
+        await client.get(
+            f"/api/v1/projects/{pid}/citations",
+            params={"source_domain_id": g2["source_domain_id"]},
+            headers=h_a,
+        )
+    ).json()
+    assert by_domain["total"] == 40
+    qb = (
+        await client.get(
+            f"/api/v1/projects/{pid}/citations", params={"competitor": "QuickBooks"}, headers=h_a
+        )
+    ).json()
+    assert qb["total"] == 35
+    brand = (
+        await client.get(
+            f"/api/v1/projects/{pid}/citations", params={"relationship": "brand"}, headers=h_a
+        )
+    ).json()
+    assert brand["total"] == 8
+    assert (
+        await client.get(
+            f"/api/v1/projects/{pid}/citations", params={"provider": "google"}, headers=h_a
+        )
+    ).json()["total"] == 0
+    paged = (
+        await client.get(
+            f"/api/v1/projects/{pid}/citations", params={"limit": 10, "offset": 60}, headers=h_a
+        )
+    ).json()
+    assert len(paged["items"]) == 8
+    # graph provider filter: everything was produced by openai → google yields an empty graph
+    ov = (
+        await client.get(
+            f"/api/v1/projects/{pid}/graph/overview", params={"provider": "google"}, headers=h_a
+        )
+    ).json()
+    assert ov["statistics"]["responses"] == 0 and ov["statistics"]["provider"] == "google"
+    ov2 = (
+        await client.get(
+            f"/api/v1/projects/{pid}/graph/overview", params={"provider": "openai"}, headers=h_a
+        )
+    ).json()
+    assert (
+        ov2["statistics"]["brand_citations"] == 8
+        and ov2["statistics"]["competitor_citations"] == 20 + 10 + 5 + 20
+    )
+    other = await signup(client, org="Other")
+    assert (
+        await client.get(
+            f"/api/v1/projects/{pid}/citations", headers=auth_header(other["access_token"])
+        )
+    ).status_code == 404

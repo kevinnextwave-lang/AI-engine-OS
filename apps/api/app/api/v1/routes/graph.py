@@ -34,11 +34,16 @@ _ERRORS: dict[int | str, dict[str, Any]] = {
 ReadAccess = Annotated[ProjectAccess, Depends(require_project_access(Permission.DATA_READ))]
 StartParam = Annotated[datetime | None, Query(description="Window start (default: 90 days ago)")]
 EndParam = Annotated[datetime | None, Query(description="Window end (default: now)")]
+ProviderParam = Annotated[
+    str | None, Query(description="Only responses from this AI provider key (e.g. openai)")
+]
 LimitParam = Annotated[int, Query(ge=1, le=MAX_LIMIT)]
 OffsetParam = Annotated[int, Query(ge=0)]
 
 
-def window_from(start: datetime | None, end: datetime | None) -> Window:
+def window_from(
+    start: datetime | None, end: datetime | None, provider: str | None = None
+) -> Window:
     default = Window.default()
     s = start or default.start
     e = end or default.end
@@ -48,7 +53,7 @@ def window_from(start: datetime | None, end: datetime | None) -> Window:
         e = e.replace(tzinfo=UTC)
     if s >= e:
         raise ValidationAppError("start must be before end")
-    return Window(s, e)
+    return Window(s, e, provider or None)
 
 
 def _window(w: Window) -> dict[str, datetime]:
@@ -66,16 +71,19 @@ async def graph_overview(
     session: DBSession,
     start: StartParam = None,
     end: EndParam = None,
+    provider: ProviderParam = None,
+    source_type: Annotated[str | None, Query()] = None,
     top_sources: Annotated[int, Query(ge=1, le=MAX_LIMIT)] = DEFAULT_LIMIT,
     top_prompts: Annotated[int, Query(ge=1, le=MAX_LIMIT)] = DEFAULT_LIMIT,
     top_claims: Annotated[int, Query(ge=0, le=MAX_LIMIT)] = 10,
 ) -> Any:
     return await GraphQueryService(session).overview(
         access.project.id,
-        window_from(start, end),
+        window_from(start, end, provider),
         top_sources=top_sources,
         top_prompts=top_prompts,
         top_claims=top_claims,
+        source_type=source_type,
     )
 
 
@@ -92,10 +100,11 @@ async def graph_sources(
     source_type: Annotated[str | None, Query()] = None,
     start: StartParam = None,
     end: EndParam = None,
+    provider: ProviderParam = None,
     limit: LimitParam = DEFAULT_LIMIT,
     offset: OffsetParam = 0,
 ) -> Any:
-    w = window_from(start, end)
+    w = window_from(start, end, provider)
     items, total = await GraphQueryService(session).sources(
         access.project.id, w, view=view, source_type=source_type, limit=limit, offset=offset
     )

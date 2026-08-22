@@ -42,8 +42,11 @@ SourceView = Literal["top", "competitor", "gap", "rising"]
 
 @dataclass(frozen=True)
 class Window:
+    """Time window on prompt_runs.completed_at, optionally restricted to one AI provider."""
+
     start: datetime
     end: datetime
+    provider: str | None = None
 
     @classmethod
     def default(cls, now: datetime | None = None) -> "Window":
@@ -52,7 +55,7 @@ class Window:
 
     @property
     def previous(self) -> "Window":
-        return Window(self.start - (self.end - self.start), self.start)
+        return Window(self.start - (self.end - self.start), self.start, self.provider)
 
 
 def node_id(kind: str, key: Any) -> str:
@@ -67,7 +70,7 @@ class GraphQueryService:
 
     def _responses(self, project_id: uuid.UUID, w: Window) -> Any:
         """Eligible responses (completed, parsed) in the window, with prompt and model."""
-        return (
+        stmt = (
             select(
                 AiResponse.id.label("response_id"),
                 PromptRun.prompt_id.label("prompt_id"),
@@ -83,7 +86,10 @@ class GraphQueryService:
                 PromptRun.completed_at >= w.start,
                 PromptRun.completed_at < w.end,
             )
-        ).subquery("responses")
+        )
+        if w.provider:
+            stmt = stmt.where(PromptRun.provider_key == w.provider)
+        return stmt.subquery("responses")
 
     def _relationships(self, project_id: uuid.UUID) -> Any:
         return (
@@ -628,6 +634,7 @@ class GraphQueryService:
         top_sources: int = DEFAULT_LIMIT,
         top_prompts: int = DEFAULT_LIMIT,
         top_claims: int = 10,
+        source_type: str | None = None,
     ) -> dict[str, Any]:
         project = await self._session.get(Project, project_id)
         if project is None:
@@ -659,6 +666,8 @@ class GraphQueryService:
                     func.count(),
                     func.count(distinct(cites.c.domain_id)),
                     func.count(distinct(cites.c.page_id)),
+                    func.coalesce(func.sum(cast(cites.c.is_brand, Integer)), 0),
+                    func.coalesce(func.sum(cast(cites.c.is_competitor, Integer)), 0),
                 ).select_from(cites)
             )
         ).one()
@@ -727,7 +736,9 @@ class GraphQueryService:
                 if name in comp_nodes:
                     add_edge(pid, comp_nodes[name], "cites", n, via="competitor citations")
 
-        sources, sources_total = await self.sources(project_id, w, view="top", limit=top_sources)
+        sources, sources_total = await self.sources(
+            project_id, w, view="top", limit=top_sources, source_type=source_type
+        )
         source_nodes: dict[uuid.UUID, str] = {}
         for s in sources:
             sid = add_node(
@@ -789,6 +800,9 @@ class GraphQueryService:
                 "citations": int(cite_stats[0]),
                 "source_domains": int(cite_stats[1]),
                 "source_pages": int(cite_stats[2]),
+                "brand_citations": int(cite_stats[3]),
+                "competitor_citations": int(cite_stats[4]),
+                "provider": w.provider,
                 "competitors_configured": sum(1 for c in competitors if c["competitor_id"]),
                 "nodes_returned": len(nodes),
                 "edges_returned": len(edges),

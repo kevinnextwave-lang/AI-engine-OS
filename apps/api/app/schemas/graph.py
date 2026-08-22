@@ -60,6 +60,9 @@ class GraphStatistics(BaseModel):
     citations: int
     source_domains: int
     source_pages: int
+    brand_citations: int = Field(description="Citations related to the brand")
+    competitor_citations: int = Field(description="Citations related to a configured competitor")
+    provider: str | None = Field(default=None, description="AI provider filter applied, if any")
     competitors_configured: int
     nodes_returned: int
     edges_returned: int
