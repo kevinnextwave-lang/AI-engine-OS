@@ -18,6 +18,7 @@ from app.ai.throttle import ProviderThrottle, backoff_seconds
 from app.ai.types import AIErrorCategory, AIRequest, AIResponse
 from app.core.config import Settings, get_settings
 from app.core.logging import get_logger
+from app.intelligence.interpreter import Interpreter, ProviderInterpreter
 from app.models.ai import AiGeneration, AiModel
 from app.models.project import Project
 from app.models.prompts import (
@@ -30,6 +31,7 @@ from app.models.prompts import (
 )
 from app.repositories.execution import BatchRepository, PromptRunRepository
 from app.services.ai import AIGenerationService
+from app.services.intelligence import ResponseIntelligenceService
 
 log = get_logger("ai.execution")
 
@@ -124,7 +126,8 @@ async def execute_prompt_run(
     run.ai_generation_id = generation
 
     if response.succeeded:
-        return await _finish_completed(session, run, response, project)
+        interpreter = build_interpreter(registry, settings)
+        return await _finish_completed(session, run, response, project, interpreter)
 
     error = response.error
     if error is None:  # defensive: succeeded is False only when error is set
@@ -163,25 +166,29 @@ async def _generation_id(session: AsyncSession, request_id: uuid.UUID) -> uuid.U
 
 
 async def _finish_completed(
-    session: AsyncSession, run: PromptRun, response: AIResponse, project: Project
+    session: AsyncSession,
+    run: PromptRun,
+    response: AIResponse,
+    project: Project,
+    interpreter: Interpreter | None = None,
 ) -> Outcome:
     now = datetime.now(UTC)
     model = await session.get(AiModel, run.model_id) if run.model_id else None
-    session.add(
-        AiResponse(
-            prompt_run_id=run.id,
-            provider_id=run.provider_id,
-            model_id=run.model_id,
-            response_text=response.response_text,
-            finish_reason=response.finish_reason.value,
-            input_tokens=response.input_tokens,
-            output_tokens=response.output_tokens,
-            total_tokens=response.total_tokens,
-            latency_ms=response.latency_ms,
-            provider_request_id=response.provider_request_id,
-            raw_metadata=response.raw_response,
-        )
+    stored = AiResponse(
+        prompt_run_id=run.id,
+        provider_id=run.provider_id,
+        model_id=run.model_id,
+        response_text=response.response_text,
+        finish_reason=response.finish_reason.value,
+        input_tokens=response.input_tokens,
+        output_tokens=response.output_tokens,
+        total_tokens=response.total_tokens,
+        latency_ms=response.latency_ms,
+        provider_request_id=response.provider_request_id,
+        raw_metadata=response.raw_response,
     )
+    session.add(stored)
+    await session.flush()
     cost = estimate_cost(
         model.pricing if model else None, response.input_tokens, response.output_tokens
     )
@@ -205,6 +212,11 @@ async def _finish_completed(
     run.error_message = None
     run.completed_at = now
     await session.flush()
+    # Response intelligence (deterministic stage; the LLM stage is opt-in via settings).
+    try:
+        await ResponseIntelligenceService(session, interpreter).parse_and_store(stored)
+    except Exception:  # noqa: BLE001 - parsing must never undo a completed run
+        log.exception("ai_response_parse_failed", run_id=str(run.id))
     if run.batch_id is not None:
         await BatchRepository(session).record_outcome(run.batch_id, PromptRunStatus.COMPLETED)
     await session.commit()
@@ -234,3 +246,14 @@ async def _finish_failed(
     await session.commit()
     log.warning("prompt_run_failed", run_id=str(run.id), provider=run.provider_key, error_code=code)
     return Outcome(run.id, PromptRunStatus.FAILED, reason=code)
+
+
+def build_interpreter(registry: ProviderRegistry, settings: Settings) -> Interpreter | None:
+    """Stage 2 interpreter from settings; None keeps parsing deterministic only."""
+    if not settings.ai_parser_llm_enabled:
+        return None
+    provider = registry.get_optional(settings.ai_parser_provider)
+    if provider is None:
+        return None
+    model = settings.ai_parser_model or registry.default_model(settings.ai_parser_provider)
+    return ProviderInterpreter(provider, model or "")

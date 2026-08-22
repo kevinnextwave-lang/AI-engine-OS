@@ -22,6 +22,12 @@ from app.models.entities import (
     EntityScope,
     SchemaIssue,
 )
+from app.models.intelligence import (
+    BrandMention,
+    CompetitorMention,
+    ResponseCitation,
+    ResponseClaim,
+)
 from app.models.membership import Membership, MembershipRole, OrganizationMember
 from app.models.organization import Organization, OrganizationPlan, OrganizationStatus
 from app.models.page_intelligence import (
@@ -83,6 +89,10 @@ __all__ = [
     "PageVersion",
     "WebsitePage",
     "Domain",
+    "BrandMention",
+    "CompetitorMention",
+    "ResponseCitation",
+    "ResponseClaim",
     "Entity",
     "EntityLink",
     "EntityObservation",
