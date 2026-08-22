@@ -62,7 +62,8 @@ async def register(
     result = await AuthService(session).register(
         email=body.email,
         password=body.password,
-        full_name=body.full_name,
+        first_name=body.first_name,
+        last_name=body.last_name,
         organization_name=body.organization_name,
         client=_client(request),
     )

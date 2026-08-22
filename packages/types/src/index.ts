@@ -10,8 +10,12 @@ export interface ApiErrorBody {
 export interface User {
   id: string;
   email: string;
+  first_name: string | null;
+  last_name: string | null;
+  /** Derived server-side from first_name + last_name. */
   full_name: string | null;
   is_active: boolean;
+  email_verified: boolean;
   created_at: string;
 }
 
@@ -43,7 +47,8 @@ export interface Member {
 export interface RegisterRequest {
   email: string;
   password: string;
-  full_name?: string;
+  first_name?: string;
+  last_name?: string;
   organization_name: string;
 }
 

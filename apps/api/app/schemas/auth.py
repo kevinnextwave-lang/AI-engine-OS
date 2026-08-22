@@ -9,7 +9,8 @@ from app.schemas.common import APIModel
 class RegisterRequest(APIModel):
     email: EmailStr
     password: str = Field(min_length=10, max_length=128)
-    full_name: str | None = Field(default=None, max_length=200)
+    first_name: str | None = Field(default=None, max_length=100)
+    last_name: str | None = Field(default=None, max_length=100)
     organization_name: str = Field(min_length=2, max_length=200)
 
     @field_validator("email")
@@ -31,8 +32,11 @@ class LoginRequest(APIModel):
 class UserResponse(APIModel):
     id: uuid.UUID
     email: EmailStr
+    first_name: str | None
+    last_name: str | None
     full_name: str | None
     is_active: bool
+    email_verified: bool
     created_at: datetime
 
 

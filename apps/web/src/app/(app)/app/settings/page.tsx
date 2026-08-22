@@ -27,9 +27,15 @@ export default function SettingsPage() {
             <CardDescription>Editing arrives with account management in a later milestone.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="profile-name">Full name</Label>
-              <Input id="profile-name" readOnly value={user?.full_name ?? ""} placeholder="—" />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="profile-first-name">First name</Label>
+                <Input id="profile-first-name" readOnly value={user?.first_name ?? ""} placeholder="—" />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="profile-last-name">Last name</Label>
+                <Input id="profile-last-name" readOnly value={user?.last_name ?? ""} placeholder="—" />
+              </div>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="profile-email">Email</Label>

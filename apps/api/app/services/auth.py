@@ -84,7 +84,8 @@ class AuthService:
         *,
         email: str,
         password: str,
-        full_name: str | None,
+        first_name: str | None,
+        last_name: str | None,
         organization_name: str,
         client: ClientInfo,
     ) -> AuthResult:
@@ -92,7 +93,12 @@ class AuthService:
         if await self._users.get_by_email(email):
             raise ConflictError("An account with this email already exists")
 
-        user = User(email=email, password_hash=hash_password(password), full_name=full_name)
+        user = User(
+            email=email,
+            password_hash=hash_password(password),
+            first_name=(first_name or "").strip() or None,
+            last_name=(last_name or "").strip() or None,
+        )
         await self._users.add(user)
         await OrganizationService(self._session).create_with_owner(
             name=organization_name, owner_id=user.id

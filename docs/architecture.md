@@ -32,9 +32,25 @@ api/v1/routes  →  services  →  repositories  →  models
 - **Models** use UUID primary keys, timezone-aware UTC `created_at`/`updated_at`, and `deleted_at` for soft deletion on major entities.
 - **`db/session.py`** exposes `get_db_session`, a per-request dependency that commits on success and rolls back on error.
 
+## Data model (Milestone 1B)
+
+```
+users ──< organization_members >── organizations ──< projects ──< domains
+                                                              └──< competitors
+```
+
+- `users`: email (unique), password_hash, first_name, last_name, is_active, email_verified, last_login_at, soft-delete.
+- `organizations`: name, slug (unique), plan (`free|starter|growth|pro|agency|enterprise`), status (`active|suspended|deleted`).
+- `organization_members`: organization_id + user_id (unique together), role (`owner|admin|member|viewer`).
+- `projects`: organization_id, name, slug (unique per organization), description, industry, country, status (`active|paused|archived`).
+- `domains`: project_id, url, hostname, is_primary (at most one per project via partial unique index), verified.
+- `competitors`: project_id, name, website_url, hostname.
+
+All tables have UUID primary keys and timezone-aware UTC `created_at`/`updated_at`; `organization_id`, `project_id`, `user_id`, `hostname`, and `created_at` are indexed. Foreign keys cascade on delete.
+
 ## Tenancy
 
-`Organization` is the tenant root; `Membership` links users to organizations with a role (`owner > admin > member > viewer`). Every organization-owned table carries `organization_id`.
+`Organization` is the tenant root; `organization_members` links users to organizations with a role (`owner > admin > member > viewer`). Organization-owned tables carry `organization_id` directly (`projects`) or reach it through one join (`domains`/`competitors` → `projects`). Ownership is always resolved server-side, never by client-side filtering.
 
 The API never trusts a client-supplied organization id. `organization_id` is read from the **URL path** and `get_current_membership` checks that the authenticated user belongs to it. Non-members get `404`, so the existence of other tenants is not leaked. `require_role(MembershipRole.X)` enforces the role hierarchy.
 

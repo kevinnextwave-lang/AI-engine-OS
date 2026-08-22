@@ -21,7 +21,8 @@ export default function SignupPage() {
   const { register } = useAuth();
   const router = useRouter();
   const [form, setForm] = React.useState({
-    full_name: "",
+    first_name: "",
+    last_name: "",
     email: "",
     password: "",
     organization_name: "",
@@ -41,7 +42,8 @@ export default function SignupPage() {
         email: form.email,
         password: form.password,
         organization_name: form.organization_name,
-        full_name: form.full_name || undefined,
+        first_name: form.first_name || undefined,
+        last_name: form.last_name || undefined,
       });
       router.replace("/app");
     } catch (err) {
@@ -63,14 +65,25 @@ export default function SignupPage() {
       </CardHeader>
       <CardContent>
         <form onSubmit={onSubmit} className="flex flex-col gap-4">
-          <div className="grid gap-2">
-            <Label htmlFor="full_name">Full name</Label>
-            <Input
-              id="full_name"
-              autoComplete="name"
-              value={form.full_name}
-              onChange={update("full_name")}
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="first_name">First name</Label>
+              <Input
+                id="first_name"
+                autoComplete="given-name"
+                value={form.first_name}
+                onChange={update("first_name")}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="last_name">Last name</Label>
+              <Input
+                id="last_name"
+                autoComplete="family-name"
+                value={form.last_name}
+                onChange={update("last_name")}
+              />
+            </div>
           </div>
           <div className="grid gap-2">
             <Label htmlFor="organization_name">Organization</Label>

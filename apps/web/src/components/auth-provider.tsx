@@ -12,7 +12,8 @@ interface AuthContextValue {
   register: (input: {
     email: string;
     password: string;
-    full_name?: string;
+    first_name?: string;
+    last_name?: string;
     organization_name: string;
   }) => Promise<void>;
   logout: () => Promise<void>;
