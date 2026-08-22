@@ -35,6 +35,7 @@ from app.models.sources import (
     SourceDomain,
     SourcePage,
 )
+from app.sources.classify import Classification, PageSignals, classify
 from app.sources.normalize import (
     classify_domain,
     display_name_for,
@@ -76,6 +77,7 @@ class SourceIntelligenceService:
         self._session = session
         self._now = now or datetime.now(UTC)
         self._hosts_cache: dict[uuid.UUID, ProjectHosts] = {}
+        self._company_cache: frozenset[str] | None = None
 
     # -- context -------------------------------------------------------------------
 
@@ -141,10 +143,10 @@ class SourceIntelligenceService:
         if domain is None:  # pragma: no cover - the row was just upserted
             raise RuntimeError("source domain vanished after upsert")
         created = bool(row[1])
-        if domain.domain_type == "unknown":
-            better = classify_domain(normalized, company_hosts=company_hosts)
-            if better.value != "unknown":
-                domain.domain_type = better.value
+        if created or domain.domain_type == "unknown":
+            # Cheap hostname-only pass on first sight / while still unknown; the
+            # full signal-based pass (pages, titles, metadata) is `classify_domain_record`.
+            await self.classify_domain_record(domain, company_hosts=company_hosts)
         return domain, created
 
     async def upsert_page(
@@ -177,6 +179,84 @@ class SourceIntelligenceService:
         if page is None:  # pragma: no cover - the row was just upserted
             raise RuntimeError("source page vanished after upsert")
         return page, bool(row[1])
+
+    # -- classification (4B) ---------------------------------------------------------------
+
+    async def classify_domain_record(
+        self,
+        domain: SourceDomain,
+        *,
+        company_hosts: frozenset[str] = frozenset(),
+        page_limit: int = 50,
+    ) -> Classification:
+        """Run the signal-based classifier over the domain and a sample of its
+        cited pages, and store the result. A known type is never replaced by
+        `unknown` (absence of evidence is not evidence of change), but a more
+        confident result always wins."""
+        from app.core.config import get_settings
+        from app.sources.registry import get_registry
+
+        pages = (
+            await self._session.scalars(
+                select(SourcePage)
+                .where(SourcePage.source_domain_id == domain.id)
+                .order_by(SourcePage.last_seen_at.desc())
+                .limit(page_limit)
+            )
+        ).all()
+        result = classify(
+            domain.normalized_hostname,
+            registry=get_registry(),
+            pages=[PageSignals(p.url, p.title, p.metadata_ or {}) for p in pages],
+            company_hosts=company_hosts,
+            threshold=get_settings().source_classification_threshold,
+        )
+        if result.domain_type.value != "unknown" or domain.domain_type == "unknown":
+            previous = domain.classification_confidence or 0.0
+            if result.domain_type.value != domain.domain_type or result.confidence >= previous:
+                domain.domain_type = result.domain_type.value
+                domain.classification_confidence = (
+                    result.confidence if result.domain_type.value != "unknown" else None
+                )
+        domain.classification = result.as_dict()
+        domain.is_authority = result.authority
+        domain.classified_at = self._now
+        return result
+
+    async def reclassify(self, *, batch_size: int = 500) -> int:
+        """Re-run classification for every known domain (after a registry change)."""
+        count = 0
+        last_id: uuid.UUID | None = None
+        while True:
+            stmt = select(SourceDomain).order_by(SourceDomain.id).limit(batch_size)
+            if last_id is not None:
+                stmt = stmt.where(SourceDomain.id > last_id)
+            batch = (await self._session.scalars(stmt)).all()
+            if not batch:
+                break
+            for d in batch:
+                await self.classify_domain_record(d, company_hosts=await self._all_company_hosts())
+                count += 1
+            last_id = batch[-1].id
+            await self._session.commit()
+            if len(batch) < batch_size:
+                break
+        return count
+
+    async def _all_company_hosts(self) -> frozenset[str]:
+        """Every project's own and competitor hosts — evidence that a domain is a company site."""
+        if self._company_cache is None:
+            hosts = set()
+            for (h,) in (await self._session.execute(select(Domain.hostname))).all():
+                n = normalize_hostname(h)
+                if n:
+                    hosts.add(n)
+            for (h,) in (await self._session.execute(select(Competitor.hostname))).all():
+                n = normalize_hostname(h)
+                if n:
+                    hosts.add(n)
+            self._company_cache = frozenset(hosts)
+        return self._company_cache
 
     # -- citation resolution -----------------------------------------------------------
 

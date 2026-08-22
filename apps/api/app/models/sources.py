@@ -13,8 +13,19 @@ and is tenant-scoped.
 import enum
 import uuid
 from datetime import datetime
+from typing import Any
 
-from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer, String, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    UniqueConstraint,
+)
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -68,6 +79,12 @@ class SourceDomain(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         String(20), nullable=False, default=DomainType.UNKNOWN.value
     )
     authority_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # Classification (4B): confidence of `domain_type`, full evidence/probabilities,
+    # whether the registry lists the host as an authority source.
+    classification_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    classification: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    is_authority: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    classified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
@@ -86,6 +103,11 @@ class SourcePage(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     url: Mapped[str] = mapped_column(String(2048), nullable=False)
     normalized_url: Mapped[str] = mapped_column(String(2048), nullable=False)
     title: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # Page metadata when the page has been fetched (og:type, generator, …); a
+    # classification signal. Nothing fetches pages yet — reserved for 4C.
+    metadata_: Mapped[dict[str, Any]] = mapped_column(
+        "metadata", JSONB, nullable=False, default=dict
+    )
     first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 

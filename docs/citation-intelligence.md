@@ -86,3 +86,83 @@ reserved for later milestones.
 
 Upserts use `INSERT … ON CONFLICT` on the unique constraints, so concurrent
 workers resolving the same host or URL cannot create duplicates.
+
+---
+
+# Source classification (Milestone 4B)
+
+Code: `apps/api/app/sources/registry.py` + `registry.json`, `classify.py`,
+`relevance.py`; route `apps/api/app/api/v1/routes/sources.py`. Tests:
+`apps/api/tests/sources/test_classification.py`.
+
+## Registry (configurable)
+
+`registry.json` holds the known-domain lists (`known_review_domains`,
+`known_social_domains`, `known_community_domains`, `known_forum_domains`,
+`known_media_domains`, `known_directory_domains`, `known_research_domains`,
+`known_blog_platforms`, `known_authority_domains`), government/education
+suffixes, hostname-prefix patterns, URL path patterns and page-title keywords.
+`SOURCE_REGISTRY_PATH` may point at a JSON file whose lists are merged on top
+(entries are added, never removed). A host matches a list entry when it equals
+it or is a subdomain of it.
+
+## Classifier (`classify.py`)
+
+Each signal is its own function returning **evidence** — (type, weight,
+signal, detail):
+
+| signal | weight | source |
+|---|---|---|
+| hostname = project/competitor host | 0.95 | project domains + configured competitors |
+| TLD (`.gov`, `.edu`, …) | 0.90 | registry suffix lists |
+| registry list membership | 0.90 | registry |
+| hostname prefix (`blog.`, `forum.`, `news.` …) | 0.45 | registry patterns |
+| URL path pattern (`/reviews`, `/r/`, `/blog` …) | 0.25 per page, max 4 | cited pages |
+| page title keyword | 0.20 per page, max 4 | cited page titles (when known) |
+| page metadata (`og:type`, `generator`) | 0.25 | cited page metadata (when fetched) |
+
+Evidence is combined per type with a noisy-OR (`1 − Π(1 − w)`), then
+normalised into a probability distribution. The top type is accepted only when
+its combined score ≥ `SOURCE_CLASSIFICATION_THRESHOLD` (0.5) **and** it leads
+the runner-up by ≥ 0.05; otherwise the domain stays `unknown` while the
+candidates, probabilities and evidence are still stored
+(`source_domains.classification`, JSONB) so the uncertainty is visible. One
+registry or TLD hit is decisive (0.9); weak signals must agree several times
+(e.g. `blog.` prefix + two `/blog/` paths + a "how to" title ≈ 0.8).
+
+Stored on `source_domains`: `domain_type`, `classification_confidence` (NULL
+when unknown), `classification` (probabilities + evidence + threshold),
+`is_authority`, `classified_at`. A known type is never replaced by `unknown`
+(absence of evidence is not evidence of change); a more confident result wins.
+`source_pages.metadata` (JSONB) is reserved for a later page fetcher.
+
+When it runs: cheap hostname pass on first sight of a domain; full pass via
+`SourceIntelligenceService.classify_domain_record` (samples up to 50 cited
+pages) and `reclassify()` / `python -m app.sources.backfill --reclassify` after
+a registry change.
+
+## Source Relevance Score
+
+A transparent, initial 0–100 indicator of how much a source matters *in the AI
+answers this product observed*. **Not** a universal domain-authority score.
+
+| component | weight | derivation |
+|---|---|---|
+| frequency | 30 | log10(citations+1) / log10(1001), capped at 100 |
+| breadth | 20 | projects observed / 20, capped |
+| consistency | 15 | weeks with a citation / weeks since first seen |
+| source_type | 20 | government/education/research 85, media/review 75, directory 60, company/community/forum 55, blog 45, social 40, unknown/other 50; +5 for authority-registry hosts |
+| project_frequency | 15 | log-scaled citations in the requested project; only with `?project_id=`, otherwise the weight is dropped and the rest renormalise |
+
+The API returns every component with its weight and the note above.
+
+## API
+
+`GET /api/v1/source-domains/{domain_id}[?project_id=]` (authenticated).
+Returns domain, display name, type + full classification, citation count,
+projects observed, pages cited (+ top 25 pages), brands cited, competitors
+cited, first/last seen, relevance. Source domains are shared reference data,
+but every field that reveals *who* cited the source is computed only over
+projects the caller is a member of; the only cross-tenant values are two plain
+counts (`global_citation_count`, `global_projects_observed`) that also feed the
+global relevance score. A `project_id` the caller cannot access → 404.

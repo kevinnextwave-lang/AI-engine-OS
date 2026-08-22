@@ -13,6 +13,7 @@ from app.api.v1.routes import (
     projects,
     prompts,
     seo,
+    sources,
     visibility,
 )
 
@@ -42,3 +43,4 @@ api_router.include_router(execution.prompt_router)
 api_router.include_router(intelligence.run_router)
 api_router.include_router(intelligence.batch_router)
 api_router.include_router(visibility.router)
+api_router.include_router(sources.router)
