@@ -15,3 +15,13 @@ def normalize_name(value: str) -> str:
     while len(tokens) > 1 and tokens[-1] in _SUFFIXES:
         tokens.pop()
     return "".join(tokens)
+
+
+def is_known_identity(key: str, known: frozenset[str], *, min_stem: int = 4) -> bool:
+    """True when a normalised name is (or is a product/edition of) a known identity:
+    `quickbooksonline` matches the configured competitor `quickbooks`."""
+    if not key:
+        return False
+    if key in known:
+        return True
+    return any(len(k) >= min_stem and key.startswith(k) for k in known)

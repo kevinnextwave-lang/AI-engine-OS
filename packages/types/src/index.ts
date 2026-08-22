@@ -170,6 +170,65 @@ export interface CompetitorCreateRequest {
   website_url: string;
 }
 
+export type CompetitorCandidateSource =
+  | "ai_responses"
+  | "website_intelligence"
+  | "ai_assisted"
+  | "combined";
+export type CompetitorCandidateStatus = "new" | "reviewing" | "accepted" | "rejected";
+
+/** A company surfaced by competitor discovery (Milestone 5B). Never a competitor until accepted. */
+export interface CompetitorCandidate {
+  id: string;
+  project_id: string;
+  name: string;
+  domain: string | null;
+  reason: string;
+  evidence: Record<string, unknown>;
+  /** 0–1 */
+  confidence: number;
+  confidence_label: "high" | "medium" | "low";
+  source: CompetitorCandidateSource;
+  status: CompetitorCandidateStatus;
+  competitor_id: string | null;
+  discovery_version: string;
+  discovered_at: string;
+  reviewed_at: string | null;
+  reviewed_by_user_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CompetitorCandidateListResponse {
+  items: CompetitorCandidate[];
+  total: number;
+  limit: number;
+  offset: number;
+  discovered_at: string | null;
+}
+
+export interface CompetitorDiscoverRequest {
+  window_days?: number;
+  use_ai?: boolean;
+}
+
+export interface CompetitorDiscoverResponse {
+  project_id: string;
+  responses_scanned: number;
+  observations: number;
+  candidates_written: number;
+  candidates_skipped_single_mention: number;
+  ai_used: boolean;
+  ai_error: string | null;
+  discovered_at: string;
+  note: string;
+}
+
+export interface CompetitorCandidateAcceptRequest {
+  website_url?: string | null;
+  name?: string | null;
+}
+
 export interface StatusResponse {
   status: string;
 }

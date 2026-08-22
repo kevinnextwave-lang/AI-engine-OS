@@ -30,6 +30,11 @@ import type {
   LoginRequest,
   Member,
   Competitor,
+  CompetitorCandidate,
+  CompetitorCandidateAcceptRequest,
+  CompetitorCandidateListResponse,
+  CompetitorDiscoverRequest,
+  CompetitorDiscoverResponse,
   CompetitorCreateRequest,
   Domain,
   DomainCreateRequest,
@@ -210,6 +215,37 @@ export const api = {
           method: "DELETE",
         }),
     },
+  },
+  competitorCandidates: {
+    list: (
+      projectId: string,
+      params: {
+        status?: string;
+        source?: string;
+        min_confidence?: number;
+        limit?: number;
+        offset?: number;
+      } = {},
+    ) =>
+      request<CompetitorCandidateListResponse>(
+        `/projects/${projectId}/competitor-candidates${qs(params)}`,
+      ),
+    discover: (projectId: string, body: CompetitorDiscoverRequest = {}) =>
+      request<CompetitorDiscoverResponse>(`/projects/${projectId}/competitor-candidates/discover`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    get: (candidateId: string) =>
+      request<CompetitorCandidate>(`/competitor-candidates/${candidateId}`),
+    accept: (candidateId: string, body: CompetitorCandidateAcceptRequest = {}) =>
+      request<Competitor>(`/competitor-candidates/${candidateId}/accept`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    reject: (candidateId: string) =>
+      request<CompetitorCandidate>(`/competitor-candidates/${candidateId}/reject`, {
+        method: "POST",
+      }),
   },
   crawl: {
     start: (projectId: string, body: CrawlStartRequest = {}) =>
