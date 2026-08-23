@@ -34,6 +34,11 @@ import type {
   CompetitiveOverview,
   CompetitivePrompts,
   CompetitiveTrends,
+  AlertDetectResponse,
+  AlertStatus,
+  AlertThresholds,
+  CompetitiveAlert,
+  CompetitiveAlertListResponse,
   ContentGap,
   ContentGapAnalyzeResponse,
   ContentGapListResponse,
@@ -308,6 +313,33 @@ export const api = {
     get: (gapId: string) => request<ContentGap>(`/content-gaps/${gapId}`),
     update: (gapId: string, body: { status?: string; note?: string | null }) =>
       request<ContentGap>(`/content-gaps/${gapId}`, { method: "PATCH", body: JSON.stringify(body) }),
+  },
+  competitiveAlerts: {
+    list: (
+      projectId: string,
+      params: {
+        status?: string;
+        alert_type?: string;
+        severity?: string;
+        competitor_id?: string;
+        limit?: number;
+        offset?: number;
+      } = {},
+    ) =>
+      request<CompetitiveAlertListResponse>(
+        `/projects/${projectId}/competitive-alerts${qs(params)}`,
+      ),
+    detect: (projectId: string, body: { window_days?: number; thresholds?: AlertThresholds } = {}) =>
+      request<AlertDetectResponse>(`/projects/${projectId}/competitive-alerts/detect`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    get: (alertId: string) => request<CompetitiveAlert>(`/competitive-alerts/${alertId}`),
+    setStatus: (alertId: string, status: AlertStatus) =>
+      request<CompetitiveAlert>(`/competitive-alerts/${alertId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+      }),
   },
   crawl: {
     start: (projectId: string, body: CrawlStartRequest = {}) =>
