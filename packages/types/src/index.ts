@@ -684,6 +684,59 @@ export interface ContentBriefListResponse {
   offset: number;
 }
 
+/** Content optimization reviews (Milestone 6D). */
+export type ContentReviewStatus = "draft" | "reviewing" | "completed" | "archived";
+export type ChangeDecision = "pending" | "accepted" | "edited" | "rejected";
+
+export interface ProposedContentChange {
+  change_id: string;
+  location: string;
+  current_text: string;
+  proposed_text: string;
+  reason: string;
+  evidence: Record<string, unknown>;
+  confidence: "high" | "medium" | "low";
+  decision: ChangeDecision;
+  decided_text: string | null;
+}
+
+export interface ContentOptimizationReview {
+  id: string;
+  project_id: string;
+  page_id: string;
+  agent_run_id: string | null;
+  score: number;
+  findings: Record<string, unknown>[];
+  recommendations: Record<string, unknown>[];
+  proposed_changes: ProposedContentChange[];
+  confidence: string;
+  status: ContentReviewStatus;
+  analysis_version: string;
+  analyzed_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContentReviewListItem {
+  id: string;
+  page_id: string;
+  page_url: string | null;
+  score: number;
+  confidence: string;
+  status: ContentReviewStatus;
+  findings_count: number;
+  changes_count: number;
+  pending_changes: number;
+  analyzed_at: string;
+}
+
+export interface ContentReviewListResponse {
+  items: ContentReviewListItem[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export interface StatusResponse {
   status: string;
 }

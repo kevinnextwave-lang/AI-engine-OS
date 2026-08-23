@@ -37,6 +37,9 @@ import type {
   ContentBrief,
   ContentBriefListResponse,
   ContentBriefStatus,
+  ContentOptimizationReview,
+  ContentReviewListResponse,
+  ContentReviewStatus,
   AgentAction,
   AgentRun,
   AgentRunListResponse,
@@ -379,6 +382,25 @@ export const api = {
       body: { status?: ContentBriefStatus; title?: string; audience?: string },
     ) => request<ContentBrief>(`/content-briefs/${briefId}`, {
         method: "PATCH",
+        body: JSON.stringify(body),
+      }),
+  },
+  contentReviews: {
+    list: (projectId: string, params: { status?: string; limit?: number; offset?: number } = {}) =>
+      request<ContentReviewListResponse>(`/projects/${projectId}/content-reviews${qs(params)}`),
+    get: (reviewId: string) => request<ContentOptimizationReview>(`/content-reviews/${reviewId}`),
+    setStatus: (reviewId: string, status: ContentReviewStatus) =>
+      request<ContentOptimizationReview>(`/content-reviews/${reviewId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+      }),
+    decideChange: (
+      reviewId: string,
+      changeId: string,
+      body: { action: "accept" | "edit" | "reject"; text?: string },
+    ) =>
+      request<ContentOptimizationReview>(`/content-reviews/${reviewId}/changes/${changeId}`, {
+        method: "POST",
         body: JSON.stringify(body),
       }),
   },

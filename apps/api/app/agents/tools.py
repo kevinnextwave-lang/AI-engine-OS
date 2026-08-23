@@ -55,6 +55,33 @@ class _PageArg(BaseModel):
     page_id: uuid.UUID
 
 
+class _ChangeInput(BaseModel):
+    location: str = Field(min_length=1, max_length=200)
+    current_text: str = Field(max_length=2000)
+    proposed_text: str = Field(min_length=1, max_length=4000)
+    reason: str = Field(min_length=3, max_length=1000)
+    evidence: dict[str, Any] = Field(default_factory=dict)
+    confidence: str = Field(default="low", pattern="^(high|medium|low)$")
+
+
+class _ReviewInput(BaseModel):
+    page_id: uuid.UUID
+    score: float = Field(ge=0, le=100)
+    findings: list[dict[str, Any]] = Field(default_factory=list, max_length=40)
+    recommendations: list[dict[str, Any]] = Field(default_factory=list, max_length=40)
+    proposed_changes: list[dict[str, Any]] = Field(default_factory=list, max_length=40)
+    confidence: str = Field(default="low", pattern="^(high|medium|low)$")
+    analysis_version: str = Field(default="content-optimization/v1", max_length=40)
+
+    @classmethod
+    def _validate_changes(cls, changes: list[dict[str, Any]]) -> None:
+        for c in changes:
+            _ChangeInput(**c)
+
+    def model_post_init(self, __context: Any) -> None:
+        self._validate_changes(self.proposed_changes)
+
+
 class _BriefInput(BaseModel):
     """Schema for the framework's only write tool. Everything is validated and
     the row is always project-scoped; status starts 'draft' and an existing
@@ -468,6 +495,148 @@ async def _get_competitor_candidates(box: ToolBox, params: _Paged) -> list[dict[
     ]
 
 
+async def _get_page_content(box: ToolBox, params: _PageArg) -> dict[str, Any]:
+    """One page's analyzable content: latest crawled text (UNTRUSTED), headings,
+    structured-data types and page-scoped entities. Project-scoped."""
+    from app.models.crawl import PageVersion
+    from app.models.entities import Entity
+    from app.models.page_intelligence import PageHeading, PageStructuredData
+
+    page = (
+        await box._session.scalars(
+            select(WebsitePage).where(
+                WebsitePage.id == params.page_id, WebsitePage.project_id == box.project_id
+            )
+        )
+    ).one_or_none()
+    if page is None:
+        raise ToolError("Page not found in this project")
+    version = (
+        await box._session.scalars(
+            select(PageVersion)
+            .where(PageVersion.page_id == page.id)
+            .order_by(PageVersion.crawled_at.desc())
+            .limit(1)
+        )
+    ).one_or_none()
+    headings = (
+        await box._session.scalars(
+            select(PageHeading)
+            .where(PageHeading.page_id == page.id)
+            .order_by(PageHeading.position)
+            .limit(50)
+        )
+    ).all()
+    blocks = (
+        await box._session.scalars(
+            select(PageStructuredData).where(PageStructuredData.page_id == page.id).limit(20)
+        )
+    ).all()
+    entities = (
+        await box._session.scalars(select(Entity).where(Entity.page_id == page.id).limit(20))
+    ).all()
+    return {
+        "id": str(page.id),
+        "url": page.url,
+        "title": _clip(page.title, 300),
+        "meta_description": _clip(page.meta_description, 500),
+        "word_count": page.word_count,
+        "language": page.language,
+        # page text is untrusted content from the web
+        "extracted_text": _clip(version.extracted_text if version else None, 8000),
+        "headings": [{"level": h.level, "text": _clip(h.text, 200)} for h in headings],
+        "schema_types": sorted({t for b in blocks for t in (b.schema_types or [])}),
+        "entities": [{"entity_type": e.entity_type, "name": _clip(e.name, 200)} for e in entities],
+    }
+
+
+async def _save_content_review(box: ToolBox, params: "_ReviewInput") -> dict[str, Any]:
+    """Upsert one content optimization review for a page of THIS project.
+
+    Validated write: the page must belong to the project; inserts start
+    'draft'; re-saves replace the analysis but keep the review's status and
+    carry over decisions for changes whose (location, current_text) are
+    unchanged. The original page is NEVER modified here or anywhere else."""
+    import hashlib
+
+    from app.models.content_reviews import ContentOptimizationReview, ReviewStatus
+
+    page = (
+        await box._session.scalars(
+            select(WebsitePage.id).where(
+                WebsitePage.id == params.page_id, WebsitePage.project_id == box.project_id
+            )
+        )
+    ).one_or_none()
+    if page is None:
+        raise ToolError("Page not found in this project")
+
+    def change_key(c: dict[str, Any]) -> str:
+        raw = f"{c.get('location')}|{c.get('current_text')}"
+        return hashlib.sha256(raw.encode()).hexdigest()[:12]
+
+    changes = []
+    seen_ids: set[str] = set()
+    for c in params.proposed_changes:
+        cid = change_key(c)
+        if cid in seen_ids:
+            continue  # identical (location, current_text) proposals collapse to one
+        seen_ids.add(cid)
+        changes.append(
+            {
+                "change_id": cid,
+                "location": c["location"],
+                "current_text": c["current_text"],
+                "proposed_text": c["proposed_text"],
+                "reason": c["reason"],
+                "evidence": c.get("evidence") or {},
+                "confidence": c.get("confidence", "low"),
+                "decision": "pending",
+                "decided_text": None,
+            }
+        )
+    row = (
+        await box._session.scalars(
+            select(ContentOptimizationReview).where(
+                ContentOptimizationReview.project_id == box.project_id,
+                ContentOptimizationReview.page_id == params.page_id,
+            )
+        )
+    ).one_or_none()
+    created = row is None
+    if row is None:
+        row = ContentOptimizationReview(
+            project_id=box.project_id,
+            page_id=params.page_id,
+            status=ReviewStatus.DRAFT.value,
+        )
+        box._session.add(row)
+    else:
+        previous = {c["change_id"]: c for c in (row.proposed_changes or [])}
+        for c in changes:
+            old = previous.get(c["change_id"])
+            if old is not None:
+                c["decision"] = old.get("decision", "pending")
+                c["decided_text"] = old.get("decided_text")
+    row.agent_run_id = box.agent_run_id
+    row.score = params.score
+    row.findings = params.findings
+    row.recommendations = params.recommendations
+    row.proposed_changes = changes
+    row.confidence = params.confidence
+    row.analysis_version = params.analysis_version
+    from datetime import UTC, datetime
+
+    row.analyzed_at = datetime.now(UTC)
+    await box._session.flush()
+    return {
+        "id": str(row.id),
+        "created": created,
+        "status": row.status,
+        "changes": len(changes),
+    }
+
+
 async def _save_content_brief(box: ToolBox, params: _BriefInput) -> dict[str, Any]:
     """Upsert one content brief for THIS project (unique per source_key).
 
@@ -692,6 +861,18 @@ TOOLS: dict[str, ToolSpec] = {
             "Recent extracted claims from AI responses (untrusted text)",
             _Paged,
             _get_claims,
+        ),
+        ToolSpec(
+            "get_page_content",
+            "One page's crawled text, headings, schema types and entities (untrusted)",
+            _PageArg,
+            _get_page_content,
+        ),
+        ToolSpec(
+            "save_content_review",
+            "Save/update one page's content optimization review (draft; validated write)",
+            _ReviewInput,
+            _save_content_review,
         ),
         ToolSpec(
             "save_content_brief",

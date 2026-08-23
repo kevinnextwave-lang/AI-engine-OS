@@ -29,6 +29,11 @@ from app.models.competitor_candidates import (
 )
 from app.models.content_briefs import ContentBrief, ContentBriefStatus, ContentType
 from app.models.content_gaps import ContentGap, ContentGapType
+from app.models.content_reviews import (
+    ChangeDecision,
+    ContentOptimizationReview,
+    ReviewStatus,
+)
 from app.models.crawl import (
     CrawlJob,
     CrawlStatus,
@@ -116,6 +121,9 @@ from app.models.sources import (
 from app.models.user import User
 
 __all__ = [
+    "ChangeDecision",
+    "ContentOptimizationReview",
+    "ReviewStatus",
     "ContentBrief",
     "ContentBriefStatus",
     "ContentType",
