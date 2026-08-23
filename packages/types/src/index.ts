@@ -517,6 +517,67 @@ export interface ContentGapAnalyzeResponse {
   note: string;
 }
 
+/** Competitive AI alerts (Milestone 5F). */
+export type CompetitiveAlertType =
+  | "competitor_overtakes_brand"
+  | "visibility_drop"
+  | "competitor_visibility_jump"
+  | "new_competitor"
+  | "new_citation_source"
+  | "citation_gap_increase"
+  | "new_competitor_claim"
+  | "content_gap";
+export type AlertSeverity = "critical" | "high" | "medium" | "low";
+export type AlertStatus = "new" | "read" | "dismissed";
+
+export interface CompetitiveAlert {
+  id: string;
+  project_id: string;
+  alert_type: CompetitiveAlertType;
+  competitor_id: string | null;
+  title: string;
+  description: string;
+  evidence: Record<string, unknown>;
+  severity: AlertSeverity;
+  status: AlertStatus;
+  detected_at: string;
+  analysis_version: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CompetitiveAlertListResponse {
+  items: CompetitiveAlert[];
+  total: number;
+  unread: number;
+  limit: number;
+  offset: number;
+  detected_at: string | null;
+}
+
+export interface AlertThresholds {
+  brand_drop_points?: number;
+  competitor_jump_points?: number;
+  overtake_margin_points?: number;
+  citation_gap_increase_points?: number;
+  min_responses?: number;
+  new_source_min_citations?: number;
+  new_competitor_min_confidence?: number;
+  content_gap_min_score?: number;
+}
+
+export interface AlertDetectResponse {
+  project_id: string;
+  window_days: number;
+  current_responses: number;
+  previous_responses: number;
+  alerts_created: number;
+  alerts_updated: number;
+  detected_at: string;
+  thresholds: Record<string, number>;
+  note: string;
+}
+
 export interface StatusResponse {
   status: string;
 }

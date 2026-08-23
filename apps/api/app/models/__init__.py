@@ -3,6 +3,7 @@
 from app.db.base import Base
 from app.models.ai import AiGeneration, AiModel, AiProvider
 from app.models.ai_readiness import AiReadinessAudit, AiReadinessObservation, ReadinessCategory
+from app.models.alerts import AlertSeverity, AlertStatus, AlertType, CompetitiveAlert
 from app.models.auth_audit_log import AuthAuditLog, AuthEvent
 from app.models.competitor import (
     Competitor,
@@ -107,6 +108,10 @@ from app.models.sources import (
 from app.models.user import User
 
 __all__ = [
+    "AlertSeverity",
+    "AlertStatus",
+    "AlertType",
+    "CompetitiveAlert",
     "ContentGap",
     "ContentGapType",
     "CompetitiveInsight",
