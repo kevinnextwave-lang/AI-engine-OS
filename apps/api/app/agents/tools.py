@@ -435,6 +435,59 @@ async def _get_competitor_candidates(box: ToolBox, params: _Paged) -> list[dict[
     ]
 
 
+async def _get_seo_audit(box: ToolBox, _: _Empty) -> dict[str, Any]:
+    """Latest completed technical SEO audit (score + issue counts), if any."""
+    from app.models.seo import AuditStatus, SeoAudit
+
+    audit = (
+        await box._session.scalars(
+            select(SeoAudit)
+            .where(
+                SeoAudit.project_id == box.project_id,
+                SeoAudit.status == AuditStatus.COMPLETED,
+            )
+            .order_by(SeoAudit.completed_at.desc())
+            .limit(1)
+        )
+    ).one_or_none()
+    if audit is None:
+        return {"available": False}
+    summary = audit.summary or {}
+    return {
+        "available": True,
+        "audit_id": str(audit.id),
+        "health_score": audit.health_score,
+        "pages_analyzed": audit.pages_analyzed,
+        "by_severity": summary.get("by_severity", {}),
+        "completed_at": audit.completed_at.isoformat() if audit.completed_at else None,
+    }
+
+
+async def _get_claims(box: ToolBox, params: _Paged) -> list[dict[str, Any]]:
+    """Recent extracted claims (subject/predicate/object are untrusted AI output)."""
+    from app.models.intelligence import ResponseClaim
+
+    rows = (
+        await box._session.scalars(
+            select(ResponseClaim)
+            .where(ResponseClaim.project_id == box.project_id)
+            .order_by(ResponseClaim.created_at.desc())
+            .limit(params.limit)
+            .offset(params.offset)
+        )
+    ).all()
+    return [
+        {
+            "id": str(r.id),
+            "subject": _clip(r.subject, 200),
+            "predicate": _clip(r.predicate, 100),
+            "object": _clip(r.object, 300),
+            "confidence": r.confidence,
+        }
+        for r in rows
+    ]
+
+
 async def _get_visibility_metrics(box: ToolBox, _: _Empty) -> dict[str, Any]:
     from app.visibility.engine import VisibilityEngine
 
@@ -521,6 +574,18 @@ TOOLS: dict[str, ToolSpec] = {
             "Why-competitors-win insights (5D), strongest first",
             _Paged,
             _get_competitive_insights,
+        ),
+        ToolSpec(
+            "get_seo_audit",
+            "Latest completed technical SEO audit (health score, issue counts)",
+            _Empty,
+            _get_seo_audit,
+        ),
+        ToolSpec(
+            "get_claims",
+            "Recent extracted claims from AI responses (untrusted text)",
+            _Paged,
+            _get_claims,
         ),
         ToolSpec(
             "get_competitor_candidates",

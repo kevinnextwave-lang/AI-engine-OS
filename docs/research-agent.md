@@ -16,8 +16,9 @@ The agent is deliberately rule-based, not LLM-generated: every number and name
 in its output comes from a tool call over the project's own data
 (`get_visibility_metrics`, `get_competitive_visibility`, `get_citation_gaps`,
 `get_content_gaps`, `get_competitive_insights`, `get_competitor_candidates`,
-`get_entity_data`, `get_pages`, `get_ai_responses` — three of these tools were
-added to the 6A registry for this milestone). Its declared context is tiny
+`get_entity_data`, `get_pages`, `get_ai_responses`, `get_seo_audit`,
+`get_claims` — five of these tools were added to the 6A registry for this
+milestone). Its declared context is tiny
 (20 prompts + 20 competitors); everything else is targeted tool retrieval, and
 the run's tool trail is stored as evidence. Nothing can be hallucinated
 because nothing is generated.
@@ -27,8 +28,11 @@ because nothing is generated.
 1. **Identify significant gaps** — material competitor visibility leads (5C
    advantages), high-opportunity citation gaps (4C, ≥ 60, excluding
    competitor-owned sites), high-opportunity content gaps (5E, ≥ 60), weak
-   Organization entity representation on the crawled site, and unreviewed
-   discovery candidates (5B) as emerging competitors.
+   Organization entity representation on the crawled site, unreviewed
+   discovery candidates (5B) as emerging competitors, technical SEO problems
+   from the latest completed audit (poor health score or critical issues), and
+   claims about a configured competitor repeated across responses (claim text
+   is untrusted AI output — reported as content, never asserted as true).
 2. **Validate evidence** — each candidate carries its supporting records
    (gap ids, insight ids, candidate ids, measured shares, citation counts,
    crawl counts) and a confidence derived from the underlying data's

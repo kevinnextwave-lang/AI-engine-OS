@@ -15,10 +15,13 @@ from app.api.v1.routes.agents import get_agent_dispatcher, get_registry
 from app.models.agents import AgentAction, AgentRun
 from app.models.competitor_candidates import CandidateSource, CandidateStatus, CompetitorCandidate
 from app.models.content_gaps import ContentGap
-from app.models.crawl import WebsitePage
+from app.models.crawl import CrawlJob, CrawlStatus, CrawlType, WebsitePage
 from app.models.entities import Entity
 from app.models.gaps import CitationGap
+from app.models.intelligence import ResponseClaim
 from app.models.project import Project
+from app.models.prompts import AiResponse, PromptRun
+from app.models.seo import AuditStatus, SeoAudit
 from app.models.sources import SourceDomain
 from tests.conftest import auth_header
 from tests.test_authz import signup
@@ -155,6 +158,50 @@ async def _fixture_project(client: AsyncClient, db_session: AsyncSession) -> tup
             discovered_at=NOW,
         )
     )
+    crawl = CrawlJob(
+        project_id=uuid.UUID(pid),
+        root_url="https://www.ledgerly.example/",
+        crawl_type=CrawlType.FULL,
+        status=CrawlStatus.COMPLETED,
+        max_pages=50,
+        max_depth=3,
+    )
+    db_session.add(crawl)
+    await db_session.flush()
+    db_session.add(
+        SeoAudit(
+            project_id=uuid.UUID(pid),
+            crawl_job_id=crawl.id,
+            status=AuditStatus.COMPLETED,
+            pages_analyzed=12,
+            observation_count=9,
+            health_score=42.0,
+            summary={"by_severity": {"critical": 3, "warning": 4, "info": 2}},
+            completed_at=NOW,
+        )
+    )
+    # the same claim about QuickBooks, repeated in four responses
+    resp_ids = (
+        await db_session.scalars(
+            select(AiResponse.id)
+            .join(PromptRun, PromptRun.id == AiResponse.prompt_run_id)
+            .where(PromptRun.project_id == uuid.UUID(pid))
+            .limit(4)
+        )
+    ).all()
+    for rid in resp_ids:
+        db_session.add(
+            ResponseClaim(
+                ai_response_id=rid,
+                project_id=uuid.UUID(pid),
+                subject="QuickBooks",
+                predicate="offers",
+                object="built-in payroll in every plan",
+                confidence=0.7,
+                context="",
+                parser_version="response-parser/v1",
+            )
+        )
     await db_session.flush()
     return h, pid
 
@@ -183,6 +230,8 @@ async def test_evidence_retrieval_and_structure(
     assert any("construction accounting" in t for t in titles)
     assert any("brand identity" in t for t in titles)
     assert any("Wave" in t for t in titles)
+    assert any("Technical SEO" in t for t in titles)
+    assert any("repeat a claim about QuickBooks" in t for t in titles)
     # every finding separates observed / inference / recommendation
     for f in result["findings"]:
         stmts = f["statements"]
@@ -209,6 +258,8 @@ async def test_evidence_retrieval_and_structure(
         "get_content_gaps",
         "get_entity_data",
         "get_pages",
+        "get_seo_audit",
+        "get_claims",
     } <= used
     assert "Material competitor lead(s): QuickBooks." in result["summary"]
 
@@ -301,6 +352,16 @@ async def test_hallucination_prevention(client: AsyncClient, db_session: AsyncSe
     assert cite["evidence"]["competitor_citations"] == 14
     assert cite["evidence"]["brand_citations"] == 0
     assert "82" in cite["statements"]["observed"]
+    findings_all = result["findings"]
+    seo = next((f for f in findings_all if "Technical SEO" in f["title"]), None)
+    if seo is not None:  # present when it survives prioritization
+        assert seo["evidence"]["health_score"] == 42.0
+        assert seo["evidence"]["by_severity"]["critical"] == 3
+    claim = next((f for f in findings_all if "repeat a claim" in f["title"]), None)
+    if claim is not None:
+        assert claim["evidence"]["occurrences"] == 4
+        assert "built-in payroll in every plan" in claim["statements"]["observed"]
+        assert claim["statements"]["recommendation"].startswith("Verify")
     # observed statements state measurements; inferences never masquerade as facts
     assert "appeared in 100% of eligible AI responses" in comp["statements"]["observed"]
     assert "currently has stronger AI visibility" in comp["statements"]["inference"]

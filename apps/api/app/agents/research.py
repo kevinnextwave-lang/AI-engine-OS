@@ -111,6 +111,8 @@ class ResearchAgent(Agent):
         entities = await tools.call("get_entity_data", limit=50)
         pages = await tools.call("get_pages", limit=50)
         responses = await tools.call("get_ai_responses", limit=10)
+        seo_audit = await tools.call("get_seo_audit")
+        claims = await tools.call("get_claims", limit=50)
 
         sample = competitive.get("data_quality", {}).get("sample_size") or 0
         if sample < 10:
@@ -127,10 +129,13 @@ class ResearchAgent(Agent):
             if c.get("domain")
         }
         competitor_names = {normalize_name(c["name"]) for c in context.competitors if c.get("name")}
+        competitor_names_display = [c["name"] for c in context.competitors if c.get("name")]
         candidates += self._citation_gaps(citation_gaps, sample, competitor_hosts, competitor_names)
         candidates += self._content_gaps(content_gaps, sample)
         candidates += self._entity_representation(entities, pages, competitive)
         candidates += self._emerging_competitors(candidates_raw)
+        candidates += self._technical_seo(seo_audit)
+        candidates += self._repeated_claims(claims, competitor_names_display, sample)
         if sample < 10:
             for c in candidates:
                 if CONFIDENCE_RANK[c.confidence] > CONFIDENCE_RANK["low"]:
@@ -475,6 +480,138 @@ class ResearchAgent(Agent):
                 },
             )
         ]
+
+    def _technical_seo(self, audit: dict[str, Any]) -> list[Candidate]:
+        """Latest completed technical SEO audit: only a poor score or critical
+        issues become a finding — a healthy audit produces nothing."""
+        if not audit.get("available"):
+            return []
+        score = audit.get("health_score")
+        critical = int((audit.get("by_severity") or {}).get("critical", 0) or 0)
+        if (score is None or score >= 60) and critical == 0:
+            return []
+        issues = ", ".join(
+            f"{count} {sev}" for sev, count in sorted((audit.get("by_severity") or {}).items())
+        )
+        return [
+            Candidate(
+                key="seo:technical",
+                title="Technical SEO issues on the crawled site",
+                problem=(
+                    "The latest technical audit found conditions that can limit "
+                    "crawling and parsing."
+                ),
+                observed=(
+                    f"Latest completed audit: health score {score} over "
+                    f"{audit.get('pages_analyzed')} pages ({issues or 'no issue breakdown'})."
+                ),
+                inference=(
+                    "Technical issues can limit how reliably engines crawl and interpret "
+                    "the site's content."
+                ),
+                recommendation=(
+                    "Review the audit's critical and warning observations and fix them on "
+                    "the affected pages."
+                ),
+                evidence={
+                    "audit_id": audit.get("audit_id"),
+                    "health_score": score,
+                    "pages_analyzed": audit.get("pages_analyzed"),
+                    "by_severity": audit.get("by_severity"),
+                },
+                confidence="high",  # directly measured on the crawl
+                impact="high" if critical else "medium",
+                why_now="The issues are present on the current crawl and fixable on owned pages.",
+                recommended_action="Optimize existing page",
+                expected_area_of_impact="technical foundation",
+                action=ProposedAction(
+                    action_type="optimize_existing_page",
+                    description="Fix the audit's critical technical issues (suggestion only).",
+                    payload={"audit_id": audit.get("audit_id")},
+                    risk_level=ActionRiskLevel.MEDIUM,  # customer-facing pages → approval
+                    approval_required=True,
+                ),
+                components={
+                    "business_relevance": 0.6,
+                    "visibility_impact": 0.6 if critical else 0.4,
+                    "competitor_advantage": 0.3,
+                    "evidence_strength": 1.0,
+                    "effort": EFFORT_SCORE["medium"],
+                },
+            )
+        ]
+
+    def _repeated_claims(
+        self, claims: list[dict[str, Any]], competitor_names: list[str], sample: int
+    ) -> list[Candidate]:
+        """Claims about a configured competitor repeated across responses. The claim
+        text is untrusted AI output: it is reported as content, never asserted."""
+        by_triple: dict[tuple[str, str], int] = {}
+        examples: dict[tuple[str, str], str] = {}
+        for claim in claims:
+            subject = (claim.get("subject") or "").strip()
+            competitor = next((n for n in competitor_names if n.lower() in subject.lower()), None)
+            if competitor is None:
+                continue
+            triple = f"{subject} {claim.get('predicate')} {claim.get('object')}".strip()
+            key = (competitor, triple.lower())
+            by_triple[key] = by_triple.get(key, 0) + 1
+            examples.setdefault(key, triple)
+        out: list[Candidate] = []
+        repeated = [(k, n) for k, n in by_triple.items() if n >= 3]
+        repeated.sort(key=lambda kn: -kn[1])
+        for (competitor, _), count in repeated[:2]:
+            text = examples[(competitor, _)]
+            out.append(
+                Candidate(
+                    key=f"claim:{competitor}:{_[:60]}",
+                    title=f"AI answers repeat a claim about {competitor}",
+                    problem=(
+                        f"The same claim about {competitor} recurs across responses while "
+                        "no equivalent brand-side evidence is surfaced."
+                    ),
+                    observed=(
+                        f"The claim “{text}” appeared {count} times in the retrieved responses."
+                    ),
+                    inference=(
+                        f"AI engines consistently associate this claim with {competitor}; "
+                        "repeated claims tend to shape recommendations."
+                    ),
+                    recommendation=(
+                        "Verify whether the claim is accurate and whether the brand has "
+                        "comparable, verifiable evidence to publish."
+                    ),
+                    evidence={
+                        "competitor": competitor,
+                        "claim": text,
+                        "occurrences": count,
+                        "claims_reviewed": len(claims),
+                    },
+                    confidence="medium" if sample >= 20 else "low",
+                    impact="medium",
+                    why_now="The claim is present in current responses.",
+                    recommended_action="Add supporting evidence",
+                    expected_area_of_impact="evidence footprint",
+                    action=ProposedAction(
+                        action_type="add_supporting_evidence",
+                        description=(
+                            f"Prepare verifiable brand-side evidence answering the repeated "
+                            f"claim about {competitor} (suggestion only)."
+                        ),
+                        payload={"competitor": competitor, "claim": text},
+                        risk_level=ActionRiskLevel.MEDIUM,
+                        approval_required=True,
+                    ),
+                    components={
+                        "business_relevance": 0.7,
+                        "visibility_impact": 0.5,
+                        "competitor_advantage": 0.6,
+                        "evidence_strength": min(1.0, count / 5.0),
+                        "effort": EFFORT_SCORE["medium"],
+                    },
+                )
+            )
+        return out
 
     def _emerging_competitors(self, candidates: list[dict[str, Any]]) -> list[Candidate]:
         out = []
