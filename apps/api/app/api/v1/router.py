@@ -5,6 +5,7 @@ from app.api.v1.routes import (
     auth,
     competitors,
     crawl,
+    discovery,
     entities,
     execution,
     gaps,
@@ -56,3 +57,5 @@ api_router.include_router(gaps.gap_router)
 api_router.include_router(graph.router)
 api_router.include_router(recommendations.project_router)
 api_router.include_router(recommendations.rec_router)
+api_router.include_router(discovery.project_router)
+api_router.include_router(discovery.router)

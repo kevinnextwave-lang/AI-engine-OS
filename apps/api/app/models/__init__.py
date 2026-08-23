@@ -14,6 +14,11 @@ from app.models.competitor import (
     CompetitorSource,
     CompetitorStatus,
 )
+from app.models.competitor_candidates import (
+    CandidateSource,
+    CandidateStatus,
+    CompetitorCandidate,
+)
 from app.models.crawl import (
     CrawlJob,
     CrawlStatus,
@@ -161,6 +166,9 @@ __all__ = [
     "Severity",
     "StructuredDataFormat",
     "User",
+    "CandidateSource",
+    "CandidateStatus",
+    "CompetitorCandidate",
     "CompetitorAlias",
     "CompetitorConfidence",
     "CompetitorDomain",
