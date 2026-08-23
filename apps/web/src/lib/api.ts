@@ -34,6 +34,8 @@ import type {
   CompetitiveOverview,
   CompetitivePrompts,
   CompetitiveTrends,
+  CompetitiveInsightListResponse,
+  InsightAnalyzeResponse,
   CompetitorCandidate,
   CompetitorCandidateAcceptRequest,
   CompetitorCandidateListResponse,
@@ -266,6 +268,29 @@ export const api = {
       request<CompetitiveEngines>(
         `/projects/${projectId}/competitive-visibility/engines${qs({ window })}`,
       ),
+  },
+  competitiveInsights: {
+    list: (
+      projectId: string,
+      params: {
+        insight_type?: string;
+        impact?: string;
+        confidence?: string;
+        competitor_id?: string;
+        limit?: number;
+        offset?: number;
+      } = {},
+    ) =>
+      request<CompetitiveInsightListResponse>(
+        `/projects/${projectId}/competitive-insights${qs(params)}`,
+      ),
+    analyze: (projectId: string, windowDays = 90) =>
+      request<InsightAnalyzeResponse>(`/projects/${projectId}/competitive-insights/analyze`, {
+        method: "POST",
+        body: JSON.stringify({ window_days: windowDays }),
+      }),
+    forCompetitor: (competitorId: string) =>
+      request<CompetitiveInsightListResponse>(`/competitors/${competitorId}/insights`),
   },
   crawl: {
     start: (projectId: string, body: CrawlStartRequest = {}) =>

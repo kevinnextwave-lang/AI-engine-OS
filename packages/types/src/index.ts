@@ -417,6 +417,55 @@ export interface CompetitiveEngines {
   ranking_minimum_sample: number;
 }
 
+/** Why Competitors Win (Milestone 5D). Insights are observed patterns, never causation. */
+export type InsightType =
+  | "content_advantage"
+  | "citation_advantage"
+  | "entity_advantage"
+  | "evidence_advantage"
+  | "positioning_advantage"
+  | "coverage_advantage";
+export type InsightLevel = "high" | "medium" | "low";
+
+export interface CompetitiveInsight {
+  id: string;
+  project_id: string;
+  competitor_id: string;
+  insight_type: InsightType;
+  title: string;
+  description: string;
+  evidence: Record<string, unknown>;
+  confidence: InsightLevel;
+  impact: InsightLevel;
+  /** 0–100 ordering magnitude, not a quality score */
+  strength: number;
+  analysis_version: string;
+  window_days: number;
+  analyzed_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CompetitiveInsightListResponse {
+  items: CompetitiveInsight[];
+  total: number;
+  limit: number;
+  offset: number;
+  analyzed_at: string | null;
+  note: string;
+}
+
+export interface InsightAnalyzeResponse {
+  project_id: string;
+  window_days: number;
+  eligible_responses: number;
+  competitors_analyzed: number;
+  insights_written: number;
+  insights_removed: number;
+  analyzed_at: string;
+  note: string;
+}
+
 export interface StatusResponse {
   status: string;
 }
