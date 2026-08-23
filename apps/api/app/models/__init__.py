@@ -37,6 +37,12 @@ from app.models.entities import (
     SchemaIssue,
 )
 from app.models.gaps import CitationGap, GapConfidence, GapStatus, GapType
+from app.models.insights import (
+    CompetitiveInsight,
+    InsightConfidence,
+    InsightImpact,
+    InsightType,
+)
 from app.models.intelligence import (
     BrandMention,
     CompetitorMention,
@@ -100,6 +106,10 @@ from app.models.sources import (
 from app.models.user import User
 
 __all__ = [
+    "CompetitiveInsight",
+    "InsightConfidence",
+    "InsightImpact",
+    "InsightType",
     "AiGeneration",
     "AiModel",
     "AiProvider",
