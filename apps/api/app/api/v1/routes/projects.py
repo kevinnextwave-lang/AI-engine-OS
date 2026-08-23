@@ -30,8 +30,6 @@ from app.models.membership import Membership
 from app.repositories.organizations import MembershipRepository, OrganizationRepository
 from app.schemas.common import MessageResponse
 from app.schemas.projects import (
-    CompetitorCreateRequest,
-    CompetitorResponse,
     DomainCreateRequest,
     DomainResponse,
     ProjectCreateRequest,
@@ -251,53 +249,3 @@ async def add_domain(
         access.project, url=body.url, is_primary=body.is_primary
     )
     return DomainResponse.model_validate(domain)
-
-
-# -- competitors -------------------------------------------------------------
-
-
-@router.get(
-    "/{project_id}/competitors",
-    response_model=list[CompetitorResponse],
-    summary="List competitors",
-    responses=_ERRORS,
-)
-async def list_competitors(
-    access: Annotated[ProjectAccess, Depends(require_project_access(Permission.DATA_READ))],
-    session: DBSession,
-) -> list[CompetitorResponse]:
-    rows = await ProjectService(session).list_competitors(access.project)
-    return [CompetitorResponse.model_validate(c) for c in rows]
-
-
-@router.post(
-    "/{project_id}/competitors",
-    response_model=CompetitorResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="Add a competitor",
-    responses={**_ERRORS, 409: {"description": "Competitor hostname already tracked"}},
-)
-async def add_competitor(
-    body: CompetitorCreateRequest,
-    access: Annotated[ProjectAccess, Depends(require_project_access(Permission.DATA_MANAGE))],
-    session: DBSession,
-) -> CompetitorResponse:
-    competitor = await ProjectService(session).add_competitor(
-        access.project, name=body.name, website_url=body.website_url
-    )
-    return CompetitorResponse.model_validate(competitor)
-
-
-@router.delete(
-    "/{project_id}/competitors/{competitor_id}",
-    response_model=MessageResponse,
-    summary="Remove a competitor",
-    responses=_ERRORS,
-)
-async def remove_competitor(
-    competitor_id: uuid.UUID,
-    access: Annotated[ProjectAccess, Depends(require_project_access(Permission.DATA_MANAGE))],
-    session: DBSession,
-) -> MessageResponse:
-    await ProjectService(session).remove_competitor(access.project, competitor_id)
-    return MessageResponse(message="Competitor removed")

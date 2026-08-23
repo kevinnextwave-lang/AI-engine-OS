@@ -4,7 +4,16 @@ from app.db.base import Base
 from app.models.ai import AiGeneration, AiModel, AiProvider
 from app.models.ai_readiness import AiReadinessAudit, AiReadinessObservation, ReadinessCategory
 from app.models.auth_audit_log import AuthAuditLog, AuthEvent
-from app.models.competitor import Competitor
+from app.models.competitor import (
+    Competitor,
+    CompetitorAlias,
+    CompetitorConfidence,
+    CompetitorDomain,
+    CompetitorDomainType,
+    CompetitorProduct,
+    CompetitorSource,
+    CompetitorStatus,
+)
 from app.models.crawl import (
     CrawlJob,
     CrawlStatus,
@@ -152,6 +161,13 @@ __all__ = [
     "Severity",
     "StructuredDataFormat",
     "User",
+    "CompetitorAlias",
+    "CompetitorConfidence",
+    "CompetitorDomain",
+    "CompetitorDomainType",
+    "CompetitorProduct",
+    "CompetitorSource",
+    "CompetitorStatus",
     "Recommendation",
     "RecommendationPriority",
     "RecommendationStatus",
