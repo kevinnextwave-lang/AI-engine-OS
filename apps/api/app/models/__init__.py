@@ -19,6 +19,7 @@ from app.models.competitor_candidates import (
     CandidateStatus,
     CompetitorCandidate,
 )
+from app.models.content_gaps import ContentGap, ContentGapType
 from app.models.crawl import (
     CrawlJob,
     CrawlStatus,
@@ -106,6 +107,8 @@ from app.models.sources import (
 from app.models.user import User
 
 __all__ = [
+    "ContentGap",
+    "ContentGapType",
     "CompetitiveInsight",
     "InsightConfidence",
     "InsightImpact",

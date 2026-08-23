@@ -34,6 +34,9 @@ import type {
   CompetitiveOverview,
   CompetitivePrompts,
   CompetitiveTrends,
+  ContentGap,
+  ContentGapAnalyzeResponse,
+  ContentGapListResponse,
   CompetitiveInsightListResponse,
   InsightAnalyzeResponse,
   CompetitorCandidate,
@@ -291,6 +294,20 @@ export const api = {
       }),
     forCompetitor: (competitorId: string) =>
       request<CompetitiveInsightListResponse>(`/competitors/${competitorId}/insights`),
+  },
+  contentGaps: {
+    list: (
+      projectId: string,
+      params: { gap_type?: string; status?: string; min_score?: number; limit?: number; offset?: number } = {},
+    ) => request<ContentGapListResponse>(`/projects/${projectId}/content-gaps${qs(params)}`),
+    analyze: (projectId: string, windowDays = 90) =>
+      request<ContentGapAnalyzeResponse>(`/projects/${projectId}/content-gaps/analyze`, {
+        method: "POST",
+        body: JSON.stringify({ window_days: windowDays }),
+      }),
+    get: (gapId: string) => request<ContentGap>(`/content-gaps/${gapId}`),
+    update: (gapId: string, body: { status?: string; note?: string | null }) =>
+      request<ContentGap>(`/content-gaps/${gapId}`, { method: "PATCH", body: JSON.stringify(body) }),
   },
   crawl: {
     start: (projectId: string, body: CrawlStartRequest = {}) =>
