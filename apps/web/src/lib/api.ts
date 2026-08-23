@@ -30,6 +30,10 @@ import type {
   LoginRequest,
   Member,
   Competitor,
+  CompetitiveEngines,
+  CompetitiveOverview,
+  CompetitivePrompts,
+  CompetitiveTrends,
   CompetitorCandidate,
   CompetitorCandidateAcceptRequest,
   CompetitorCandidateListResponse,
@@ -246,6 +250,22 @@ export const api = {
       request<CompetitorCandidate>(`/competitor-candidates/${candidateId}/reject`, {
         method: "POST",
       }),
+  },
+  competitiveVisibility: {
+    overview: (projectId: string, window: VisibilityWindow = "30d") =>
+      request<CompetitiveOverview>(
+        `/projects/${projectId}/competitive-visibility${qs({ window })}`,
+      ),
+    trends: (projectId: string) =>
+      request<CompetitiveTrends>(`/projects/${projectId}/competitive-visibility/trends`),
+    prompts: (projectId: string, window: VisibilityWindow = "30d") =>
+      request<CompetitivePrompts>(
+        `/projects/${projectId}/competitive-visibility/prompts${qs({ window })}`,
+      ),
+    engines: (projectId: string, window: VisibilityWindow = "30d") =>
+      request<CompetitiveEngines>(
+        `/projects/${projectId}/competitive-visibility/engines${qs({ window })}`,
+      ),
   },
   crawl: {
     start: (projectId: string, body: CrawlStartRequest = {}) =>
