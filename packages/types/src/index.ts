@@ -229,6 +229,194 @@ export interface CompetitorCandidateAcceptRequest {
   name?: string | null;
 }
 
+/** Competitive AI Visibility (Milestone 5C). Score is this product's own composite, not an industry standard. */
+export interface CompetitiveDataQuality {
+  sample_size: number;
+  prompt_count: number;
+  provider_count: number;
+  providers: string[];
+  date_range: { start: string | null; end: string | null };
+  confidence: Sufficiency;
+  competitors_configured: number;
+  minimum_sample: number;
+  ranking_minimum_sample: number;
+}
+
+export interface CompetitiveEntity {
+  /** "brand" or the configured competitor name */
+  name: string;
+  is_brand: boolean;
+  score: number | null;
+  mention_share: number | null;
+  recommendation_share: number | null;
+  average_position: number | null;
+  citation_share: number | null;
+  sentiment_score: number | null;
+  sentiment: Record<string, number>;
+  prompt_coverage: number;
+  counts: {
+    mentions: number;
+    recommendations: number;
+    positioned_mentions: number;
+    cited_responses: number;
+    citations: number;
+  };
+  components: Record<string, number | null>;
+  sufficiency: Sufficiency;
+}
+
+export interface CompetitiveEntityWithChange extends CompetitiveEntity {
+  previous_score: number | null;
+  change: number | null;
+  trend: TrendDirection;
+}
+
+export interface CompetitiveAdvantage {
+  competitor: string;
+  competitor_score: number | null;
+  brand_score: number | null;
+  /** competitor score − brand score */
+  advantage: number | null;
+  material: boolean;
+  reason: string | null;
+  components: Record<string, number | null>;
+  where_they_win: string[];
+}
+
+export interface CompetitiveRanking {
+  available: boolean;
+  reason: string | null;
+  order: string[];
+  brand_rank: number | null;
+}
+
+export interface CompetitiveBlock {
+  entities: CompetitiveEntity[];
+  advantages: CompetitiveAdvantage[];
+  ranking: CompetitiveRanking;
+  data_quality: CompetitiveDataQuality;
+}
+
+export interface CompetitiveOverview extends Omit<CompetitiveBlock, "entities"> {
+  method: string;
+  weights: Record<string, number>;
+  note: string;
+  window: VisibilityWindow;
+  generated_at: string;
+  period: { start: string; end: string };
+  previous_period: { start: string; end: string };
+  entities: CompetitiveEntityWithChange[];
+  previous_data_quality: CompetitiveDataQuality;
+  material_advantage_threshold: number;
+}
+
+export interface CompetitiveTrendEntity {
+  name: string;
+  is_brand: boolean;
+  current_score: number | null;
+  previous_score: number | null;
+  current_mention_share: number | null;
+  previous_mention_share: number | null;
+  change: number | null;
+  trend: TrendDirection;
+}
+
+export interface CompetitiveSeriesPoint {
+  start: string;
+  end: string;
+  score: number | null;
+  mention_share: number | null;
+  recommendation_share: number | null;
+  citation_share: number | null;
+  sample_size: number;
+  sufficiency: Sufficiency;
+}
+
+export interface CompetitiveTrends {
+  method: string;
+  weights: Record<string, number>;
+  note: string;
+  generated_at: string;
+  windows: Record<
+    string,
+    {
+      current_sample_size: number;
+      previous_sample_size: number;
+      sufficiency: Sufficiency;
+      entities: CompetitiveTrendEntity[];
+      advantages: CompetitiveAdvantage[];
+    }
+  >;
+  series: Record<string, CompetitiveSeriesPoint[]>;
+  bucket_days: number;
+  minimum_sample: number;
+  data_quality: CompetitiveDataQuality;
+}
+
+export interface CompetitivePromptEntity {
+  name: string;
+  is_brand: boolean;
+  mentioned: boolean;
+  recommended: boolean;
+  position: number | null;
+  sentiment: string;
+  citation_count: number;
+  recommendation_strength: string;
+  mentioned_in: number;
+  recommended_in: number;
+  responses: number;
+  latest: {
+    mentioned: boolean;
+    recommended: boolean;
+    position: number | null;
+    sentiment: string;
+    citation_count: number;
+    recommendation_strength: string;
+  };
+}
+
+export interface CompetitivePrompt {
+  prompt_id: string;
+  text: string;
+  category: string;
+  funnel_stage: string;
+  responses: number;
+  providers: string[];
+  last_completed_at: string;
+  sufficiency: Sufficiency;
+  entities: CompetitivePromptEntity[];
+  leader: { name: string | null; reason: string | null };
+  brand_outperformed_by: string[];
+}
+
+export interface CompetitivePrompts {
+  method: string;
+  weights: Record<string, number>;
+  note: string;
+  window: VisibilityWindow;
+  period: { start: string; end: string };
+  prompts: CompetitivePrompt[];
+  data_quality: CompetitiveDataQuality;
+}
+
+export interface CompetitiveEngines {
+  method: string;
+  weights: Record<string, number>;
+  note: string;
+  window: VisibilityWindow;
+  period: { start: string; end: string };
+  overall: CompetitiveBlock;
+  providers: (CompetitiveBlock & { provider: string; models: string[] })[];
+  engine_spread: {
+    provider: string;
+    brand_score: number | null;
+    top_competitor: string | null;
+    top_competitor_advantage: number | null;
+    sample_size: number;
+  }[];
+  ranking_minimum_sample: number;
+}
+
 export interface StatusResponse {
   status: string;
 }

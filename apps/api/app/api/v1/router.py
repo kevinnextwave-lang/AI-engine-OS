@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.v1.routes import (
     ai_readiness,
     auth,
+    competitive,
     competitors,
     crawl,
     discovery,
@@ -50,6 +51,7 @@ api_router.include_router(execution.prompt_router)
 api_router.include_router(intelligence.run_router)
 api_router.include_router(intelligence.batch_router)
 api_router.include_router(visibility.router)
+api_router.include_router(competitive.router)
 api_router.include_router(sources.router)
 api_router.include_router(sources.project_router)
 api_router.include_router(gaps.project_router)

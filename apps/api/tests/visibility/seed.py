@@ -75,11 +75,13 @@ class Seeder:
         strength: str = "strong",
         cited: bool = False,
         competitors: list[tuple[str, int | None, str, str]] | None = None,
+        competitor_cited: list[str] | None = None,
         parsed: bool = True,
         category: PromptCategory = PromptCategory.COMPARISON,
         funnel_stage: FunnelStage = FunnelStage.CONSIDERATION,
     ) -> PromptRun:
-        """One completed+parsed run. competitors: (name, position, sentiment, strength)."""
+        """One completed+parsed run. competitors: (name, position, sentiment, strength);
+        competitor_cited: names whose own site (www.{name}.com) is cited in the response."""
         p = await self.prompt(prompt, category=category, funnel_stage=funnel_stage)
         when = NOW - timedelta(days=days_ago)
         run = PromptRun(
@@ -122,6 +124,17 @@ class Seeder:
                     project_id=self.project_id,
                     url="https://www.ledgerly.example/pricing",
                     domain="www.ledgerly.example",
+                    citation_type="url",
+                    parser_version=PV,
+                )
+            )
+        for name in competitor_cited or []:
+            self.session.add(
+                ResponseCitation(
+                    ai_response_id=resp.id,
+                    project_id=self.project_id,
+                    url=f"https://www.{name.lower()}.com/pricing",
+                    domain=f"www.{name.lower()}.com",
                     citation_type="url",
                     parser_version=PV,
                 )
