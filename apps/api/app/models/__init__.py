@@ -51,6 +51,7 @@ from app.models.entities import (
     EntityScope,
     SchemaIssue,
 )
+from app.models.entity_reviews import EntityOptimizationReview
 from app.models.gaps import CitationGap, GapConfidence, GapStatus, GapType
 from app.models.insights import (
     CompetitiveInsight,
@@ -121,6 +122,7 @@ from app.models.sources import (
 from app.models.user import User
 
 __all__ = [
+    "EntityOptimizationReview",
     "ChangeDecision",
     "ContentOptimizationReview",
     "ReviewStatus",

@@ -46,8 +46,10 @@ def _register_builtin(registry: AgentRegistry) -> None:
     """Built-in agents. Imported lazily to avoid import cycles."""
     from app.agents.content_optimization import ContentOptimizationAgent
     from app.agents.content_strategy import ContentStrategyAgent
+    from app.agents.entity_optimization import EntityOptimizationAgent
     from app.agents.research import ResearchAgent
 
     registry.register(ResearchAgent())
     registry.register(ContentStrategyAgent())
     registry.register(ContentOptimizationAgent())
+    registry.register(EntityOptimizationAgent())

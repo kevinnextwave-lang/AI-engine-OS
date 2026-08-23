@@ -40,6 +40,9 @@ import type {
   ContentOptimizationReview,
   ContentReviewListResponse,
   ContentReviewStatus,
+  EntityOptimizationReview,
+  EntityReviewListResponse,
+  EntityReviewStatus,
   AgentAction,
   AgentRun,
   AgentRunListResponse,
@@ -402,6 +405,18 @@ export const api = {
       request<ContentOptimizationReview>(`/content-reviews/${reviewId}/changes/${changeId}`, {
         method: "POST",
         body: JSON.stringify(body),
+      }),
+  },
+  entityReviews: {
+    list: (
+      projectId: string,
+      params: { status?: string; entity_type?: string; limit?: number; offset?: number } = {},
+    ) => request<EntityReviewListResponse>(`/projects/${projectId}/entity-reviews${qs(params)}`),
+    get: (reviewId: string) => request<EntityOptimizationReview>(`/entity-reviews/${reviewId}`),
+    setStatus: (reviewId: string, status: EntityReviewStatus) =>
+      request<EntityOptimizationReview>(`/entity-reviews/${reviewId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
       }),
   },
   crawl: {

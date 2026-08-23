@@ -82,6 +82,18 @@ class _ReviewInput(BaseModel):
         self._validate_changes(self.proposed_changes)
 
 
+class _EntityReviewInput(BaseModel):
+    """Schema for the entity-review write tool (validated, project-scoped)."""
+
+    review_key: str = Field(min_length=3, max_length=200)
+    entity_id: uuid.UUID | None = None
+    entity_type: str = Field(min_length=3, max_length=40)
+    findings: list[dict[str, Any]] = Field(default_factory=list, max_length=40)
+    recommendations: list[dict[str, Any]] = Field(default_factory=list, max_length=40)
+    confidence: str = Field(default="low", pattern="^(high|medium|low)$")
+    analysis_version: str = Field(default="entity-optimization/v1", max_length=40)
+
+
 class _BriefInput(BaseModel):
     """Schema for the framework's only write tool. Everything is validated and
     the row is always project-scoped; status starts 'draft' and an existing
@@ -396,13 +408,75 @@ async def _get_entity_data(box: ToolBox, params: _Paged) -> list[dict[str, Any]]
             .offset(params.offset)
         )
     ).all()
+    page_urls: dict[Any, str] = {}
+    page_ids = [r.page_id for r in rows if r.page_id is not None]
+    if page_ids:
+        for pid_, url in (
+            await box._session.execute(
+                select(WebsitePage.id, WebsitePage.url).where(WebsitePage.id.in_(page_ids))
+            )
+        ).all():
+            page_urls[pid_] = url
+    # A small whitelist of schema.org properties that matter for entity reviews.
+    keep = (
+        "logo",
+        "image",
+        "address",
+        "contactPoint",
+        "email",
+        "telephone",
+        "foundingDate",
+        "founder",
+        "areaServed",
+        "provider",
+        "brand",
+        "publisher",
+        "manufacturer",
+        "offers",
+        "featureList",
+        "audience",
+        "jobTitle",
+        "worksFor",
+        "knowsAbout",
+        "priceRange",
+    )
     return [
         {
             "id": str(r.id),
             "entity_type": r.entity_type,
             "name": _clip(r.name, 300),
             "description": _clip(r.description, 500),
+            "url": _clip(r.url, 500),
             "same_as": (r.same_as or [])[:10],
+            "scope": r.scope.value if hasattr(r.scope, "value") else str(r.scope),
+            "page_id": str(r.page_id) if r.page_id else None,
+            "page_url": page_urls.get(r.page_id),
+            "properties": {
+                k: _clip(str(v), 300) for k, v in (r.properties or {}).items() if k in keep
+            },
+        }
+        for r in rows
+    ]
+
+
+async def _get_entity_links(box: ToolBox, params: _Paged) -> list[dict[str, Any]]:
+    """sameAs / external profile links of the project's entities."""
+    from app.models.entities import EntityLink
+
+    rows = (
+        await box._session.scalars(
+            select(EntityLink)
+            .where(EntityLink.project_id == box.project_id)
+            .limit(params.limit)
+            .offset(params.offset)
+        )
+    ).all()
+    return [
+        {
+            "entity_id": str(r.entity_id),
+            "url": _clip(r.url, 300),
+            "platform": r.platform,
+            "is_authoritative": r.is_authoritative,
         }
         for r in rows
     ]
@@ -637,6 +711,54 @@ async def _save_content_review(box: ToolBox, params: "_ReviewInput") -> dict[str
     }
 
 
+async def _save_entity_review(box: ToolBox, params: _EntityReviewInput) -> dict[str, Any]:
+    """Upsert one entity optimization review for THIS project (unique per
+    review_key). Inserts start 'draft'; re-saves replace findings and
+    recommendations but never the review's status. `entity_id`, when given,
+    must be one of the project's entities."""
+    from datetime import UTC, datetime
+
+    from app.models.entities import Entity
+    from app.models.entity_reviews import EntityOptimizationReview, ReviewStatus
+
+    if params.entity_id is not None:
+        owned = (
+            await box._session.scalars(
+                select(Entity.id).where(
+                    Entity.id == params.entity_id, Entity.project_id == box.project_id
+                )
+            )
+        ).one_or_none()
+        if owned is None:
+            raise ToolError("entity_id must belong to this project")
+    row = (
+        await box._session.scalars(
+            select(EntityOptimizationReview).where(
+                EntityOptimizationReview.project_id == box.project_id,
+                EntityOptimizationReview.review_key == params.review_key,
+            )
+        )
+    ).one_or_none()
+    created = row is None
+    if row is None:
+        row = EntityOptimizationReview(
+            project_id=box.project_id,
+            review_key=params.review_key,
+            status=ReviewStatus.DRAFT.value,
+        )
+        box._session.add(row)
+    row.agent_run_id = box.agent_run_id
+    row.entity_id = params.entity_id
+    row.entity_type = params.entity_type
+    row.findings = params.findings
+    row.recommendations = params.recommendations
+    row.confidence = params.confidence
+    row.analysis_version = params.analysis_version
+    row.analyzed_at = datetime.now(UTC)
+    await box._session.flush()
+    return {"id": str(row.id), "created": created, "status": row.status}
+
+
 async def _save_content_brief(box: ToolBox, params: _BriefInput) -> dict[str, Any]:
     """Upsert one content brief for THIS project (unique per source_key).
 
@@ -861,6 +983,18 @@ TOOLS: dict[str, ToolSpec] = {
             "Recent extracted claims from AI responses (untrusted text)",
             _Paged,
             _get_claims,
+        ),
+        ToolSpec(
+            "get_entity_links",
+            "sameAs / external profile links of the project's entities",
+            _Paged,
+            _get_entity_links,
+        ),
+        ToolSpec(
+            "save_entity_review",
+            "Save/update one entity optimization review (draft; validated write)",
+            _EntityReviewInput,
+            _save_entity_review,
         ),
         ToolSpec(
             "get_page_content",

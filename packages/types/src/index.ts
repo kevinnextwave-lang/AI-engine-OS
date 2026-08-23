@@ -737,6 +737,33 @@ export interface ContentReviewListResponse {
   offset: number;
 }
 
+/** Entity optimization reviews (Milestone 6E). */
+export type EntityReviewStatus = "draft" | "reviewing" | "approved" | "completed" | "archived";
+
+export interface EntityOptimizationReview {
+  id: string;
+  project_id: string;
+  entity_id: string | null;
+  agent_run_id: string | null;
+  review_key: string;
+  entity_type: string;
+  findings: Record<string, unknown>[];
+  recommendations: Record<string, unknown>[];
+  confidence: string;
+  status: EntityReviewStatus;
+  analysis_version: string;
+  analyzed_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EntityReviewListResponse {
+  items: EntityOptimizationReview[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export interface StatusResponse {
   status: string;
 }

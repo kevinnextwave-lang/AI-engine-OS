@@ -13,6 +13,7 @@ from app.api.v1.routes import (
     crawl,
     discovery,
     entities,
+    entity_reviews,
     execution,
     gaps,
     graph,
@@ -71,6 +72,8 @@ api_router.include_router(content_briefs.project_router)
 api_router.include_router(content_briefs.brief_router)
 api_router.include_router(content_reviews.project_router)
 api_router.include_router(content_reviews.review_router)
+api_router.include_router(entity_reviews.project_router)
+api_router.include_router(entity_reviews.review_router)
 api_router.include_router(sources.router)
 api_router.include_router(sources.project_router)
 api_router.include_router(gaps.project_router)
