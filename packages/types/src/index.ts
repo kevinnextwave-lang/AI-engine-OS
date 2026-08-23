@@ -466,6 +466,57 @@ export interface InsightAnalyzeResponse {
   note: string;
 }
 
+/** Competitive content gaps (Milestone 5E). */
+export type ContentGapType =
+  | "missing_topic"
+  | "weak_topic"
+  | "missing_comparison"
+  | "missing_use_case"
+  | "missing_faq"
+  | "missing_evidence"
+  | "missing_product_detail";
+
+export interface ContentGap {
+  id: string;
+  project_id: string;
+  prompt_id: string | null;
+  topic: string;
+  gap_type: ContentGapType;
+  competitor_evidence: Record<string, unknown>;
+  customer_coverage: Record<string, unknown>;
+  /** 0–100; scoring components in competitor_evidence.scoring */
+  opportunity_score: number;
+  confidence: "high" | "medium" | "low" | "insufficient";
+  status: "new" | "reviewing" | "accepted" | "dismissed" | "in_progress" | "completed";
+  note: string | null;
+  analysis_version: string;
+  window_days: number;
+  analyzed_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContentGapListResponse {
+  items: ContentGap[];
+  total: number;
+  limit: number;
+  offset: number;
+  analyzed_at: string | null;
+  note: string;
+}
+
+export interface ContentGapAnalyzeResponse {
+  project_id: string;
+  window_days: number;
+  eligible_responses: number;
+  topics_analyzed: number;
+  pages_considered: number;
+  gaps_written: number;
+  gaps_removed: number;
+  analyzed_at: string;
+  note: string;
+}
+
 export interface StatusResponse {
   status: string;
 }
