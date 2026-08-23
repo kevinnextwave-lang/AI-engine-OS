@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.v1.routes import (
+    agents,
     ai_readiness,
     alerts,
     auth,
@@ -61,6 +62,9 @@ api_router.include_router(content_gaps.project_router)
 api_router.include_router(content_gaps.gap_router)
 api_router.include_router(alerts.project_router)
 api_router.include_router(alerts.alert_router)
+api_router.include_router(agents.project_router)
+api_router.include_router(agents.run_router)
+api_router.include_router(agents.action_router)
 api_router.include_router(sources.router)
 api_router.include_router(sources.project_router)
 api_router.include_router(gaps.project_router)

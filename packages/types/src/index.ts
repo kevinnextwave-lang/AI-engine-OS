@@ -578,6 +578,59 @@ export interface AlertDetectResponse {
   note: string;
 }
 
+/** Agent framework (Milestone 6A). */
+export type AgentRunStatus =
+  | "queued"
+  | "running"
+  | "completed"
+  | "failed"
+  | "awaiting_approval"
+  | "cancelled";
+export type AgentActionStatus = "pending" | "approved" | "rejected" | "cancelled" | "executed";
+export type AgentActionRisk = "low" | "medium" | "high";
+
+export interface AgentRun {
+  id: string;
+  project_id: string;
+  agent_name: string;
+  agent_version: string;
+  status: AgentRunStatus;
+  objective: string;
+  requested_by_user_id: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  execution_time_ms: number | null;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  estimated_cost: string | null;
+  error_message: string | null;
+  result: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface AgentRunListResponse {
+  items: AgentRun[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface AgentAction {
+  id: string;
+  agent_run_id: string;
+  action_type: string;
+  description: string;
+  payload: Record<string, unknown>;
+  risk_level: AgentActionRisk;
+  approval_required: boolean;
+  status: AgentActionStatus;
+  approved_by: string | null;
+  approved_at: string | null;
+  executed_at: string | null;
+  execution_result: Record<string, unknown> | null;
+  created_at: string;
+}
+
 export interface StatusResponse {
   status: string;
 }

@@ -34,6 +34,9 @@ import type {
   CompetitiveOverview,
   CompetitivePrompts,
   CompetitiveTrends,
+  AgentAction,
+  AgentRun,
+  AgentRunListResponse,
   AlertDetectResponse,
   AlertStatus,
   AlertThresholds,
@@ -340,6 +343,27 @@ export const api = {
         method: "PATCH",
         body: JSON.stringify({ status }),
       }),
+  },
+  agents: {
+    list: (projectId: string) =>
+      request<{ name: string; version: string }[]>(`/projects/${projectId}/agents`),
+    run: (projectId: string, agentName: string, objective: string) =>
+      request<AgentRun>(`/projects/${projectId}/agents/${agentName}/run`, {
+        method: "POST",
+        body: JSON.stringify({ objective }),
+      }),
+    runs: (
+      projectId: string,
+      params: { status?: string; agent_name?: string; limit?: number; offset?: number } = {},
+    ) => request<AgentRunListResponse>(`/projects/${projectId}/agent-runs${qs(params)}`),
+    getRun: (runId: string) => request<AgentRun>(`/agent-runs/${runId}`),
+    cancelRun: (runId: string) =>
+      request<AgentRun>(`/agent-runs/${runId}/cancel`, { method: "POST" }),
+    actions: (runId: string) => request<AgentAction[]>(`/agent-runs/${runId}/actions`),
+    approveAction: (actionId: string) =>
+      request<AgentAction>(`/agent-actions/${actionId}/approve`, { method: "POST" }),
+    rejectAction: (actionId: string) =>
+      request<AgentAction>(`/agent-actions/${actionId}/reject`, { method: "POST" }),
   },
   crawl: {
     start: (projectId: string, body: CrawlStartRequest = {}) =>

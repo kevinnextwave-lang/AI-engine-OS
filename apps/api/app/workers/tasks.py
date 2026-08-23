@@ -281,3 +281,35 @@ def dispatch_citation_gap_analysis(project_id: uuid.UUID, *, window_days: int = 
     analyze_citation_gaps_task.apply_async(
         kwargs={"project_id": str(project_id), "window_days": window_days}, queue="analytics"
     )
+
+
+@celery_app.task(
+    name="app.workers.tasks.agents.run_agent",
+    bind=True,
+    acks_late=True,
+    max_retries=0,
+    soft_time_limit=60 * 15,
+    time_limit=60 * 15 + 60,
+)
+def run_agent_task(self, run_id: str) -> str:  # type: ignore[no-untyped-def]
+    """Execute one queued agent run. Complex agents never run inside HTTP requests."""
+    configure_logging()
+
+    async def _main() -> str:
+        from app.agents.orchestrator import AgentOrchestrator
+        from app.db.session import dispose_engine, get_session_factory
+
+        try:
+            async with get_session_factory()() as session:
+                run = await AgentOrchestrator(session).execute(uuid.UUID(run_id))
+                await session.commit()
+                return run.status
+        finally:
+            await dispose_engine()
+
+    return asyncio.run(_main())
+
+
+def dispatch_agent_run(run_id: uuid.UUID) -> None:
+    """Enqueue an agent run. Callers must have COMMITTED the run row first."""
+    run_agent_task.apply_async(args=(str(run_id),), queue="agents")

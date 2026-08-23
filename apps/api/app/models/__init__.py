@@ -1,6 +1,13 @@
 """Import all models here so Alembic and SQLAlchemy see the full metadata."""
 
 from app.db.base import Base
+from app.models.agents import (
+    ActionRiskLevel,
+    ActionStatus,
+    AgentAction,
+    AgentRun,
+    AgentRunStatus,
+)
 from app.models.ai import AiGeneration, AiModel, AiProvider
 from app.models.ai_readiness import AiReadinessAudit, AiReadinessObservation, ReadinessCategory
 from app.models.alerts import AlertSeverity, AlertStatus, AlertType, CompetitiveAlert
@@ -108,6 +115,11 @@ from app.models.sources import (
 from app.models.user import User
 
 __all__ = [
+    "ActionRiskLevel",
+    "ActionStatus",
+    "AgentAction",
+    "AgentRun",
+    "AgentRunStatus",
     "AlertSeverity",
     "AlertStatus",
     "AlertType",
