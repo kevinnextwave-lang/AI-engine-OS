@@ -38,4 +38,12 @@ def get_agent_registry() -> AgentRegistry:
     global _registry  # noqa: PLW0603 - process-wide registry
     if _registry is None:
         _registry = AgentRegistry()
+        _register_builtin(_registry)
     return _registry
+
+
+def _register_builtin(registry: AgentRegistry) -> None:
+    """Built-in agents. Imported lazily to avoid import cycles."""
+    from app.agents.research import ResearchAgent
+
+    registry.register(ResearchAgent())

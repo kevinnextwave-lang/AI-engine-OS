@@ -348,6 +348,93 @@ async def _get_entity_data(box: ToolBox, params: _Paged) -> list[dict[str, Any]]
     ]
 
 
+async def _get_competitive_visibility(box: ToolBox, _: _Empty) -> dict[str, Any]:
+    """Brand vs configured competitors (5C): compact entities + advantages."""
+    from app.competitive.engine import CompetitiveVisibilityEngine
+
+    overview = await CompetitiveVisibilityEngine(box._session).overview(box.project_id)
+    return {
+        "window": overview.get("window"),
+        "entities": [
+            {
+                "name": e["name"],
+                "is_brand": e["is_brand"],
+                "score": e["score"],
+                "mention_share": e["mention_share"],
+                "recommendation_share": e["recommendation_share"],
+                "citation_share": e["citation_share"],
+                "prompt_coverage": e["prompt_coverage"],
+                "sufficiency": e["sufficiency"],
+            }
+            for e in overview.get("entities", [])
+        ],
+        "advantages": [
+            {
+                "competitor": a["competitor"],
+                "advantage": a["advantage"],
+                "material": a["material"],
+                "where_they_win": a["where_they_win"],
+            }
+            for a in overview.get("advantages", [])
+        ],
+        "data_quality": {
+            "sample_size": overview.get("data_quality", {}).get("sample_size"),
+            "confidence": overview.get("data_quality", {}).get("confidence"),
+        },
+    }
+
+
+async def _get_competitive_insights(box: ToolBox, params: _Paged) -> list[dict[str, Any]]:
+    from app.models.insights import CompetitiveInsight
+
+    rows = (
+        await box._session.scalars(
+            select(CompetitiveInsight)
+            .where(CompetitiveInsight.project_id == box.project_id)
+            .order_by(CompetitiveInsight.strength.desc())
+            .limit(params.limit)
+            .offset(params.offset)
+        )
+    ).all()
+    return [
+        {
+            "id": str(r.id),
+            "competitor_id": str(r.competitor_id),
+            "insight_type": r.insight_type,
+            "title": _clip(r.title, 300),
+            "confidence": r.confidence,
+            "impact": r.impact,
+        }
+        for r in rows
+    ]
+
+
+async def _get_competitor_candidates(box: ToolBox, params: _Paged) -> list[dict[str, Any]]:
+    from app.models.competitor_candidates import CompetitorCandidate
+
+    rows = (
+        await box._session.scalars(
+            select(CompetitorCandidate)
+            .where(CompetitorCandidate.project_id == box.project_id)
+            .order_by(CompetitorCandidate.confidence.desc())
+            .limit(params.limit)
+            .offset(params.offset)
+        )
+    ).all()
+    return [
+        {
+            "id": str(r.id),
+            "name": r.name,
+            "domain": r.domain,
+            "confidence": r.confidence,
+            "confidence_label": r.confidence_label,
+            "status": r.status,
+            "responses": (r.evidence or {}).get("responses"),
+        }
+        for r in rows
+    ]
+
+
 async def _get_visibility_metrics(box: ToolBox, _: _Empty) -> dict[str, Any]:
     from app.visibility.engine import VisibilityEngine
 
@@ -422,6 +509,24 @@ TOOLS: dict[str, ToolSpec] = {
         ),
         ToolSpec(
             "get_recommendations", "Open recommendations by priority", _Paged, _get_recommendations
+        ),
+        ToolSpec(
+            "get_competitive_visibility",
+            "Brand vs competitors: scores, shares, advantages (5C)",
+            _Empty,
+            _get_competitive_visibility,
+        ),
+        ToolSpec(
+            "get_competitive_insights",
+            "Why-competitors-win insights (5D), strongest first",
+            _Paged,
+            _get_competitive_insights,
+        ),
+        ToolSpec(
+            "get_competitor_candidates",
+            "Discovered competitor candidates (5B), most confident first",
+            _Paged,
+            _get_competitor_candidates,
         ),
     )
 }
