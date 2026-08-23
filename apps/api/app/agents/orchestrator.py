@@ -109,6 +109,8 @@ class AgentOrchestrator:
                 user_id=run.requested_by_user_id,
                 spec=agent.context_spec,
             )
+            if context.tools is not None:
+                context.tools.agent_run_id = run.id
             result = await agent.run(context)
         except BudgetExceededError as exc:
             return await self._fail(run, f"Budget exceeded: {exc}", started)

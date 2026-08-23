@@ -631,6 +631,59 @@ export interface AgentAction {
   created_at: string;
 }
 
+/** Content briefs (Milestone 6C). */
+export type ContentBriefStatus =
+  | "draft"
+  | "reviewing"
+  | "approved"
+  | "in_progress"
+  | "completed"
+  | "archived";
+export type ContentBriefType =
+  | "new_article"
+  | "existing_page_optimization"
+  | "comparison_page"
+  | "alternative_page"
+  | "use_case_page"
+  | "faq_page"
+  | "product_page"
+  | "research_content"
+  | "case_study"
+  | "glossary"
+  | "documentation";
+
+export interface ContentBrief {
+  id: string;
+  project_id: string;
+  agent_run_id: string | null;
+  source_key: string;
+  title: string;
+  content_type: ContentBriefType;
+  target_prompt_ids: string[];
+  competitor_ids: string[];
+  objective: string;
+  search_intent: string;
+  audience: string;
+  differentiation: string;
+  outline: { structure?: string[]; notes?: string } & Record<string, unknown>;
+  information_requirements: string[];
+  evidence_requirements: Record<string, unknown>;
+  citation_opportunities: Record<string, unknown>[];
+  entity_requirements: string[];
+  internal_link_recommendations: Record<string, unknown>[];
+  confidence: "high" | "medium" | "low";
+  status: ContentBriefStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContentBriefListResponse {
+  items: ContentBrief[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export interface StatusResponse {
   status: string;
 }

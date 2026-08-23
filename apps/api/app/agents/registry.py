@@ -44,6 +44,8 @@ def get_agent_registry() -> AgentRegistry:
 
 def _register_builtin(registry: AgentRegistry) -> None:
     """Built-in agents. Imported lazily to avoid import cycles."""
+    from app.agents.content_strategy import ContentStrategyAgent
     from app.agents.research import ResearchAgent
 
     registry.register(ResearchAgent())
+    registry.register(ContentStrategyAgent())

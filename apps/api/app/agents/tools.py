@@ -55,6 +55,29 @@ class _PageArg(BaseModel):
     page_id: uuid.UUID
 
 
+class _BriefInput(BaseModel):
+    """Schema for the framework's only write tool. Everything is validated and
+    the row is always project-scoped; status starts 'draft' and an existing
+    brief's review status is never touched by a re-save."""
+
+    source_key: str = Field(min_length=3, max_length=200)
+    title: str = Field(min_length=3, max_length=300)
+    content_type: str
+    objective: str = Field(min_length=3, max_length=4000)
+    search_intent: str = Field(default="", max_length=4000)
+    audience: str = Field(default="", max_length=2000)
+    differentiation: str = Field(default="", max_length=4000)
+    target_prompt_ids: list[uuid.UUID] = Field(default_factory=list, max_length=25)
+    competitor_ids: list[uuid.UUID] = Field(default_factory=list, max_length=25)
+    outline: dict[str, Any] = Field(default_factory=dict)
+    information_requirements: list[str] = Field(default_factory=list, max_length=30)
+    evidence_requirements: dict[str, Any] = Field(default_factory=dict)
+    citation_opportunities: list[dict[str, Any]] = Field(default_factory=list, max_length=20)
+    entity_requirements: list[str] = Field(default_factory=list, max_length=20)
+    internal_link_recommendations: list[dict[str, Any]] = Field(default_factory=list, max_length=20)
+    confidence: str = Field(default="low", pattern="^(high|medium|low)$")
+
+
 @dataclass(frozen=True)
 class ToolSpec:
     name: str
@@ -87,6 +110,8 @@ class ToolBox:
         self._session = session
         self._project = project
         self.usage: list[ToolCall] = []
+        # Set by the orchestrator so write tools can record provenance.
+        self.agent_run_id: uuid.UUID | None = None
 
     @property
     def project_id(self) -> uuid.UUID:
@@ -321,6 +346,14 @@ async def _get_content_gaps(box: ToolBox, params: _Paged) -> list[dict[str, Any]
             "opportunity_score": r.opportunity_score,
             "confidence": r.confidence,
             "status": r.status,
+            # selected evidence fields (platform-derived, bounded)
+            "prompt": _clip((r.competitor_evidence or {}).get("prompt"), 300),
+            "prompt_id": (r.competitor_evidence or {}).get("prompt_id"),
+            "top_competitor": (r.competitor_evidence or {}).get("top_competitor"),
+            "top_competitor_rate": (r.competitor_evidence or {}).get("top_competitor_rate"),
+            "brand_mention_rate": (r.competitor_evidence or {}).get("brand_mention_rate"),
+            "providers": (r.competitor_evidence or {}).get("providers") or [],
+            "research_domains": (r.competitor_evidence or {}).get("research_domains") or [],
         }
         for r in rows
     ]
@@ -433,6 +466,79 @@ async def _get_competitor_candidates(box: ToolBox, params: _Paged) -> list[dict[
         }
         for r in rows
     ]
+
+
+async def _save_content_brief(box: ToolBox, params: _BriefInput) -> dict[str, Any]:
+    """Upsert one content brief for THIS project (unique per source_key).
+
+    The framework's only write tool: inserts start as 'draft'; re-saves update
+    the brief's content but never its status, prompt/competitor ids are
+    verified to belong to the project, and nothing else is writable."""
+    from app.models.competitor import Competitor
+    from app.models.content_briefs import ContentBrief, ContentBriefStatus, ContentType
+
+    if params.content_type not in {t.value for t in ContentType}:
+        raise ToolError(f"Unknown content_type '{params.content_type}'")
+    if params.target_prompt_ids:
+        valid_prompts = set(
+            (
+                await box._session.scalars(
+                    select(Prompt.id).where(
+                        Prompt.project_id == box.project_id,
+                        Prompt.id.in_(params.target_prompt_ids),
+                    )
+                )
+            ).all()
+        )
+        if valid_prompts != set(params.target_prompt_ids):
+            raise ToolError("target_prompt_ids must all belong to this project")
+    if params.competitor_ids:
+        valid_comps = set(
+            (
+                await box._session.scalars(
+                    select(Competitor.id).where(
+                        Competitor.project_id == box.project_id,
+                        Competitor.id.in_(params.competitor_ids),
+                    )
+                )
+            ).all()
+        )
+        if valid_comps != set(params.competitor_ids):
+            raise ToolError("competitor_ids must all belong to this project")
+    row = (
+        await box._session.scalars(
+            select(ContentBrief).where(
+                ContentBrief.project_id == box.project_id,
+                ContentBrief.source_key == params.source_key,
+            )
+        )
+    ).one_or_none()
+    created = row is None
+    if row is None:
+        row = ContentBrief(
+            project_id=box.project_id,
+            source_key=params.source_key,
+            status=ContentBriefStatus.DRAFT.value,
+        )
+        box._session.add(row)
+    row.agent_run_id = box.agent_run_id
+    row.title = params.title
+    row.content_type = params.content_type
+    row.objective = params.objective
+    row.search_intent = params.search_intent
+    row.audience = params.audience
+    row.differentiation = params.differentiation
+    row.target_prompt_ids = [str(i) for i in params.target_prompt_ids]
+    row.competitor_ids = [str(i) for i in params.competitor_ids]
+    row.outline = params.outline
+    row.information_requirements = list(params.information_requirements)
+    row.evidence_requirements = params.evidence_requirements
+    row.citation_opportunities = params.citation_opportunities
+    row.entity_requirements = list(params.entity_requirements)
+    row.internal_link_recommendations = params.internal_link_recommendations
+    row.confidence = params.confidence
+    await box._session.flush()
+    return {"id": str(row.id), "created": created, "status": row.status}
 
 
 async def _get_seo_audit(box: ToolBox, _: _Empty) -> dict[str, Any]:
@@ -586,6 +692,12 @@ TOOLS: dict[str, ToolSpec] = {
             "Recent extracted claims from AI responses (untrusted text)",
             _Paged,
             _get_claims,
+        ),
+        ToolSpec(
+            "save_content_brief",
+            "Save/update one content brief for this project (draft; validated write)",
+            _BriefInput,
+            _save_content_brief,
         ),
         ToolSpec(
             "get_competitor_candidates",

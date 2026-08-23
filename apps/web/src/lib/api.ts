@@ -34,6 +34,9 @@ import type {
   CompetitiveOverview,
   CompetitivePrompts,
   CompetitiveTrends,
+  ContentBrief,
+  ContentBriefListResponse,
+  ContentBriefStatus,
   AgentAction,
   AgentRun,
   AgentRunListResponse,
@@ -364,6 +367,20 @@ export const api = {
       request<AgentAction>(`/agent-actions/${actionId}/approve`, { method: "POST" }),
     rejectAction: (actionId: string) =>
       request<AgentAction>(`/agent-actions/${actionId}/reject`, { method: "POST" }),
+  },
+  contentBriefs: {
+    list: (
+      projectId: string,
+      params: { status?: string; content_type?: string; limit?: number; offset?: number } = {},
+    ) => request<ContentBriefListResponse>(`/projects/${projectId}/content-briefs${qs(params)}`),
+    get: (briefId: string) => request<ContentBrief>(`/content-briefs/${briefId}`),
+    update: (
+      briefId: string,
+      body: { status?: ContentBriefStatus; title?: string; audience?: string },
+    ) => request<ContentBrief>(`/content-briefs/${briefId}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
   },
   crawl: {
     start: (projectId: string, body: CrawlStartRequest = {}) =>
