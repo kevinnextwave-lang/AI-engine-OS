@@ -14,6 +14,7 @@ from app.api.v1.routes import (
     pages,
     projects,
     prompts,
+    recommendations,
     seo,
     sources,
     visibility,
@@ -50,3 +51,5 @@ api_router.include_router(sources.project_router)
 api_router.include_router(gaps.project_router)
 api_router.include_router(gaps.gap_router)
 api_router.include_router(graph.router)
+api_router.include_router(recommendations.project_router)
+api_router.include_router(recommendations.rec_router)

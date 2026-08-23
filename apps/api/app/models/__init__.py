@@ -59,6 +59,12 @@ from app.models.prompts import (
     PromptSetStatus,
     PromptSource,
 )
+from app.models.recommendations import (
+    Recommendation,
+    RecommendationPriority,
+    RecommendationStatus,
+    RecommendationType,
+)
 from app.models.refresh_token import RefreshToken
 from app.models.seo import (
     AuditStatus,
@@ -146,6 +152,10 @@ __all__ = [
     "Severity",
     "StructuredDataFormat",
     "User",
+    "Recommendation",
+    "RecommendationPriority",
+    "RecommendationStatus",
+    "RecommendationType",
     "CitationGap",
     "GapConfidence",
     "GapStatus",
