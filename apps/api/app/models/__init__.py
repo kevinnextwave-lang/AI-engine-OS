@@ -120,8 +120,18 @@ from app.models.sources import (
     SourcePage,
 )
 from app.models.user import User
+from app.models.workflows import (
+    AgentWorkflow,
+    AgentWorkflowStep,
+    WorkflowStatus,
+    WorkflowStepStatus,
+)
 
 __all__ = [
+    "AgentWorkflow",
+    "AgentWorkflowStep",
+    "WorkflowStatus",
+    "WorkflowStepStatus",
     "EntityOptimizationReview",
     "ChangeDecision",
     "ContentOptimizationReview",

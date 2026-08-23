@@ -45,6 +45,9 @@ class AgentContext:
     pages: list[dict[str, Any]] = field(default_factory=list)
     project: dict[str, Any] = field(default_factory=dict)
     tools: ToolBox | None = None
+    # Output handed over from earlier workflow steps (summaries only, never raw
+    # data-store access); None outside workflows.
+    workflow_input: dict[str, Any] | None = None
 
     def summary(self) -> dict[str, int]:
         return {

@@ -28,6 +28,7 @@ from app.api.v1.routes import (
     seo,
     sources,
     visibility,
+    workflows,
 )
 
 api_router = APIRouter()
@@ -74,6 +75,8 @@ api_router.include_router(content_reviews.project_router)
 api_router.include_router(content_reviews.review_router)
 api_router.include_router(entity_reviews.project_router)
 api_router.include_router(entity_reviews.review_router)
+api_router.include_router(workflows.project_router)
+api_router.include_router(workflows.workflow_router)
 api_router.include_router(sources.router)
 api_router.include_router(sources.project_router)
 api_router.include_router(gaps.project_router)

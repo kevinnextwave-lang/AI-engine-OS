@@ -46,6 +46,8 @@ import type {
   AgentAction,
   AgentRun,
   AgentRunListResponse,
+  AgentWorkflow,
+  AgentWorkflowListResponse,
   AlertDetectResponse,
   AlertStatus,
   AlertThresholds,
@@ -418,6 +420,22 @@ export const api = {
         method: "PATCH",
         body: JSON.stringify({ status }),
       }),
+  },
+  agentWorkflows: {
+    create: (projectId: string, objective: string, workflowType = "full_optimization") =>
+      request<AgentWorkflow>(`/projects/${projectId}/agent-workflows`, {
+        method: "POST",
+        body: JSON.stringify({ objective, workflow_type: workflowType }),
+      }),
+    list: (projectId: string, params: { status?: string; limit?: number; offset?: number } = {}) =>
+      request<AgentWorkflowListResponse>(`/projects/${projectId}/agent-workflows${qs(params)}`),
+    get: (workflowId: string) => request<AgentWorkflow>(`/agent-workflows/${workflowId}`),
+    pause: (workflowId: string) =>
+      request<AgentWorkflow>(`/agent-workflows/${workflowId}/pause`, { method: "POST" }),
+    resume: (workflowId: string) =>
+      request<AgentWorkflow>(`/agent-workflows/${workflowId}/resume`, { method: "POST" }),
+    cancel: (workflowId: string) =>
+      request<AgentWorkflow>(`/agent-workflows/${workflowId}/cancel`, { method: "POST" }),
   },
   crawl: {
     start: (projectId: string, body: CrawlStartRequest = {}) =>

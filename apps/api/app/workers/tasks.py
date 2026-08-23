@@ -313,3 +313,35 @@ def run_agent_task(self, run_id: str) -> str:  # type: ignore[no-untyped-def]
 def dispatch_agent_run(run_id: uuid.UUID) -> None:
     """Enqueue an agent run. Callers must have COMMITTED the run row first."""
     run_agent_task.apply_async(args=(str(run_id),), queue="agents")
+
+
+@celery_app.task(
+    name="app.workers.tasks.agents.run_agent_workflow",
+    bind=True,
+    acks_late=True,
+    max_retries=0,
+    soft_time_limit=60 * 30,
+    time_limit=60 * 30 + 60,
+)
+def run_agent_workflow_task(self, workflow_id: str) -> str:  # type: ignore[no-untyped-def]
+    """Advance one agent workflow until it completes, holds or fails."""
+    configure_logging()
+
+    async def _main() -> str:
+        from app.agents.workflow import WorkflowOrchestrator
+        from app.db.session import dispose_engine, get_session_factory
+
+        try:
+            async with get_session_factory()() as session:
+                result = await WorkflowOrchestrator(session).advance(uuid.UUID(workflow_id))
+                await session.commit()
+                return result.status
+        finally:
+            await dispose_engine()
+
+    return asyncio.run(_main())
+
+
+def dispatch_agent_workflow(workflow_id: uuid.UUID) -> None:
+    """Enqueue a workflow advance. Callers must have COMMITTED first."""
+    run_agent_workflow_task.apply_async(args=(str(workflow_id),), queue="agents")

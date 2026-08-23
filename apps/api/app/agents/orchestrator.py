@@ -20,6 +20,7 @@ import time
 import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -81,8 +82,11 @@ class AgentOrchestrator:
         await self._session.flush()
         return run
 
-    async def execute(self, run_id: uuid.UUID) -> AgentRun:
-        """Run one queued agent run to completion. Called from the worker."""
+    async def execute(
+        self, run_id: uuid.UUID, *, workflow_input: dict[str, Any] | None = None
+    ) -> AgentRun:
+        """Run one queued agent run to completion. Called from the worker.
+        `workflow_input` carries prior workflow steps' output summaries."""
         run = await self._session.get(AgentRun, run_id)
         if run is None:
             raise NotFoundError("Agent run not found")
@@ -111,6 +115,7 @@ class AgentOrchestrator:
             )
             if context.tools is not None:
                 context.tools.agent_run_id = run.id
+            context.workflow_input = workflow_input
             result = await agent.run(context)
         except BudgetExceededError as exc:
             return await self._fail(run, f"Budget exceeded: {exc}", started)

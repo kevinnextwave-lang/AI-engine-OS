@@ -764,6 +764,74 @@ export interface EntityReviewListResponse {
   offset: number;
 }
 
+/** Agent workflows (Milestone 6F). */
+export type WorkflowStatus =
+  | "queued"
+  | "running"
+  | "paused"
+  | "awaiting_approval"
+  | "completed"
+  | "failed"
+  | "cancelled";
+export type WorkflowStepStatus = "pending" | "running" | "completed" | "failed" | "cancelled";
+
+export interface AgentWorkflowStep {
+  id: string;
+  agent_name: string;
+  sequence: number;
+  status: WorkflowStepStatus;
+  agent_run_id: string | null;
+  input_context: Record<string, unknown>;
+  output_summary: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AgentWorkflowPlanItem {
+  priority: number;
+  action: string;
+  action_type: string;
+  reason: string;
+  evidence: Record<string, unknown>;
+  expected_impact_area: string;
+  effort: string;
+  confidence: number | null;
+  approval_status: string;
+  agent: string;
+  step: number;
+}
+
+export interface AgentWorkflow {
+  id: string;
+  project_id: string;
+  workflow_type: string;
+  status: WorkflowStatus;
+  current_step: number;
+  objective: string;
+  hold_reason: string | null;
+  error_message: string | null;
+  action_plan: AgentWorkflowPlanItem[] | null;
+  steps: AgentWorkflowStep[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AgentWorkflowListResponse {
+  items: {
+    id: string;
+    workflow_type: string;
+    status: WorkflowStatus;
+    current_step: number;
+    objective: string;
+    steps_total: number;
+    steps_completed: number;
+    created_at: string;
+  }[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export interface StatusResponse {
   status: string;
 }
