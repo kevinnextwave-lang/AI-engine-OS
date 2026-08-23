@@ -3,6 +3,9 @@
 - connect / read / total timeouts
 - hard cap on response size (streamed; aborted once exceeded)
 - redirects followed manually so every hop is re-validated by the SSRF policy
+- connections are pinned to the address the safety check resolved (the request
+  goes to the validated IP with the original Host header and SNI), so a DNS
+  rebind between check and connect cannot reach a private address
 - bounded retries with exponential backoff for transient failures
 - identifiable user agent, gzip/deflate/brotli accepted
 - no cookies are persisted; no Authorization is ever sent
@@ -18,7 +21,7 @@ from urllib.parse import urljoin
 import httpx
 
 from app.core.logging import get_logger
-from app.crawler.safety import UnsafeURLError, UrlSafetyPolicy
+from app.crawler.safety import SafetyVerdict, UnsafeURLError, UrlSafetyPolicy
 from app.crawler.urls import CrawlURL, CrawlURLError, normalize_crawl_url
 
 log = get_logger("crawler.fetcher")
@@ -130,7 +133,7 @@ class Fetcher:
         attempts_total = 0
         for _hop in range(self._config.max_redirects + 1):
             try:
-                await self._safety.check(current)
+                verdict = await self._safety.check(current)
             except UnsafeURLError as exc:
                 return FetchResult(
                     requested_url=start.normalized,
@@ -141,7 +144,7 @@ class Fetcher:
                     redirect_chain=chain,
                     error=f"blocked: {exc}",
                 )
-            response, error, attempts = await self._request_with_retries(current.normalized)
+            response, error, attempts = await self._request_with_retries(current, verdict)
             attempts_total += attempts
             if response is None:
                 return FetchResult(
@@ -212,13 +215,28 @@ class Fetcher:
             error=error,
         )
 
+    def _pinned_request(self, url: CrawlURL, verdict: SafetyVerdict) -> httpx.Request:
+        """Build a request that connects to the address the safety check validated.
+
+        The URL's host is replaced with the resolved IP while the original
+        hostname travels in the Host header (and as SNI for TLS), so a DNS
+        record that changes between validation and connect cannot redirect
+        the request to a private address.
+        """
+        target = httpx.URL(url.normalized).copy_with(host=verdict.addresses[0])
+        host_header = url.host if url.port is None else f"{url.host}:{url.port}"
+        extensions = {"sni_hostname": url.host} if url.scheme == "https" else {}
+        return self._client.build_request(
+            "GET", target, headers={"Host": host_header}, extensions=extensions
+        )
+
     async def _request_with_retries(
-        self, url: str
+        self, url: CrawlURL, verdict: SafetyVerdict
     ) -> tuple[httpx.Response | None, str | None, int]:
         last_error = "unknown error"
         for attempt in range(self._config.max_retries + 1):
             try:
-                request = self._client.build_request("GET", url)
+                request = self._pinned_request(url, verdict)
                 response = await self._client.send(request, stream=True)
             except httpx.TimeoutException:
                 last_error = "timeout"
