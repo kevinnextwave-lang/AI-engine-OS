@@ -27,12 +27,20 @@ celery_app.conf.update(
     timezone="UTC",
     enable_utc=True,
     task_acks_late=True,
+    # Without this, acks_late tasks whose worker dies (OOM, SIGKILL, hard time
+    # limit) are acked anyway and silently lost; rejecting requeues them, and
+    # every task's "still QUEUED?" guard makes the redelivery a no-op when the
+    # first run actually finished.
+    task_reject_on_worker_lost=True,
     worker_prefetch_multiplier=1,
     task_default_queue="default",
     # Redis priority support for the ai_search queue (0 = lowest, 9 = highest)
     broker_transport_options={
         "priority_steps": list(range(10)),
         "queue_order_strategy": "priority",
+        # Longer than the longest task (crawls: 6h) so Redis does not
+        # redeliver still-running work; default is 1h.
+        "visibility_timeout": 8 * 3600,
     },
     task_routes={
         "app.workers.tasks.crawler.*": {"queue": "crawler"},

@@ -24,7 +24,9 @@ export default function GeoOverviewPage() {
         <GeoPageTools source={geo.source} reason={geo.mockReason} />
       </PageHeader>
       <MockNotice source={geo.source} reason={geo.mockReason} />
-      {geo.error && <p className="text-destructive mb-4 text-sm">{geo.error}</p>}
+      {(geo.error ?? geo.actionError) && (
+        <p className="text-destructive mb-4 text-sm">{geo.error ?? geo.actionError}</p>
+      )}
 
       <section aria-label="Primary metrics" className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
         {loading

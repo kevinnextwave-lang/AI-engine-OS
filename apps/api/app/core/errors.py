@@ -109,3 +109,16 @@ def register_exception_handlers(app: FastAPI) -> None:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=_envelope("internal_error", "An unexpected error occurred"),
         )
+
+
+def safe_error_message(exc: BaseException, limit: int = 2000) -> str:
+    """One-line failure description safe to store on rows the API serves.
+
+    Database driver errors embed the failing SQL statement and its bound
+    parameters; only the exception class name may reach API clients.
+    """
+    from sqlalchemy.exc import SQLAlchemyError
+
+    if isinstance(exc, SQLAlchemyError):
+        return f"{type(exc).__name__}: database error"
+    return f"{type(exc).__name__}: {exc}"[:limit]

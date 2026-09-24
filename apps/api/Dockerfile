@@ -14,7 +14,8 @@ COPY app ./app
 COPY alembic ./alembic
 COPY alembic.ini ./
 
-RUN pip install --upgrade pip && pip install .
+# setuptools >= 83 clears PYSEC-2026-3447 in the shipped image.
+RUN pip install --upgrade pip "setuptools>=83" && pip install .
 
 EXPOSE 8000
 # Run database migrations before serving so a fresh deploy always has its

@@ -37,18 +37,28 @@ export default function SignupPage() {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
+    const organization_name = form.organization_name.trim();
+    if (organization_name.length < 2) {
+      setError("Please enter an organization name (at least 2 characters).");
+      setSubmitting(false);
+      return;
+    }
     try {
       await register({
-        email: form.email,
+        email: form.email.trim(),
         password: form.password,
-        organization_name: form.organization_name,
-        first_name: form.first_name || undefined,
-        last_name: form.last_name || undefined,
+        organization_name,
+        first_name: form.first_name.trim() || undefined,
+        last_name: form.last_name.trim() || undefined,
       });
       router.replace("/app");
     } catch (err) {
       if (err instanceof ApiError && err.code === "validation_error") {
-        setError("Please check your details. Passwords must be at least 10 characters.");
+        // Show the server's actual complaint instead of guessing at one.
+        const detail = Array.isArray(err.details)
+          ? (err.details as { msg?: string }[]).find((d) => d.msg)?.msg
+          : undefined;
+        setError(detail ?? "Please check your details and try again.");
       } else {
         setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
       }

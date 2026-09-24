@@ -42,10 +42,15 @@ function CompetitorManager({ project }: { project: Project }) {
 
   const add = async (e: React.FormEvent) => {
     e.preventDefault();
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setError("Please enter the competitor's name.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
-      await api.projects.competitors.add(project.id, { name: name.trim(), website_url: url.trim() });
+      await api.projects.competitors.add(project.id, { name: trimmedName, website_url: url.trim() });
       setName("");
       setUrl("");
       load();
@@ -124,8 +129,11 @@ function CompetitorManager({ project }: { project: Project }) {
 }
 
 export default function ProjectsPage() {
-  const { current: organization } = useOrganization();
-  const [projects, setProjects] = React.useState<Project[] | null>(null);
+  const { current: organization, loading: orgLoading, error: orgError } = useOrganization();
+  // Keyed by organization so a slow response for org A can never overwrite
+  // org B's list after a switch.
+  const [loaded, setLoaded] = React.useState<{ orgId: string; items: Project[] } | null>(null);
+  const projects = organization && loaded?.orgId === organization.id ? loaded.items : null;
   const [error, setError] = React.useState<string | null>(null);
   // SSR-safe read of the stored selection; select() overrides it for this render.
   const storedId = React.useSyncExternalStore(
@@ -134,7 +142,7 @@ export default function ProjectsPage() {
     () => null,
   );
   const [overrideId, setOverrideId] = React.useState<string | null>(null);
-  const selectedId = overrideId ?? storedId;
+  const chosenId = overrideId ?? storedId;
   const [showForm, setShowForm] = React.useState(false);
   const [name, setName] = React.useState("");
   const [website, setWebsite] = React.useState("");
@@ -143,10 +151,11 @@ export default function ProjectsPage() {
 
   const load = React.useCallback(() => {
     if (!organization) return;
+    const orgId = organization.id;
     api.projects
-      .list(organization.id)
+      .list(orgId)
       .then((res) => {
-        setProjects(res.items);
+        setLoaded({ orgId, items: res.items });
         setError(null);
       })
       .catch((err: unknown) =>
@@ -161,11 +170,17 @@ export default function ProjectsPage() {
   const create = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!organization) return;
+    const trimmedName = name.trim();
+    if (trimmedName.length < 2) {
+      // The browser's minLength check passes for whitespace-only input.
+      setFormError("Please enter a project name (at least 2 characters).");
+      return;
+    }
     setBusy(true);
     setFormError(null);
     try {
       const project = await api.projects.create({
-        name: name.trim(),
+        name: trimmedName,
         website_url: website.trim(),
         organization_id: organization.id,
       });
@@ -238,8 +253,13 @@ export default function ProjectsPage() {
         </form>
       )}
 
-      {error && <p className="text-destructive mb-4 text-sm">{error}</p>}
-      {!projects && !error && (
+      {(error ?? orgError) && <p className="text-destructive mb-4 text-sm">{error ?? orgError}</p>}
+      {!orgLoading && !organization && !orgError && (
+        <p className="text-muted-foreground text-sm">
+          You don&apos;t belong to an organization yet, so there is nothing to show here.
+        </p>
+      )}
+      {!projects && !error && !orgError && (orgLoading || organization) && (
         <div className="flex flex-col gap-3">
           <Skeleton className="h-28 w-full" />
           <Skeleton className="h-28 w-full" />
@@ -259,7 +279,14 @@ export default function ProjectsPage() {
         </div>
       )}
       <div className="flex flex-col gap-4">
-        {projects?.map((p) => (
+        {/* Sections fall back to the first project when nothing (valid) is
+            stored; mirror that here so the badge matches what pages use. */}
+        {projects?.map((p, index) => {
+          const isActive =
+            chosenId != null && projects.some((x) => x.id === chosenId)
+              ? p.id === chosenId
+              : index === 0;
+          return (
           <Card key={p.id}>
             <CardHeader className="pb-3">
               <CardTitle className="flex flex-wrap items-center justify-between gap-2 text-base">
@@ -271,7 +298,7 @@ export default function ProjectsPage() {
                     </span>
                   )}
                 </span>
-                {selectedId === p.id ? (
+                {isActive ? (
                   <Badge variant="success" className="gap-1">
                     <CheckIcon className="size-3" aria-hidden="true" /> Active project
                   </Badge>
@@ -286,7 +313,8 @@ export default function ProjectsPage() {
               <CompetitorManager project={p} />
             </CardContent>
           </Card>
-        ))}
+          );
+        })}
       </div>
     </>
   );

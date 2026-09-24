@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     # Application
     app_env: Literal["development", "test", "production"] = "development"
     app_name: str = "AI Search Growth OS API"
-    log_level: str = "INFO"
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     api_v1_prefix: str = "/api/v1"
 
     # Database
@@ -50,7 +50,7 @@ class Settings(BaseSettings):
     jwt_refresh_secret: str = Field(
         default="dev-only-insecure-refresh-secret-change-me", min_length=16
     )
-    jwt_algorithm: str = "HS256"
+    jwt_algorithm: Literal["HS256", "HS384", "HS512"] = "HS256"
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 30
 
@@ -137,13 +137,13 @@ class Settings(BaseSettings):
 
     # Scheduled monitoring (requires a `celery beat` process; see docs)
     monitoring_enabled: bool = True
-    monitoring_hour_utc: int = 6  # daily detection run, UTC hour
+    monitoring_hour_utc: int = Field(default=6, ge=0, le=23)  # daily detection run, UTC hour
     monitoring_activity_window_days: int = 2  # only projects with recent responses
     monitoring_detection_window_days: int = 30
 
-    # Stripe (config only in Milestone 1)
-    stripe_secret_key: str | None = None
-    stripe_webhook_secret: str | None = None
+    # Stripe (config only in Milestone 1; SecretStr keeps them out of reprs/dumps)
+    stripe_secret_key: SecretStr | None = None
+    stripe_webhook_secret: SecretStr | None = None
 
     @field_validator("cors_origins", mode="before")
     @classmethod
@@ -185,4 +185,14 @@ def get_settings() -> Settings:
                 raise RuntimeError(f"{name} must be set to a strong secret in production")
         if settings.jwt_secret == settings.jwt_refresh_secret:
             raise RuntimeError("JWT_SECRET and JWT_REFRESH_SECRET must differ")
+        if not settings.cookie_secure:
+            raise RuntimeError("COOKIE_SECURE must be true in production")
+        if "*" in settings.cors_origins:
+            # Starlette echoes the request origin for "*" when credentials are
+            # allowed, which would open the credentialed API to any site.
+            raise RuntimeError("CORS_ORIGINS must list explicit origins in production, not '*'")
+        if "localhost" in settings.database_url:
+            raise RuntimeError("DATABASE_URL still points at localhost in production")
+    if settings.cookie_samesite == "none" and not settings.cookie_secure:
+        raise RuntimeError("COOKIE_SAMESITE=none requires COOKIE_SECURE=true (browser rule)")
     return settings

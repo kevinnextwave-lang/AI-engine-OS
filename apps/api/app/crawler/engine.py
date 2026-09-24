@@ -14,6 +14,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.errors import safe_error_message
 from app.core.logging import get_logger
 from app.crawler.fetcher import Fetcher, FetchResult
 from app.crawler.frontier import Frontier, FrontierItem, Priority
@@ -147,8 +148,12 @@ class CrawlEngine:
                 job.status = CrawlStatus.COMPLETED
         except Exception as exc:  # noqa: BLE001 - job must always be finalized
             log.exception("crawl_failed", crawl_job_id=str(job.id))
+            # A DB error poisons the transaction; without this rollback the
+            # finalizing commit below would raise too and the job would stay
+            # RUNNING forever (blocking the project from new crawls).
+            await self._session.rollback()
             job.status = CrawlStatus.FAILED
-            job.error_message = f"{type(exc).__name__}: {exc}"[:2000]
+            job.error_message = safe_error_message(exc)
         finally:
             job.completed_at = datetime.now(UTC)
             if self._site_facts:

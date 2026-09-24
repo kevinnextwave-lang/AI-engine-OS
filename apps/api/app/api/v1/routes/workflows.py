@@ -26,6 +26,7 @@ from app.api.deps import (
 from app.api.v1.routes.agents import get_registry
 from app.api.v1.routes.prompts import _require
 from app.core.errors import NotFoundError
+from app.core.logging import get_logger
 from app.core.permissions import Permission
 from app.models.workflows import AgentWorkflow, WorkflowStatus, WorkflowStepStatus
 from app.schemas.workflows import (
@@ -35,6 +36,8 @@ from app.schemas.workflows import (
     WorkflowView,
 )
 from app.workers.tasks import dispatch_agent_workflow
+
+log = get_logger(__name__)
 
 project_router = APIRouter(prefix="/projects/{project_id}/agent-workflows", tags=["workflows"])
 workflow_router = APIRouter(prefix="/agent-workflows/{workflow_id}", tags=["workflows"])
@@ -92,7 +95,12 @@ async def create_workflow(
         user_id=access.membership.user_id,
     )
     await session.commit()
-    dispatch(workflow.id)
+    try:
+        dispatch(workflow.id)
+    except Exception:  # noqa: BLE001 - broker outage must not strand the workflow as "queued"
+        log.exception("workflow_dispatch_failed", workflow_id=str(workflow.id))
+        workflow.status = WorkflowStatus.FAILED.value
+        await session.commit()
     loaded = await _loaded(session, workflow.id)
     return WorkflowView.model_validate(loaded)
 
@@ -186,7 +194,12 @@ async def resume_workflow(
     workflow = await WorkflowOrchestrator(session).resume(workflow)
     await session.commit()
     if workflow.status == WorkflowStatus.QUEUED.value:
-        dispatch(workflow.id)
+        try:
+            dispatch(workflow.id)
+        except Exception:  # noqa: BLE001 - broker outage must not strand the workflow as "queued"
+            log.exception("workflow_dispatch_failed", workflow_id=str(workflow.id))
+            workflow.status = WorkflowStatus.FAILED.value
+            await session.commit()
     return WorkflowView.model_validate(await _loaded(session, workflow.id))
 
 

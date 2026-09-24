@@ -146,7 +146,14 @@ export function useIntelligenceData(projectId: string | null, brandName: string 
   const [loaded, setLoaded] = React.useState<Loaded | null>(null);
   const [version, setVersion] = React.useState(0);
   const [busy, setBusy] = React.useState<IntelligenceData["busy"]>(null);
-  const [runNotice, setRunNotice] = React.useState<string | null>(null);
+  // The notice is stored with the project it belongs to, so a notice about
+  // project A's runs never lingers after switching to project B.
+  const [noticeState, setNoticeState] = React.useState<{ projectId: string | null; text: string } | null>(null);
+  const runNotice = noticeState && noticeState.projectId === projectId ? noticeState.text : null;
+  const setRunNotice = React.useCallback(
+    (text: string) => setNoticeState({ projectId, text }),
+    [projectId],
+  );
 
   React.useEffect(() => {
     if (!projectId) return;
@@ -184,10 +191,12 @@ export function useIntelligenceData(projectId: string | null, brandName: string 
       const batch = await api.prompts.run(runnableSet.id, { providers: configuredProviders });
       setRunNotice(`Queued ${batch.total_runs} prompt runs for “${runnableSet.name}”. Citations appear here once responses are collected and parsed.`);
       refresh();
+    } catch (err) {
+      setRunNotice(err instanceof Error ? `Run failed: ${err.message}` : "Run failed.");
     } finally {
       setBusy(null);
     }
-  }, [projectId, source, runnableSet, configuredProviders, refresh]);
+  }, [projectId, source, runnableSet, configuredProviders, refresh, setRunNotice]);
 
   const analyzeGaps = React.useCallback(async () => {
     if (!projectId || source !== "api") return;
@@ -195,10 +204,12 @@ export function useIntelligenceData(projectId: string | null, brandName: string 
     try {
       await api.citationGaps.analyze(projectId, WINDOW_DAYS[window]);
       refresh();
+    } catch (err) {
+      setRunNotice(err instanceof Error ? `Gap analysis failed: ${err.message}` : "Gap analysis failed.");
     } finally {
       setBusy(null);
     }
-  }, [projectId, source, window, refresh]);
+  }, [projectId, source, window, refresh, setRunNotice]);
 
   const updateGap = React.useCallback(
     async (gapId: string, body: { status?: GapStatus; note?: string | null }) => {
@@ -211,11 +222,13 @@ export function useIntelligenceData(projectId: string | null, brandName: string 
             ? { ...prev, raw: { ...prev.raw, gaps: prev.raw.gaps.map((g) => (g.id === updated.id ? updated : g)) } }
             : prev,
         );
+      } catch (err) {
+        setRunNotice(err instanceof Error ? `Could not update the gap: ${err.message}` : "Could not update the gap.");
       } finally {
         setBusy(null);
       }
     },
-    [source],
+    [source, setRunNotice],
   );
 
   return React.useMemo<IntelligenceData>(() => {

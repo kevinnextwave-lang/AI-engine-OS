@@ -1,7 +1,7 @@
 """Page intelligence analyzer: headings, links, images, metadata, language,
 content extraction, classification, duplicates, malformed HTML."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from app.crawler.intelligence import analyze_page, observations_as_dict
 from app.crawler.language import detect_language, normalize_lang_tag, resolve_language
@@ -169,11 +169,12 @@ def test_metadata_dates_from_time_element_and_loose_formats() -> None:
     m = analyze(
         "<html><body><time datetime='2023-12-25' pubdate>xmas</time></body></html>"
     ).metadata
-    assert m.published_at == datetime(2023, 12, 25)
+    # Offset-less dates are interpreted as UTC (timestamptz safety).
+    assert m.published_at == datetime(2023, 12, 25, tzinfo=UTC)
     m2 = analyze(
         "<html><head><meta name='date' content='2022-01-05 garbage'></head></html>"
     ).metadata
-    assert m2.published_at == datetime(2022, 1, 5)
+    assert m2.published_at == datetime(2022, 1, 5, tzinfo=UTC)
     m3 = analyze("<html><head><meta name='date' content='yesterday'></head></html>").metadata
     assert m3.published_at is None
 

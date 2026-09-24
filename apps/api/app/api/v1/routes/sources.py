@@ -3,7 +3,9 @@
 Source domains are shared reference data, so any authenticated user may read a
 profile; everything that would reveal *who* cited the source (pages, brands,
 competitors, per-project counts) is computed only over projects the caller is a
-member of. Cross-tenant information is limited to two plain counts.
+member of. Cross-tenant information is limited to three plain aggregates
+(global citation count, global project count, weeks-with-citations), none of
+which identifies a tenant.
 """
 
 import uuid
@@ -18,6 +20,7 @@ from app.core.errors import NotFoundError
 from app.core.permissions import Permission
 from app.models.intelligence import ResponseCitation
 from app.models.membership import Membership
+from app.models.organization import Organization, OrganizationStatus
 from app.models.project import Project
 from app.models.prompts import AiResponse, Prompt, PromptRun, PromptRunStatus
 from app.models.sources import CitationEntity, SourceDomain, SourcePage
@@ -46,7 +49,12 @@ def _accessible_projects(user_id: uuid.UUID):  # type: ignore[no-untyped-def]
     return (
         select(Project.id)
         .join(Membership, Membership.organization_id == Project.organization_id)
-        .where(Membership.user_id == user_id)
+        .join(Organization, Organization.id == Membership.organization_id)
+        .where(
+            Membership.user_id == user_id,
+            Organization.deleted_at.is_(None),
+            Organization.status != OrganizationStatus.DELETED,
+        )
     )
 
 

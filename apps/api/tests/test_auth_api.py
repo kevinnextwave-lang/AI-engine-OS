@@ -1,8 +1,23 @@
 import uuid
+from datetime import timedelta
 
 from httpx import AsyncClient
+from sqlalchemy import update
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.refresh_token import RefreshToken
 from tests.conftest import auth_header, register, unique_email
+
+
+async def _age_rotations(db_session: AsyncSession, seconds: int = 60) -> None:
+    """Backdate every rotation so a replay counts as theft, not a benign race."""
+    await db_session.execute(
+        update(RefreshToken)
+        .where(RefreshToken.revoked_at.is_not(None))
+        .values(revoked_at=RefreshToken.revoked_at - timedelta(seconds=seconds))
+    )
+    await db_session.flush()
+
 
 REFRESH_COOKIE = "asg_refresh_token"
 
@@ -98,7 +113,9 @@ async def test_protected_route_requires_token(client: AsyncClient) -> None:
     assert resp.json()["error"]["code"] == "invalid_token"
 
 
-async def test_refresh_rotates_and_old_token_is_rejected(client: AsyncClient) -> None:
+async def test_refresh_rotates_and_old_token_is_rejected(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     await register(client)
     first_cookie = client.cookies[REFRESH_COOKIE]
 
@@ -107,15 +124,33 @@ async def test_refresh_rotates_and_old_token_is_rejected(client: AsyncClient) ->
     second_cookie = client.cookies[REFRESH_COOKIE]
     assert second_cookie != first_cookie
 
-    # Replay the old (rotated) token: must fail AND revoke the family.
+    # Replay the old (rotated) token after the grace window: must fail AND
+    # revoke the family (theft detection).
+    await _age_rotations(db_session)
     client.cookies.set(REFRESH_COOKIE, first_cookie, path="/api/v1/auth")
     replay = await client.post("/api/v1/auth/refresh")
     assert replay.status_code == 401
 
-    # The newer token in the same family is now dead too (theft detection).
+    # The newer token in the same family is now dead too.
     client.cookies.set(REFRESH_COOKIE, second_cookie, path="/api/v1/auth")
     after = await client.post("/api/v1/auth/refresh")
     assert after.status_code == 401
+
+
+async def test_refresh_race_within_grace_window_keeps_family_alive(client: AsyncClient) -> None:
+    """Two tabs racing to rotate the same token: the loser gets a 401 but the
+    winner's session survives (no family revocation inside the grace window)."""
+    await register(client)
+    first_cookie = client.cookies[REFRESH_COOKIE]
+
+    assert (await client.post("/api/v1/auth/refresh")).status_code == 200
+    second_cookie = client.cookies[REFRESH_COOKIE]
+
+    client.cookies.set(REFRESH_COOKIE, first_cookie, path="/api/v1/auth")
+    assert (await client.post("/api/v1/auth/refresh")).status_code == 401
+
+    client.cookies.set(REFRESH_COOKIE, second_cookie, path="/api/v1/auth")
+    assert (await client.post("/api/v1/auth/refresh")).status_code == 200
 
 
 async def test_refresh_without_cookie_fails(client: AsyncClient) -> None:

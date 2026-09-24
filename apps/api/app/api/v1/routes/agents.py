@@ -24,6 +24,7 @@ from app.api.deps import (
 )
 from app.api.v1.routes.prompts import _require
 from app.core.errors import NotFoundError
+from app.core.logging import get_logger
 from app.core.permissions import Permission
 from app.models.agents import AgentAction, AgentRun, AgentRunStatus
 from app.schemas.agents import (
@@ -34,6 +35,8 @@ from app.schemas.agents import (
     AgentRunView,
 )
 from app.workers.tasks import dispatch_agent_run
+
+log = get_logger(__name__)
 
 project_router = APIRouter(prefix="/projects/{project_id}", tags=["agents"])
 run_router = APIRouter(prefix="/agent-runs/{run_id}", tags=["agents"])
@@ -90,7 +93,13 @@ async def run_agent(
         access.project, agent_name, objective=body.objective, user_id=access.membership.user_id
     )
     await session.commit()
-    dispatch(run.id)
+    try:
+        dispatch(run.id)
+    except Exception:  # noqa: BLE001 - broker outage must not strand the run as "queued"
+        log.exception("agent_run_dispatch_failed", run_id=str(run.id))
+        run.status = AgentRunStatus.FAILED
+        run.error_message = "Could not enqueue the run (worker broker unavailable)"
+        await session.commit()
     return AgentRunView.model_validate(run)
 
 

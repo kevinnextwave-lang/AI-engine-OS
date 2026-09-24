@@ -59,7 +59,14 @@ async def run_scheduled_monitoring(*, dispatch_delivery: DispatchDelivery) -> st
                     )
                     await session.commit()
                 if result.created_alert_ids:
-                    dispatch_delivery(project_id, result.created_alert_ids)
+                    try:
+                        dispatch_delivery(project_id, result.created_alert_ids)
+                    except Exception:  # noqa: BLE001 - detection succeeded; delivery is best-effort
+                        log.exception(
+                            "scheduled_monitoring_delivery_dispatch_failed",
+                            project_id=str(project_id),
+                            alerts=len(result.created_alert_ids),
+                        )
                 ran += 1
             except Exception as exc:  # noqa: BLE001 - one tenant must never block the rest
                 failed += 1

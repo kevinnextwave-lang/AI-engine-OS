@@ -2,7 +2,14 @@
 
 import * as React from "react";
 
-import { api, refreshSession, setAccessToken, type TokenResponse, type User } from "@/lib/api";
+import {
+  api,
+  onSessionExpired,
+  refreshSession,
+  setAccessToken,
+  type TokenResponse,
+  type User,
+} from "@/lib/api";
 
 interface AuthContextValue {
   user: User | null;
@@ -37,6 +44,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       cancelled = true;
     };
   }, []);
+
+  // When a request's refresh-and-retry fails mid-session, the session is gone:
+  // clear the user so the /app layout guard redirects to /login.
+  React.useEffect(
+    () =>
+      onSessionExpired(() => {
+        setAccessToken(null);
+        setUser(null);
+      }),
+    [],
+  );
 
   const apply = React.useCallback((session: TokenResponse) => {
     setAccessToken(session.access_token);

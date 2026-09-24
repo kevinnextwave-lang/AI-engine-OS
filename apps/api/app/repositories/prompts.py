@@ -122,14 +122,14 @@ class PromptRepository:
         if not prompt_ids:
             return {}
         rows = await self._session.scalars(
+            # DISTINCT ON keeps only the newest run per prompt in the database
+            # instead of loading the entire, ever-growing run history.
             select(PromptRun)
+            .distinct(PromptRun.prompt_id)
             .where(PromptRun.prompt_id.in_(prompt_ids))
             .order_by(PromptRun.prompt_id, PromptRun.created_at.desc())
         )
-        out: dict[uuid.UUID, PromptRun] = {}
-        for run in rows.all():
-            out.setdefault(run.prompt_id, run)
-        return out
+        return {run.prompt_id: run for run in rows.all()}
 
     async def latest_completed_runs(
         self, prompt_ids: list[uuid.UUID]
@@ -138,12 +138,10 @@ class PromptRepository:
             return {}
         rows = await self._session.scalars(
             select(PromptRun)
+            .distinct(PromptRun.prompt_id)
             .where(
                 PromptRun.prompt_id.in_(prompt_ids), PromptRun.status == PromptRunStatus.COMPLETED
             )
             .order_by(PromptRun.prompt_id, PromptRun.completed_at.desc())
         )
-        out: dict[uuid.UUID, PromptRun] = {}
-        for run in rows.all():
-            out.setdefault(run.prompt_id, run)
-        return out
+        return {run.prompt_id: run for run in rows.all()}

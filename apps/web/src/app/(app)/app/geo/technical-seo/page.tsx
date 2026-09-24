@@ -21,6 +21,9 @@ export default function TechnicalSeoPage() {
         <GeoPageTools source={geo.source} reason={geo.mockReason} />
       </PageHeader>
       <MockNotice source={geo.source} reason={geo.mockReason} />
+      {(geo.error ?? geo.actionError) && (
+        <p className="text-destructive mb-4 text-sm">{geo.error ?? geo.actionError}</p>
+      )}
 
       <Card className="mb-4 py-4">
         <CardContent className="flex flex-wrap items-center gap-5 px-5">
@@ -31,7 +34,11 @@ export default function TechnicalSeoPage() {
               Internal 0–100 score: 100 minus capped, severity-weighted deductions per category, scaled by the share of pages affected. Not an industry benchmark.
             </p>
             <p className="text-muted-foreground mt-1 text-xs">
-              {audit ? `${audit.pages_analyzed} pages analyzed · ${audit.observation_count} observations · ${relativeTime(audit.completed_at)}` : "No completed audit"}
+              {audit
+                ? `${audit.pages_analyzed} pages analyzed · ${audit.observation_count} observations · ${relativeTime(audit.completed_at)}`
+                : loading
+                  ? "Loading…"
+                  : "No completed audit"}
             </p>
           </div>
         </CardContent>

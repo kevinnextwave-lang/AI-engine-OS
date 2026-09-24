@@ -69,6 +69,8 @@ export interface GeoData {
   loading: boolean;
   error: string | null;
   raw: RawData;
+  /** Failure message from the most recent action (crawl/audit/status update). */
+  actionError: string | null;
   issues: GeoIssue[];
   summary: AuditSummary;
   metrics: GeoMetric[];
@@ -158,6 +160,7 @@ const NO_PROJECT: Omit<Loaded, "projectId"> = {
 export function useGeoData(projectId: string | null): GeoData {
   const [loaded, setLoaded] = React.useState<Loaded | null>(null);
   const [busy, setBusy] = React.useState<GeoData["busy"]>(null);
+  const [actionError, setActionError] = React.useState<string | null>(null);
   const [version, setVersion] = React.useState(0);
 
   React.useEffect(() => {
@@ -229,9 +232,12 @@ export function useGeoData(projectId: string | null): GeoData {
   const runCrawl = React.useCallback(async () => {
     if (!projectId || source !== "api") return;
     setBusy("crawl");
+    setActionError(null);
     try {
       await api.crawl.start(projectId);
       refresh();
+    } catch (err) {
+      setActionError(err instanceof Error ? `Could not start the crawl: ${err.message}` : "Could not start the crawl.");
     } finally {
       setBusy(null);
     }
@@ -240,11 +246,14 @@ export function useGeoData(projectId: string | null): GeoData {
   const runGeoAudit = React.useCallback(async () => {
     if (!projectId || source !== "api") return;
     setBusy("audit");
+    setActionError(null);
     try {
       await api.entities.reanalyze(projectId);
       await api.seo.startAudit(projectId);
       await api.aiReadiness.startAudit(projectId);
       refresh();
+    } catch (err) {
+      setActionError(err instanceof Error ? `Could not start the audit: ${err.message}` : "Could not start the audit.");
     } finally {
       setBusy(null);
     }
@@ -258,12 +267,15 @@ export function useGeoData(projectId: string | null): GeoData {
         return;
       }
       setBusy("status");
+      setActionError(null);
       try {
         const updated = await api.seo.updateObservation(issue.id, { status, note });
         setRaw((prev) => ({
           ...prev,
           seoObservations: prev.seoObservations.map((o) => (o.id === updated.id ? updated : o)),
         }));
+      } catch (err) {
+        setActionError(err instanceof Error ? `Could not update the issue: ${err.message}` : "Could not update the issue.");
       } finally {
         setBusy(null);
       }
@@ -284,6 +296,7 @@ export function useGeoData(projectId: string | null): GeoData {
       mockReason,
       loading,
       error,
+      actionError,
       raw,
       issues,
       summary: summarize(issues),
@@ -295,5 +308,5 @@ export function useGeoData(projectId: string | null): GeoData {
       actions: { refresh, runCrawl, runGeoAudit, updateIssueStatus },
       busy,
     };
-  }, [raw, source, mockReason, loading, error, refresh, runCrawl, runGeoAudit, updateIssueStatus, busy]);
+  }, [raw, source, mockReason, loading, error, actionError, refresh, runCrawl, runGeoAudit, updateIssueStatus, busy]);
 }

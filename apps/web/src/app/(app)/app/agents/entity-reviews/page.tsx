@@ -42,8 +42,11 @@ export default function EntityReviewsPage() {
   const d = res.data;
   const liveOpen = open ? (d?.items.find((r) => r.id === open.id) ?? open) : null;
   const entityTypes = React.useMemo(
-    () => [...new Set((d?.items ?? []).map((r) => r.entity_type))].sort(),
-    [d],
+    // Include the selected type even when the filtered result no longer
+    // contains it, so the select never silently shows "All" while filtering.
+    () =>
+      [...new Set([...(d?.items ?? []).map((r) => r.entity_type), ...(entityType ? [entityType] : [])])].sort(),
+    [d, entityType],
   );
 
   const setReviewStatus = async (review: EntityOptimizationReview, next: EntityReviewStatus) => {

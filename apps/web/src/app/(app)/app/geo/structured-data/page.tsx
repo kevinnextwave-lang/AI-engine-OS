@@ -37,6 +37,9 @@ export default function StructuredDataPage() {
         <GeoPageTools source={geo.source} reason={geo.mockReason} />
       </PageHeader>
       <MockNotice source={geo.source} reason={geo.mockReason} />
+      {(geo.error ?? geo.actionError) && (
+        <p className="text-destructive mb-4 text-sm">{geo.error ?? geo.actionError}</p>
+      )}
 
       <div className="mb-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Stat label="Pages with schema" value={`${sd.pagesWithSchema} / ${sd.pagesCrawled}`} hint={`${coverage}% coverage`} loading={loading} />

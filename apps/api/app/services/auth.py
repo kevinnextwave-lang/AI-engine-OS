@@ -5,8 +5,10 @@ logout, and the audit trail for all of them. Route handlers only translate
 HTTP <-> service calls.
 """
 
+import asyncio
 import uuid
 from dataclasses import dataclass
+from datetime import timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -32,6 +34,20 @@ from app.services.organizations import OrganizationService
 
 # Verifying against a real hash on unknown-user logins keeps timing uniform.
 _DUMMY_HASH = hash_password("dummy-password-for-timing-equalization")
+
+# Two clients racing to rotate the same refresh token (e.g. two tabs) is benign:
+# the loser gets a 401 but the family survives. Reuse OUTSIDE this window is
+# treated as theft and revokes the whole family.
+_ROTATION_GRACE = timedelta(seconds=10)
+
+
+async def _hash_password(password: str) -> str:
+    """Argon2 costs tens of milliseconds by design; keep it off the event loop."""
+    return await asyncio.to_thread(hash_password, password)
+
+
+async def _verify_password(password: str, password_hash: str) -> bool:
+    return await asyncio.to_thread(verify_password, password, password_hash)
 
 
 @dataclass(frozen=True)
@@ -97,7 +113,7 @@ class AuthService:
 
         user = User(
             email=email,
-            password_hash=hash_password(password),
+            password_hash=await _hash_password(password),
             first_name=(first_name or "").strip() or None,
             last_name=(last_name or "").strip() or None,
         )
@@ -123,7 +139,7 @@ class AuthService:
         email = email.lower().strip()
         user = await self._users.get_by_email(email)
         if user is None:
-            verify_password(password, _DUMMY_HASH)
+            await _verify_password(password, _DUMMY_HASH)
             await self._audit.record(
                 AuthEvent.LOGIN_FAILED,
                 email=email,
@@ -131,8 +147,11 @@ class AuthService:
                 user_agent=client.user_agent,
                 details={"reason": "unknown_email"},
             )
+            # The request dependency rolls back on exceptions; the audit trail
+            # must survive the failed login, so persist it explicitly.
+            await self._session.commit()
             raise InvalidCredentialsError()
-        if not verify_password(password, user.password_hash) or not user.is_active:
+        if not await _verify_password(password, user.password_hash) or not user.is_active:
             await self._audit.record(
                 AuthEvent.LOGIN_FAILED,
                 user_id=user.id,
@@ -141,9 +160,10 @@ class AuthService:
                 user_agent=client.user_agent,
                 details={"reason": "inactive" if not user.is_active else "bad_password"},
             )
+            await self._session.commit()
             raise InvalidCredentialsError()
         if password_needs_rehash(user.password_hash):
-            user.password_hash = hash_password(password)
+            user.password_hash = await _hash_password(password)
         user.last_login_at = utcnow()
         await self._audit.record(
             AuthEvent.LOGIN_SUCCEEDED,
@@ -157,12 +177,22 @@ class AuthService:
     async def refresh(self, *, refresh_token: str, client: ClientInfo) -> AuthResult:
         now = utcnow()
         record = (
-            await self._tokens.get_by_hash(hash_token(refresh_token)) if refresh_token else None
+            await self._tokens.get_by_hash(hash_token(refresh_token), for_update=True)
+            if refresh_token
+            else None
         )
         if record is None:
             raise InvalidTokenError()
 
         if record.is_revoked:
+            if (
+                record.replaced_by_id is not None
+                and record.revoked_at is not None
+                and now - record.revoked_at <= _ROTATION_GRACE
+            ):
+                # A concurrent client just rotated this token (two tabs racing).
+                # Deny this request but leave the family alive.
+                raise InvalidTokenError()
             # Reuse of a rotated token => likely theft. Kill the whole family.
             await self._tokens.revoke_family(record.family_id, now)
             await self._audit.record(
@@ -172,15 +202,20 @@ class AuthService:
                 user_agent=client.user_agent,
                 details={"family_id": str(record.family_id)},
             )
+            # Persist the revocation despite the exception-triggered rollback
+            # in the request dependency: this is the whole reuse defence.
+            await self._session.commit()
             raise InvalidTokenError()
 
         if record.expires_at <= now:
             record.revoked_at = now
+            await self._session.commit()
             raise InvalidTokenError()
 
         user = await self._users.get_by_id(record.user_id)
         if user is None or not user.is_active:
             await self._tokens.revoke_family(record.family_id, now)
+            await self._session.commit()
             raise InvalidTokenError()
 
         result = await self._issue_tokens(user, client, family_id=record.family_id)

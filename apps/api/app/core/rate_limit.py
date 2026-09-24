@@ -48,7 +48,15 @@ class InMemoryRateLimiter:
         window = int(time.time() // window_seconds)
         k = f"{key}:{window}"
         self._hits[k] += 1
-        return self._hits[k] <= limit
+        allowed = self._hits[k] <= limit
+        if len(self._hits) > 50_000:
+            # Old windows never get read again; drop them so a long-lived
+            # process without Redis cannot grow this dict without bound.
+            suffix = f":{window}"
+            self._hits = defaultdict(
+                int, {key: count for key, count in self._hits.items() if key.endswith(suffix)}
+            )
+        return allowed
 
     def reset(self) -> None:
         self._hits.clear()

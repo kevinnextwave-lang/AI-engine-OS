@@ -112,7 +112,9 @@ class WebhookChannel:
             log.warning(
                 "alert_webhook_blocked",
                 channel_id=str(self._channel.id),
-                host=raw_url.split("/")[2] if "://" in raw_url else "?",
+                # rsplit("@") strips any userinfo so credentials embedded in a
+                # stored URL can never reach the logs.
+                host=(raw_url.split("/")[2].rsplit("@", 1)[-1] if "://" in raw_url else "?"),
                 error=str(exc),
             )
             return DeliveryResult(ok=False, detail=f"blocked: {exc}")

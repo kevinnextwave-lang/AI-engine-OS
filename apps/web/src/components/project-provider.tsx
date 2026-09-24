@@ -33,7 +33,7 @@ function readStoredId(): string | null {
 
 /** Projects of the selected organization and the one the GEO section works on. */
 export function ProjectProvider({ children }: { children: React.ReactNode }) {
-  const { current: organization } = useOrganization();
+  const { current: organization, loading: orgLoading } = useOrganization();
   const [loaded, setLoaded] = React.useState<Loaded | null>(null);
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
 
@@ -77,11 +77,13 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     return {
       projects,
       current,
-      loading: organization !== null && !ready,
+      // While organizations are still loading, projects are unknown too —
+      // without this, pages flash "Select a project" / sample data on load.
+      loading: orgLoading || (organization !== null && !ready),
       error: ready ? loaded.error : null,
       select,
     };
-  }, [organization, loaded, selectedId, select]);
+  }, [organization, orgLoading, loaded, selectedId, select]);
   return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;
 }
 

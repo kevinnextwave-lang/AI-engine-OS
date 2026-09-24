@@ -213,8 +213,11 @@ async def _finish_completed(
     run.completed_at = now
     await session.flush()
     # Response intelligence (deterministic stage; the LLM stage is opt-in via settings).
+    # The savepoint confines a parse failure — including a DB error, which would
+    # otherwise poison the transaction and roll back the completed run itself.
     try:
-        await ResponseIntelligenceService(session, interpreter).parse_and_store(stored)
+        async with session.begin_nested():
+            await ResponseIntelligenceService(session, interpreter).parse_and_store(stored)
     except Exception:  # noqa: BLE001 - parsing must never undo a completed run
         log.exception("ai_response_parse_failed", run_id=str(run.id))
     if run.batch_id is not None:

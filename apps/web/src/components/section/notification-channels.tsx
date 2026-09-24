@@ -71,6 +71,10 @@ export function NotificationChannelsSheet({
   const add = () =>
     act(async () => {
       if (!projectId) return;
+      // Browser minLength checks pass for padded input; validate the trimmed
+      // values the API will actually receive.
+      if (name.trim().length < 2) throw new Error("Please enter a channel name (at least 2 characters).");
+      if (secret.trim() && secret.trim().length < 8) throw new Error("The signing secret must be at least 8 characters.");
       await api.notificationChannels.create(projectId, {
         name: name.trim(),
         url: url.trim(),

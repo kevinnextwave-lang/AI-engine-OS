@@ -51,14 +51,22 @@ function CrawlDrawerBody({ initial, onChanged }: { initial: CrawlJob; onChanged:
   const [error, setError] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
 
+  // Monotonic token: a slow response from an earlier load (previous filter,
+  // or a poll tick) must never overwrite a newer one.
+  const loadSeq = React.useRef(0);
   const load = React.useCallback(() => {
+    const seq = ++loadSeq.current;
     Promise.all([api.crawl.get(initial.id), api.crawl.pages(initial.id, { status: urlStatus || undefined })])
       .then(([j, p]) => {
+        if (seq !== loadSeq.current) return;
         setJob(j);
         setPages(p);
         setError(null);
       })
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : "Could not load crawl"));
+      .catch((err: unknown) => {
+        if (seq !== loadSeq.current) return;
+        setError(err instanceof Error ? err.message : "Could not load crawl");
+      });
   }, [initial.id, urlStatus]);
 
   React.useEffect(() => {
@@ -180,9 +188,12 @@ export default function CrawlsPage() {
     setBusy(true);
     setNotice(null);
     try {
+      // The input is outside a <form>, so its min=1 is never enforced by the
+      // browser; clamp to a sane integer before sending.
+      const pages = Math.floor(Number(maxPages));
       const job = await api.crawl.start(res.projectId, {
         crawl_type: "full",
-        ...(maxPages ? { max_pages: Number(maxPages) } : {}),
+        ...(Number.isFinite(pages) && pages >= 1 ? { max_pages: pages } : {}),
       });
       setOpen(job);
       res.refresh();

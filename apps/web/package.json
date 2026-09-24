@@ -10,13 +10,14 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "next": "16.3.2",
-    "react": "19.2.8",
-    "react-dom": "19.2.8",
     "@ai-search-growth-os/types": "*",
-    "@ai-search-growth-os/ui": "*"
+    "@ai-search-growth-os/ui": "*",
+    "next": "16.3.6",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@ai-search-growth-os/config": "*",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -24,7 +25,6 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.2",
     "tailwindcss": "^4",
-    "typescript": "^5",
-    "@ai-search-growth-os/config": "*"
+    "typescript": "^5"
   }
 }

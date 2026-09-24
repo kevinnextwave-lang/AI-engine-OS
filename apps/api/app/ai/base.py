@@ -33,6 +33,15 @@ class AIProvider(ABC):
 
     def __init__(self, *, default_timeout_seconds: float = 60.0) -> None:
         self._default_timeout = default_timeout_seconds
+        # Set by adapters that create their own httpx client; aclose() then
+        # owns shutting it down so worker tasks don't leak sockets.
+        self._owns_client = False
+
+    async def aclose(self) -> None:
+        """Close the HTTP client if this provider created it (not injected)."""
+        client = getattr(self, "_client", None)
+        if self._owns_client and isinstance(client, httpx.AsyncClient):
+            await client.aclose()
 
     @abstractmethod
     async def _generate(self, request: AIRequest, timeout_seconds: float) -> AIResponse:

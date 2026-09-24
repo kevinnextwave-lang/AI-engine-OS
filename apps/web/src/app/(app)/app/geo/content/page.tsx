@@ -28,6 +28,9 @@ export default function ContentPage() {
         <GeoPageTools source={geo.source} reason={geo.mockReason} />
       </PageHeader>
       <MockNotice source={geo.source} reason={geo.mockReason} />
+      {(geo.error ?? geo.actionError) && (
+        <p className="text-destructive mb-4 text-sm">{geo.error ?? geo.actionError}</p>
+      )}
 
       <div className="mb-4 grid gap-4 lg:grid-cols-[auto_1fr]">
         <Card className="py-4">

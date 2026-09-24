@@ -150,7 +150,9 @@ class ExecutionService:
                 run.error_code = "dispatch_failed"
                 run.error_message = f"Could not enqueue run: {type(exc).__name__}"
                 run.completed_at = datetime.now(UTC)
-            batch.failed_runs = len(runs) - enqueued
+            # Server-side increment: workers may already be recording outcomes
+            # for the runs that WERE enqueued, so never overwrite the counter.
+            batch.failed_runs = PromptRunBatch.failed_runs + (len(runs) - enqueued)
             await self._session.flush()
             await self._batches.finalize_if_done(batch.id)
             await self._session.commit()

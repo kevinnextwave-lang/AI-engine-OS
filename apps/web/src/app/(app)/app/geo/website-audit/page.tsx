@@ -43,6 +43,9 @@ export default function WebsiteAuditPage() {
         <GeoPageTools source={geo.source} reason={geo.mockReason} />
       </PageHeader>
       <MockNotice source={geo.source} reason={geo.mockReason} />
+      {(geo.error ?? geo.actionError) && (
+        <p className="text-destructive mb-4 text-sm">{geo.error ?? geo.actionError}</p>
+      )}
 
       <Card className="mb-4 py-5">
         <CardContent className="px-5">

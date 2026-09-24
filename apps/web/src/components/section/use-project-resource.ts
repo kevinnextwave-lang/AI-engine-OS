@@ -55,12 +55,15 @@ export function useProjectResource<T>(
   }, [key, projectId, fetcher]);
 
   const settled = key !== null && result?.key === key;
+  // Stale data may stay visible across refreshes of the SAME project, but a
+  // project switch must show the loading state, never the old project's rows.
+  const sameProject = projectId !== null && result != null && result.key.startsWith(`${projectId}:`);
   return {
     projectId,
     project: current,
     projectLoading,
-    data: projectId ? (result?.data ?? null) : null,
-    loading: projectLoading || (projectId !== null && !settled && result?.data == null),
+    data: sameProject ? result.data : null,
+    loading: projectLoading || (projectId !== null && !settled && !(sameProject && result.data != null)),
     refreshing: projectId !== null && !settled,
     error: projectId && settled ? (result?.error ?? null) : null,
     refresh,

@@ -46,8 +46,13 @@ export function UserMenu() {
         <DropdownMenuItem
           variant="destructive"
           onSelect={async () => {
-            await logout();
-            router.replace("/login");
+            try {
+              await logout();
+            } finally {
+              // Local auth state is cleared even when the server call fails;
+              // the user must always end up on the login page.
+              router.replace("/login");
+            }
           }}
         >
           <LogOutIcon />

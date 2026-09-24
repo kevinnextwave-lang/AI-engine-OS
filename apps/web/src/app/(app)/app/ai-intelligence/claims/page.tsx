@@ -18,7 +18,11 @@ export default function ClaimsPage() {
   const [query, setQuery] = React.useState("");
   const rows = React.useMemo(() => {
     const q = query.trim().toLowerCase();
-    return intel.claims.filter((c) => (!assoc || c.associatedWith === assoc) && (!q || `${c.subject} ${c.predicate} ${c.object}`.includes(q)));
+    return intel.claims.filter(
+      (c) =>
+        (!assoc || c.associatedWith === assoc) &&
+        (!q || `${c.subject} ${c.predicate} ${c.object}`.toLowerCase().includes(q)),
+    );
   }, [intel.claims, assoc, query]);
 
   return (

@@ -22,6 +22,7 @@ from app.api.deps import (
 )
 from app.api.v1.routes.prompts import _require
 from app.core.errors import NotFoundError
+from app.core.logging import get_logger
 from app.core.permissions import Permission
 from app.models.notification_channels import NotificationChannelConfig
 from app.schemas.notification_channels import (
@@ -31,6 +32,8 @@ from app.schemas.notification_channels import (
     NotificationChannelUpdateRequest,
     NotificationChannelView,
 )
+
+log = get_logger(__name__)
 
 project_router = APIRouter(
     prefix="/projects/{project_id}/notification-channels", tags=["notifications"]
@@ -204,7 +207,14 @@ async def test_channel(
 ) -> ChannelTestResponse:
     channel, access = channel_access
     _require(access, Permission.DATA_MANAGE)
-    dispatcher(channel.id)
+    try:
+        dispatcher(channel.id)
+    except Exception:  # noqa: BLE001 - broker outage: report instead of claiming "queued"
+        log.exception("channel_test_dispatch_failed", channel_id=str(channel.id))
+        return ChannelTestResponse(
+            queued=False,
+            note="Could not queue the test delivery (worker broker unavailable). Try again.",
+        )
     return ChannelTestResponse(
         queued=True,
         note="Test delivery queued; check the channel's last delivery status shortly.",

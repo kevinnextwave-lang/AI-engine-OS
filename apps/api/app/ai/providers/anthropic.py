@@ -47,6 +47,7 @@ class AnthropicProvider(AIProvider):
         self._base_url = base_url.rstrip("/")
         self._version = api_version
         self._client = client or httpx.AsyncClient()
+        self._owns_client = client is None
         self._default_max_tokens = default_max_tokens
 
     async def _generate(self, request: AIRequest, timeout_seconds: float) -> AIResponse:

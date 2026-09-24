@@ -8,7 +8,7 @@ scoring layer decides what they mean.
 import json
 import re
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -198,18 +198,25 @@ def _parse_date(value: str | None) -> datetime | None:
     if not value:
         return None
     value = value.strip()
+    parsed: datetime | None = None
     for candidate in (value, value.replace("Z", "+00:00")):
         try:
-            return datetime.fromisoformat(candidate)
+            parsed = datetime.fromisoformat(candidate)
+            break
         except ValueError:
             continue
-    match = re.match(r"(\d{4}-\d{2}-\d{2})", value)
-    if match:
-        try:
-            return datetime.fromisoformat(match.group(1))
-        except ValueError:
-            return None
-    return None
+    if parsed is None:
+        match = re.match(r"(\d{4}-\d{2}-\d{2})", value)
+        if match:
+            try:
+                parsed = datetime.fromisoformat(match.group(1))
+            except ValueError:
+                return None
+    if parsed is not None and parsed.tzinfo is None:
+        # Offset-less page dates are stored in timestamptz columns; treat them
+        # as UTC instead of letting the driver assume process-local time.
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed
 
 
 def _is_boilerplate(node: Node) -> bool:

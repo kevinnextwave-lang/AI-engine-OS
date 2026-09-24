@@ -46,6 +46,7 @@ class OpenAIProvider(AIProvider):
         self._api_key = api_key
         self._base_url = base_url.rstrip("/")
         self._client = client or httpx.AsyncClient()
+        self._owns_client = client is None
 
     async def _generate(self, request: AIRequest, timeout_seconds: float) -> AIResponse:
         messages: list[dict[str, str]] = []

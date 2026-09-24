@@ -34,7 +34,7 @@ function ChangeCard({
 }: {
   change: ProposedContentChange;
   busy: boolean;
-  onDecide: (changeId: string, action: "accept" | "edit" | "reject", text?: string) => void;
+  onDecide: (changeId: string, action: "accept" | "edit" | "reject", text?: string) => Promise<void>;
 }) {
   const [editing, setEditing] = React.useState(false);
   const [text, setText] = React.useState(change.proposed_text);
@@ -68,13 +68,13 @@ function ChangeCard({
       )}
       {change.decision === "pending" && !editing && (
         <div className="mt-3 flex gap-2">
-          <Button size="sm" onClick={() => onDecide(change.change_id, "accept")} disabled={busy}>
+          <Button size="sm" onClick={() => void onDecide(change.change_id, "accept")} disabled={busy}>
             Accept
           </Button>
           <Button size="sm" variant="outline" onClick={() => setEditing(true)} disabled={busy}>
             Edit
           </Button>
-          <Button size="sm" variant="ghost" onClick={() => onDecide(change.change_id, "reject")} disabled={busy}>
+          <Button size="sm" variant="ghost" onClick={() => void onDecide(change.change_id, "reject")} disabled={busy}>
             Reject
           </Button>
         </div>
@@ -91,8 +91,9 @@ function ChangeCard({
             <Button
               size="sm"
               onClick={() => {
-                onDecide(change.change_id, "edit", text);
-                setEditing(false);
+                // Close the editor only after the decision persisted, so a
+                // failure keeps the edited text on screen.
+                void onDecide(change.change_id, "edit", text).then(() => setEditing(false));
               }}
               disabled={busy || !text.trim()}
             >
@@ -177,7 +178,7 @@ function ReviewDrawerBody({ reviewId, onChanged }: { reviewId: string; onChanged
               <DrawerSection title="Proposed changes">
                 <div className="flex flex-col gap-2">
                   {review.proposed_changes.map((c) => (
-                    <ChangeCard key={c.change_id} change={c} busy={busy} onDecide={(id, a, t) => void decide(id, a, t)} />
+                    <ChangeCard key={c.change_id} change={c} busy={busy} onDecide={decide} />
                   ))}
                 </div>
               </DrawerSection>

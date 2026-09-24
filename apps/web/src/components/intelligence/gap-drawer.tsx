@@ -104,7 +104,7 @@ export function GapDrawer({
   onUpdate: (gapId: string, body: { status?: GapStatus; note?: string | null }) => Promise<void>;
   onClose: () => void;
 }) {
-  const [prompts, setPrompts] = React.useState<{ id: string; list: { prompt: string; n: number }[] | null } | null>(null);
+  const [prompts, setPrompts] = React.useState<{ id: string; list: { prompt: string; n: number }[] | null; error: string | null } | null>(null);
   const id = gap?.id ?? null;
   const domainId = gap?.source_domain_id ?? null;
   const mockList = React.useMemo(
@@ -117,14 +117,22 @@ export function GapDrawer({
     let cancelled = false;
     api.citations
       .list(projectId, { source_domain_id: domainId, limit: 500 })
-      .then((r) => !cancelled && setPrompts({ id, list: summarise(r.items) }))
-      .catch(() => !cancelled && setPrompts({ id, list: [] }));
+      .then((r) => !cancelled && setPrompts({ id, list: summarise(r.items), error: null }))
+      .catch((err: unknown) =>
+        !cancelled &&
+        setPrompts({
+          id,
+          list: null,
+          error: err instanceof Error ? err.message : "Could not load citations",
+        }),
+      );
     return () => {
       cancelled = true;
     };
   }, [id, domainId, live, projectId]);
 
   const list = mockList ?? (prompts?.id === id ? prompts.list : null);
+  const listError = !mockList && prompts?.id === id ? prompts.error : null;
   const max = gap ? Math.max(gap.brand_citations, ...Object.values(gap.competitors), 1) : 1;
   const comps = gap ? Object.entries(gap.competitors).sort((a, b) => b[1] - a[1]) : [];
   const components = gap?.evidence.components ?? {};
@@ -192,7 +200,9 @@ export function GapDrawer({
                   </ul>
                 )}
                 <p className="text-muted-foreground mt-1 text-xs font-medium">Prompts where the source appeared</p>
-                {list === null ? (
+                {listError ? (
+                  <p className="text-destructive text-sm">{listError}</p>
+                ) : list === null ? (
                   <Skeleton className="h-12 w-full" />
                 ) : list.length === 0 ? (
                   <p className="text-muted-foreground text-sm">No stored citations in the current window.</p>

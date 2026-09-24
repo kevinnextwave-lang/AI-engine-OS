@@ -21,6 +21,7 @@ from app.api.deps import (
     CurrentUser,
     DBSession,
     ProjectAccess,
+    org_is_usable,
     require_permission,
     require_project_access,
 )
@@ -61,7 +62,11 @@ async def _resolve_membership_for_create(
     session: DBSession, user: CurrentUser, organization_id: uuid.UUID | None
 ) -> Membership:
     """Pick the organization a new project belongs to, always via membership."""
-    memberships = await MembershipRepository(session).list_for_user(user.id)
+    memberships = [
+        m
+        for m in await MembershipRepository(session).list_for_user(user.id)
+        if org_is_usable(m.organization)
+    ]
     if organization_id is not None:
         membership = next((m for m in memberships if m.organization_id == organization_id), None)
         if membership is None:

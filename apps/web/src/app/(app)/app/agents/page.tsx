@@ -71,8 +71,11 @@ export default function AgentsPage() {
       description="Autonomous analysis agents that work only on this project's measured data through a controlled tool registry. Agents propose; you approve — no proposed action is ever executed automatically."
       projectId={agents.projectId}
       projectLoading={agents.projectLoading}
-      error={agents.error}
-      onRetry={agents.refresh}
+      error={agents.error ?? runs.error}
+      onRetry={() => {
+        agents.refresh();
+        runs.refresh();
+      }}
     >
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <Input
@@ -84,6 +87,13 @@ export default function AgentsPage() {
         />
       </div>
       {notice && <p className="text-muted-foreground mb-4 text-sm">{notice}</p>}
+      {agents.loading && (
+        <div className="grid gap-4 md:grid-cols-2">
+          {Array.from({ length: 4 }, (_, i) => (
+            <div key={i} className="bg-muted/40 h-40 animate-pulse rounded-xl border" />
+          ))}
+        </div>
+      )}
       <div className="grid gap-4 md:grid-cols-2">
         {(agents.data ?? []).map((a) => {
           const info = AGENT_INFO[a.name] ?? { title: a.name, description: "" };

@@ -327,21 +327,27 @@ class CompetitorDiscoveryService:
         aggregates: dict[str, Aggregate],
     ) -> tuple[bool, str | None]:
         registry = self._registry or ProviderRegistry()
+        owns_registry = self._registry is None
         provider_key = next((k for k in registry.known_keys if registry.is_configured(k)), None)
         if provider_key is None:
             return False, "no AI provider configured"
         provider = registry.get(provider_key)
         model = registry.default_model(provider_key) or ""
-        response = await provider.generate(
-            AIRequest(
-                model=model,
-                prompt=self._ai_prompt(project, known),
-                system_prompt="You are a precise market analyst. Output strict JSON only.",
-                temperature=0.0,
-                max_tokens=1500,
-                metadata={"purpose": "competitor_discovery", "project_id": str(project.id)},
+        try:
+            response = await provider.generate(
+                AIRequest(
+                    model=model,
+                    prompt=self._ai_prompt(project, known),
+                    system_prompt="You are a precise market analyst. Output strict JSON only.",
+                    temperature=0.0,
+                    max_tokens=1500,
+                    metadata={"purpose": "competitor_discovery", "project_id": str(project.id)},
+                )
             )
-        )
+        finally:
+            # A registry built here owns its providers' HTTP clients.
+            if owns_registry:
+                await registry.aclose()
         if not response.succeeded:
             return (
                 True,

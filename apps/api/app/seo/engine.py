@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.errors import safe_error_message
 from app.core.logging import get_logger
 from app.models.crawl import CrawlJob
 from app.models.seo import AuditStatus, SeoAudit, SeoObservation
@@ -81,8 +82,11 @@ async def run_audit(session: AsyncSession, audit: SeoAudit) -> SeoAudit:
         audit.status = AuditStatus.COMPLETED
     except Exception as exc:  # noqa: BLE001 - audit row must always be finalized
         log.exception("seo_audit_failed", audit_id=str(audit.id))
+        # Clear a possibly-poisoned transaction so the finalizing commit
+        # below cannot fail and leave the audit stuck in RUNNING.
+        await session.rollback()
         audit.status = AuditStatus.FAILED
-        audit.error_message = f"{type(exc).__name__}: {exc}"[:2000]
+        audit.error_message = safe_error_message(exc)
     finally:
         audit.completed_at = datetime.now(UTC)
         await session.commit()

@@ -109,6 +109,11 @@ class ProviderRegistry:
         setting = DEFAULT_MODEL_SETTING.get(key)
         return getattr(self._settings, setting) if setting else None
 
+    async def aclose(self) -> None:
+        """Close every provider-owned HTTP client built by this registry."""
+        for provider in self._providers.values():
+            await provider.aclose()
+
     def register(self, key: str, provider: AIProvider) -> None:
         """Inject a provider instance (tests, future plug-ins)."""
         FACTORIES.setdefault(key, lambda _s, _c: None)

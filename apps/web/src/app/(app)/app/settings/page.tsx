@@ -15,11 +15,17 @@ import {
 
 export default function SettingsPage() {
   const { user } = useAuth();
-  const { current } = useOrganization();
+  const { current, loading: orgLoading, error: orgError } = useOrganization();
+  const orgPlaceholder = orgLoading ? "Loading…" : "—";
 
   return (
     <>
       <PageHeader title="Settings" description="Your profile and the current organization." />
+      {orgError && (
+        <p role="alert" className="text-destructive mb-4 text-sm">
+          {orgError}
+        </p>
+      )}
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
@@ -51,15 +57,15 @@ export default function SettingsPage() {
           <CardContent className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="org-name">Name</Label>
-              <Input id="org-name" readOnly value={current?.name ?? ""} placeholder="—" />
+              <Input id="org-name" readOnly value={current?.name ?? ""} placeholder={orgPlaceholder} />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="org-slug">Slug</Label>
-              <Input id="org-slug" readOnly className="font-mono" value={current?.slug ?? ""} />
+              <Input id="org-slug" readOnly className="font-mono" value={current?.slug ?? ""} placeholder={orgPlaceholder} />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="org-role">Your role</Label>
-              <Input id="org-role" readOnly className="capitalize" value={current?.role ?? ""} />
+              <Input id="org-role" readOnly className="capitalize" value={current?.role ?? ""} placeholder={orgPlaceholder} />
             </div>
           </CardContent>
         </Card>

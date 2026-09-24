@@ -149,7 +149,14 @@ export function useVisibilityData(projectId: string | null, brandName: string | 
   const [loaded, setLoaded] = React.useState<Loaded | null>(null);
   const [version, setVersion] = React.useState(0);
   const [busy, setBusy] = React.useState<VisibilityData["busy"]>(null);
-  const [runNotice, setRunNotice] = React.useState<string | null>(null);
+  // The notice is stored with the project it belongs to, so a notice about
+  // project A's runs never lingers after switching to project B.
+  const [noticeState, setNoticeState] = React.useState<{ projectId: string | null; text: string } | null>(null);
+  const runNotice = noticeState && noticeState.projectId === projectId ? noticeState.text : null;
+  const setRunNotice = React.useCallback(
+    (text: string) => setNoticeState({ projectId, text }),
+    [projectId],
+  );
 
   React.useEffect(() => {
     if (!projectId) return;
@@ -216,10 +223,14 @@ export function useVisibilityData(projectId: string | null, brandName: string | 
         `Queued ${batch.total_runs} prompt runs for “${runnableSet.name}”. Results appear here once responses are collected and parsed.`,
       );
       refresh();
+    } catch (err) {
+      // Surface the failure where the success notice would appear; an
+      // unhandled rejection here would fail silently.
+      setRunNotice(err instanceof Error ? `Run failed: ${err.message}` : "Run failed.");
     } finally {
       setBusy(null);
     }
-  }, [projectId, source, runnableSet, configuredProviders, refresh]);
+  }, [projectId, source, runnableSet, configuredProviders, refresh, setRunNotice]);
 
   return React.useMemo<VisibilityData>(() => {
     const brand = source === "mock" ? MOCK_BRAND : (brandName ?? "Your brand");

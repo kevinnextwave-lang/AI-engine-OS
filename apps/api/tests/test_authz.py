@@ -6,18 +6,30 @@ organization isolation, RBAC matrix, IDOR attempts, audit logging.
 """
 
 import uuid
+from datetime import timedelta
 
 from httpx import AsyncClient
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.passwords import validate_password
 from app.core.security import create_access_token
 from app.models import AuthAuditLog, AuthEvent, Membership, MembershipRole, User
+from app.models.refresh_token import RefreshToken
 from tests.conftest import auth_header, unique_email
 
 REFRESH_COOKIE = "asg_refresh_token"
 PASSWORD = "CorrectHorseBattery1"
+
+
+async def _age_rotations(db_session: AsyncSession, seconds: int = 60) -> None:
+    """Backdate rotations so a replay counts as theft, not a benign race."""
+    await db_session.execute(
+        update(RefreshToken)
+        .where(RefreshToken.revoked_at.is_not(None))
+        .values(revoked_at=RefreshToken.revoked_at - timedelta(seconds=seconds))
+    )
+    await db_session.flush()
 
 
 async def signup(client: AsyncClient, email: str | None = None, org: str = "Acme") -> dict:  # type: ignore[type-arg]
@@ -183,16 +195,47 @@ async def test_refresh_rotates_tokens(client: AsyncClient) -> None:
     assert client.cookies[REFRESH_COOKIE] != first
 
 
-async def test_revoked_refresh_token_rejected_and_family_killed(client: AsyncClient) -> None:
+async def test_revoked_refresh_token_rejected_and_family_killed(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     await signup(client)
     old = client.cookies[REFRESH_COOKIE]
     await client.post("/api/v1/auth/refresh")
     new = client.cookies[REFRESH_COOKIE]
 
+    await _age_rotations(db_session)
     client.cookies.set(REFRESH_COOKIE, old, path="/api/v1/auth")
     assert (await client.post("/api/v1/auth/refresh")).status_code == 401  # replay
     client.cookies.set(REFRESH_COOKIE, new, path="/api/v1/auth")
     assert (await client.post("/api/v1/auth/refresh")).status_code == 401  # family revoked
+
+
+async def test_reuse_revocation_survives_request_rollback(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """The request dependency rolls back on exceptions; the reuse defence
+    (family revocation + audit row) must be committed before the 401 is raised,
+    or the whole protection silently evaporates."""
+    import pytest
+
+    from app.core.errors import InvalidTokenError
+    from app.services.auth import AuthService, ClientInfo
+
+    await signup(client)
+    old = client.cookies[REFRESH_COOKIE]
+    await client.post("/api/v1/auth/refresh")
+    new = client.cookies[REFRESH_COOKIE]
+    await _age_rotations(db_session)
+
+    svc = AuthService(db_session)
+    with pytest.raises(InvalidTokenError):
+        await svc.refresh(refresh_token=old, client=ClientInfo())
+    # Mimic get_db_session's rollback-on-exception.
+    await db_session.rollback()
+
+    # The family revocation survived the rollback: the newer token is dead.
+    with pytest.raises(InvalidTokenError):
+        await svc.refresh(refresh_token=new, client=ClientInfo())
 
 
 async def test_logout_revokes_refresh_token(client: AsyncClient) -> None:
@@ -383,8 +426,9 @@ async def test_auth_events_are_audited(client: AsyncClient, db_session: AsyncSes
     await client.post("/api/v1/auth/login", json={"email": email, "password": PASSWORD})
     old = client.cookies[REFRESH_COOKIE]
     await client.post("/api/v1/auth/refresh")
+    await _age_rotations(db_session)
     client.cookies.set(REFRESH_COOKIE, old, path="/api/v1/auth")
-    await client.post("/api/v1/auth/refresh")  # reuse
+    await client.post("/api/v1/auth/refresh")  # reuse (outside the grace window)
     await client.post("/api/v1/auth/logout-all", headers=auth_header(data["access_token"]))
 
     uid = uuid.UUID(data["user"]["id"])

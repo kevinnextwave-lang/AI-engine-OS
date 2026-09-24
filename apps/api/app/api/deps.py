@@ -6,6 +6,7 @@ the requested resource (e.g. a project's organization). A caller who is not a
 member sees 404, so other tenants' existence is not leaked (IDOR protection).
 """
 
+import ipaddress
 import uuid
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
@@ -60,10 +61,25 @@ def get_rate_limiter(redis: Annotated[Redis | None, Depends(get_redis)]) -> Rate
 
 
 def client_ip(request: Request) -> str:
+    """Best-effort client IP for rate limiting and the audit trail.
+
+    X-Forwarded-For is honoured only when the direct peer is a private or
+    loopback address (i.e. a reverse proxy on the platform network), and only
+    its RIGHTMOST entry is used — that is the one the trusted proxy appended.
+    Leftmost entries are client-supplied and spoofable, which would let
+    callers rotate identities past the rate limiter and write arbitrary IPs
+    into the audit log.
+    """
+    peer = request.client.host if request.client else None
     forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
+    if forwarded and peer:
+        try:
+            peer_is_proxy = ipaddress.ip_address(peer).is_private or peer == "testclient"
+        except ValueError:
+            peer_is_proxy = peer == "testclient"
+        if peer_is_proxy:
+            return forwarded.split(",")[-1].strip()
+    return peer or "unknown"
 
 
 def rate_limit(
@@ -110,7 +126,7 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 # -- Organization scoping -------------------------------------------------
 
 
-def _org_is_usable(org: Organization) -> bool:
+def org_is_usable(org: Organization) -> bool:
     return org.deleted_at is None and org.status != OrganizationStatus.DELETED
 
 
@@ -121,7 +137,7 @@ async def get_current_membership(
 ) -> Membership:
     """Membership of the caller in the organization named in the URL path."""
     membership = await MembershipRepository(session).get(organization_id, user.id)
-    if membership is None or not _org_is_usable(membership.organization):
+    if membership is None or not org_is_usable(membership.organization):
         raise NotFoundError("Organization not found")
     return membership
 
@@ -187,7 +203,7 @@ async def get_project_access(
     if project is None:
         raise NotFoundError("Project not found")
     membership = await MembershipRepository(session).get(project.organization_id, user.id)
-    if membership is None or not _org_is_usable(membership.organization):
+    if membership is None or not org_is_usable(membership.organization):
         raise NotFoundError("Project not found")
     return ProjectAccess(project=project, membership=membership)
 

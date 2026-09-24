@@ -19,7 +19,12 @@ def ping() -> str:
     name="app.workers.tasks.crawler.run_crawl_job",
     bind=True,
     acks_late=True,
-    max_retries=0,
+    # Transient failures (DB/broker blips) retry twice with backoff; the
+    # status guards inside each task make a retry of finished work a no-op.
+    autoretry_for=(Exception,),
+    max_retries=2,
+    retry_backoff=60,
+    retry_jitter=True,
     soft_time_limit=60 * 60 * 6,
     time_limit=60 * 60 * 6 + 60,
 )
@@ -56,7 +61,12 @@ def dispatch_crawl_job(job_id: uuid.UUID) -> None:
     name="app.workers.tasks.analytics.run_seo_audit",
     bind=True,
     acks_late=True,
-    max_retries=0,
+    # Transient failures (DB/broker blips) retry twice with backoff; the
+    # status guards inside each task make a retry of finished work a no-op.
+    autoretry_for=(Exception,),
+    max_retries=2,
+    retry_backoff=60,
+    retry_jitter=True,
     soft_time_limit=60 * 30,
     time_limit=60 * 30 + 60,
 )
@@ -94,7 +104,12 @@ def dispatch_seo_audit(audit_id: uuid.UUID) -> None:
     name="app.workers.tasks.analytics.run_entity_analysis",
     bind=True,
     acks_late=True,
-    max_retries=0,
+    # Transient failures (DB/broker blips) retry twice with backoff; the
+    # status guards inside each task make a retry of finished work a no-op.
+    autoretry_for=(Exception,),
+    max_retries=2,
+    retry_backoff=60,
+    retry_jitter=True,
     soft_time_limit=60 * 30,
     time_limit=60 * 30 + 60,
 )
@@ -129,7 +144,12 @@ def dispatch_entity_analysis(project_id: uuid.UUID) -> None:
     name="app.workers.tasks.analytics.run_ai_readiness_audit",
     bind=True,
     acks_late=True,
-    max_retries=0,
+    # Transient failures (DB/broker blips) retry twice with backoff; the
+    # status guards inside each task make a retry of finished work a no-op.
+    autoretry_for=(Exception,),
+    max_retries=2,
+    retry_backoff=60,
+    retry_jitter=True,
     soft_time_limit=60 * 30,
     time_limit=60 * 30 + 60,
 )
@@ -188,16 +208,18 @@ def run_prompt_run_task(self, run_id: str) -> str:  # type: ignore[no-untyped-de
 
         settings = get_settings()
         redis = Redis.from_url(settings.redis_url)
+        registry = ProviderRegistry(settings)
         try:
             async with get_session_factory()() as session:
                 outcome = await execute_prompt_run(
                     session,
                     uuid.UUID(run_id),
-                    ProviderRegistry(settings),
+                    registry,
                     RedisProviderThrottle(redis),
                 )
                 return (outcome.status.value if outcome.status else "skipped"), outcome.retry_in
         finally:
+            await registry.aclose()
             await redis.aclose()
             await dispose_engine()
 
@@ -216,7 +238,12 @@ def dispatch_prompt_run(run_id: uuid.UUID, priority: int = 5) -> None:
     name="app.workers.tasks.analytics.backfill_sources",
     bind=True,
     acks_late=True,
-    max_retries=0,
+    # Transient failures (DB/broker blips) retry twice with backoff; the
+    # status guards inside each task make a retry of finished work a no-op.
+    autoretry_for=(Exception,),
+    max_retries=2,
+    retry_backoff=60,
+    retry_jitter=True,
     soft_time_limit=60 * 60,
     time_limit=60 * 60 + 60,
 )
@@ -252,7 +279,12 @@ def dispatch_source_backfill(project_id: uuid.UUID | None = None, *, force: bool
     name="app.workers.tasks.analytics.analyze_citation_gaps",
     bind=True,
     acks_late=True,
-    max_retries=0,
+    # Transient failures (DB/broker blips) retry twice with backoff; the
+    # status guards inside each task make a retry of finished work a no-op.
+    autoretry_for=(Exception,),
+    max_retries=2,
+    retry_backoff=60,
+    retry_jitter=True,
     soft_time_limit=60 * 20,
     time_limit=60 * 20 + 60,
 )
@@ -287,7 +319,12 @@ def dispatch_citation_gap_analysis(project_id: uuid.UUID, *, window_days: int = 
     name="app.workers.tasks.agents.run_agent",
     bind=True,
     acks_late=True,
-    max_retries=0,
+    # Transient failures (DB/broker blips) retry twice with backoff; the
+    # status guards inside each task make a retry of finished work a no-op.
+    autoretry_for=(Exception,),
+    max_retries=2,
+    retry_backoff=60,
+    retry_jitter=True,
     soft_time_limit=60 * 15,
     time_limit=60 * 15 + 60,
 )
@@ -319,7 +356,12 @@ def dispatch_agent_run(run_id: uuid.UUID) -> None:
     name="app.workers.tasks.agents.run_agent_workflow",
     bind=True,
     acks_late=True,
-    max_retries=0,
+    # Transient failures (DB/broker blips) retry twice with backoff; the
+    # status guards inside each task make a retry of finished work a no-op.
+    autoretry_for=(Exception,),
+    max_retries=2,
+    retry_backoff=60,
+    retry_jitter=True,
     soft_time_limit=60 * 30,
     time_limit=60 * 30 + 60,
 )
@@ -351,7 +393,12 @@ def dispatch_agent_workflow(workflow_id: uuid.UUID) -> None:
     name="app.workers.tasks.notifications.deliver_alerts",
     bind=True,
     acks_late=True,
-    max_retries=0,
+    # Transient failures (DB/broker blips) retry twice with backoff; the
+    # status guards inside each task make a retry of finished work a no-op.
+    autoretry_for=(Exception,),
+    max_retries=2,
+    retry_backoff=60,
+    retry_jitter=True,
     soft_time_limit=60 * 5,
     time_limit=60 * 5 + 30,
 )
@@ -388,7 +435,12 @@ def dispatch_alert_delivery(project_id: uuid.UUID, alert_ids: list[uuid.UUID]) -
     name="app.workers.tasks.notifications.test_channel",
     bind=True,
     acks_late=True,
-    max_retries=0,
+    # Transient failures (DB/broker blips) retry twice with backoff; the
+    # status guards inside each task make a retry of finished work a no-op.
+    autoretry_for=(Exception,),
+    max_retries=2,
+    retry_backoff=60,
+    retry_jitter=True,
     soft_time_limit=60,
     time_limit=90,
 )
@@ -421,7 +473,12 @@ def dispatch_channel_test(channel_id: uuid.UUID) -> None:
     name="app.workers.tasks.monitoring.run_scheduled_monitoring",
     bind=True,
     acks_late=True,
-    max_retries=0,
+    # Transient failures (DB/broker blips) retry twice with backoff; the
+    # status guards inside each task make a retry of finished work a no-op.
+    autoretry_for=(Exception,),
+    max_retries=2,
+    retry_backoff=60,
+    retry_jitter=True,
     soft_time_limit=60 * 30,
     time_limit=60 * 30 + 60,
 )

@@ -58,7 +58,7 @@ export function IntelligenceTools({ intel }: { intel: Intel }) {
 }
 
 /** Shared frame: header, provenance, error / empty states. */
-export function IntelligencePageFrame({ intel, title, description, children }: { intel: Intel; title: string; description: string; children: React.ReactNode }) {
+export function IntelligencePageFrame({ intel, title, description, hasOwnContent = false, children }: { intel: Intel; title: string; description: string; /** Skip the citations-empty state: the page has content of its own to show (e.g. stored responses). */ hasOwnContent?: boolean; children: React.ReactNode }) {
   const loading = intel.loading || intel.projectLoading;
   const reason = runDisabledReason(intel);
   return (
@@ -69,7 +69,7 @@ export function IntelligencePageFrame({ intel, title, description, children }: {
       <MockNotice source={intel.source} reason={intel.mockReason} />
       {intel.error ? (
         <ErrorState message={intel.error} onRetry={intel.actions.refresh} />
-      ) : !loading && intel.empty ? (
+      ) : !loading && intel.empty && !hasOwnContent ? (
         <EmptyState
           icon={NetworkIcon}
           title="Run more AI searches to build your citation intelligence graph."

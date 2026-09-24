@@ -21,7 +21,7 @@ export default function AiResponsesPage() {
     return vis.prompts.filter((r) => !q || r.prompt.toLowerCase().includes(q));
   }, [vis.prompts, query]);
   return (
-    <IntelligencePageFrame intel={intel} title="AI Responses" description="Every prompt with stored AI answers. Open one to read the responses with brand, competitor, citation and claim highlights.">
+    <IntelligencePageFrame intel={intel} hasOwnContent={vis.prompts.length > 0} title="AI Responses" description="Every prompt with stored AI answers. Open one to read the responses with brand, competitor, citation and claim highlights.">
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <Input aria-label="Search prompts" placeholder="Search prompts…" value={query} onChange={(e) => setQuery(e.target.value)} className="w-64" />
         {!vis.loading && <p className="text-muted-foreground text-xs">{rows.length} prompts with parsed responses in the visibility window</p>}

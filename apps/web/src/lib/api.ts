@@ -133,6 +133,22 @@ export class ApiError extends Error {
 let accessToken: string | null = null;
 let refreshInFlight: Promise<TokenResponse | null> | null = null;
 
+// Fired when an authenticated request got a 401 and the refresh cookie could
+// not mint a new session — i.e. the session is truly gone. The auth provider
+// subscribes and sends the user back to /login.
+const sessionExpiredListeners = new Set<() => void>();
+
+export function onSessionExpired(listener: () => void): () => void {
+  sessionExpiredListeners.add(listener);
+  return () => {
+    sessionExpiredListeners.delete(listener);
+  };
+}
+
+function emitSessionExpired(): void {
+  for (const listener of sessionExpiredListeners) listener();
+}
+
 export function setAccessToken(token: string | null): void {
   accessToken = token;
 }
@@ -174,13 +190,16 @@ async function rawRequest<T>(path: string, init: RequestInit = {}, auth = true):
 /** Attempt to mint a new access token from the refresh cookie. Deduplicated. */
 export async function refreshSession(): Promise<TokenResponse | null> {
   if (!refreshInFlight) {
+    const tokenAtStart = accessToken;
     refreshInFlight = rawRequest<TokenResponse>("/auth/refresh", { method: "POST" }, false)
       .then((data) => {
         accessToken = data.access_token;
         return data;
       })
       .catch(() => {
-        accessToken = null;
+        // Only clear the token we started with: a login that completed while
+        // this refresh was in flight must not be wiped out by its failure.
+        if (accessToken === tokenAtStart) accessToken = null;
         return null;
       })
       .finally(() => {
@@ -198,6 +217,7 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
     if (err instanceof ApiError && err.status === 401) {
       const refreshed = await refreshSession();
       if (refreshed) return rawRequest<T>(path, init);
+      emitSessionExpired();
     }
     throw err;
   }
