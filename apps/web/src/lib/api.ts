@@ -113,7 +113,9 @@ export type {
   User,
 } from "@ai-search-growth-os/types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// Trailing slashes are stripped so a value like "https://api.example.com/"
+// doesn't produce "//api/v1/..." paths (which servers reject with 404).
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/, "");
 const API_PREFIX = "/api/v1";
 
 export class ApiError extends Error {
