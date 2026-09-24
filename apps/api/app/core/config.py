@@ -30,6 +30,18 @@ class Settings(BaseSettings):
     )
     db_echo: bool = False
 
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def _coerce_async_driver(cls, value: object) -> object:
+        """Accept plain postgres URLs (as managed hosts like Railway/Heroku
+        provide them) and upgrade to the async driver the app requires."""
+        if isinstance(value, str):
+            if value.startswith("postgres://"):
+                value = "postgresql://" + value.removeprefix("postgres://")
+            if value.startswith("postgresql://"):
+                value = "postgresql+asyncpg://" + value.removeprefix("postgresql://")
+        return value
+
     # Redis
     redis_url: str = "redis://localhost:6379/0"
 
