@@ -22,19 +22,36 @@ class FakePage:
 
 
 class FakeSite:
-    """Maps full URLs (normalized form) to responses; records requests."""
+    """Maps full URLs (normalized form) to responses; records requests.
+
+    The fetcher pins connections to the resolved IP (the request URL carries
+    the IP; the logical hostname travels in the Host header), so the handler
+    reconstructs the logical URL from Host before looking pages up.
+    `connect_hosts` records the raw connect targets so tests can assert
+    pinning actually happened.
+    """
 
     def __init__(self, pages: dict[str, FakePage]) -> None:
         self.pages = pages
         self.requests: list[str] = []
+        self.connect_hosts: list[str] = []
         self.in_flight = 0
         self.max_in_flight = 0
         self.timestamps: list[float] = []
         self._fail_counts: dict[str, int] = {}
         self.on_request: Callable[[str], None] | None = None
 
+    @staticmethod
+    def _logical_url(request: httpx.Request) -> str:
+        host_header = request.headers.get("host")
+        if not host_header:
+            return str(request.url)
+        target = request.url.raw_path.decode()
+        return f"{request.url.scheme}://{host_header}{target}"
+
     async def handler(self, request: httpx.Request) -> httpx.Response:
-        url = str(request.url)
+        url = self._logical_url(request)
+        self.connect_hosts.append(request.url.host)
         self.requests.append(url)
         self.timestamps.append(asyncio.get_running_loop().time())
         if self.on_request:

@@ -1,15 +1,19 @@
 from fastapi import APIRouter
 
 from app.api.v1.routes import (
+    agents,
     ai_readiness,
     alerts,
     auth,
     competitive,
     competitors,
+    content_briefs,
     content_gaps,
+    content_reviews,
     crawl,
     discovery,
     entities,
+    entity_reviews,
     execution,
     gaps,
     graph,
@@ -24,6 +28,7 @@ from app.api.v1.routes import (
     seo,
     sources,
     visibility,
+    workflows,
 )
 
 api_router = APIRouter()
@@ -61,6 +66,17 @@ api_router.include_router(content_gaps.project_router)
 api_router.include_router(content_gaps.gap_router)
 api_router.include_router(alerts.project_router)
 api_router.include_router(alerts.alert_router)
+api_router.include_router(agents.project_router)
+api_router.include_router(agents.run_router)
+api_router.include_router(agents.action_router)
+api_router.include_router(content_briefs.project_router)
+api_router.include_router(content_briefs.brief_router)
+api_router.include_router(content_reviews.project_router)
+api_router.include_router(content_reviews.review_router)
+api_router.include_router(entity_reviews.project_router)
+api_router.include_router(entity_reviews.review_router)
+api_router.include_router(workflows.project_router)
+api_router.include_router(workflows.workflow_router)
 api_router.include_router(sources.router)
 api_router.include_router(sources.project_router)
 api_router.include_router(gaps.project_router)

@@ -1,6 +1,13 @@
 """Import all models here so Alembic and SQLAlchemy see the full metadata."""
 
 from app.db.base import Base
+from app.models.agents import (
+    ActionRiskLevel,
+    ActionStatus,
+    AgentAction,
+    AgentRun,
+    AgentRunStatus,
+)
 from app.models.ai import AiGeneration, AiModel, AiProvider
 from app.models.ai_readiness import AiReadinessAudit, AiReadinessObservation, ReadinessCategory
 from app.models.alerts import AlertSeverity, AlertStatus, AlertType, CompetitiveAlert
@@ -20,7 +27,13 @@ from app.models.competitor_candidates import (
     CandidateStatus,
     CompetitorCandidate,
 )
+from app.models.content_briefs import ContentBrief, ContentBriefStatus, ContentType
 from app.models.content_gaps import ContentGap, ContentGapType
+from app.models.content_reviews import (
+    ChangeDecision,
+    ContentOptimizationReview,
+    ReviewStatus,
+)
 from app.models.crawl import (
     CrawlJob,
     CrawlStatus,
@@ -38,6 +51,7 @@ from app.models.entities import (
     EntityScope,
     SchemaIssue,
 )
+from app.models.entity_reviews import EntityOptimizationReview
 from app.models.gaps import CitationGap, GapConfidence, GapStatus, GapType
 from app.models.insights import (
     CompetitiveInsight,
@@ -106,8 +120,30 @@ from app.models.sources import (
     SourcePage,
 )
 from app.models.user import User
+from app.models.workflows import (
+    AgentWorkflow,
+    AgentWorkflowStep,
+    WorkflowStatus,
+    WorkflowStepStatus,
+)
 
 __all__ = [
+    "AgentWorkflow",
+    "AgentWorkflowStep",
+    "WorkflowStatus",
+    "WorkflowStepStatus",
+    "EntityOptimizationReview",
+    "ChangeDecision",
+    "ContentOptimizationReview",
+    "ReviewStatus",
+    "ContentBrief",
+    "ContentBriefStatus",
+    "ContentType",
+    "ActionRiskLevel",
+    "ActionStatus",
+    "AgentAction",
+    "AgentRun",
+    "AgentRunStatus",
     "AlertSeverity",
     "AlertStatus",
     "AlertType",

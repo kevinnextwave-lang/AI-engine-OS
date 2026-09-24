@@ -578,6 +578,260 @@ export interface AlertDetectResponse {
   note: string;
 }
 
+/** Agent framework (Milestone 6A). */
+export type AgentRunStatus =
+  | "queued"
+  | "running"
+  | "completed"
+  | "failed"
+  | "awaiting_approval"
+  | "cancelled";
+export type AgentActionStatus = "pending" | "approved" | "rejected" | "cancelled" | "executed";
+export type AgentActionRisk = "low" | "medium" | "high";
+
+export interface AgentRun {
+  id: string;
+  project_id: string;
+  agent_name: string;
+  agent_version: string;
+  status: AgentRunStatus;
+  objective: string;
+  requested_by_user_id: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  execution_time_ms: number | null;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  estimated_cost: string | null;
+  error_message: string | null;
+  result: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface AgentRunListResponse {
+  items: AgentRun[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface AgentAction {
+  id: string;
+  agent_run_id: string;
+  action_type: string;
+  description: string;
+  payload: Record<string, unknown>;
+  risk_level: AgentActionRisk;
+  approval_required: boolean;
+  status: AgentActionStatus;
+  approved_by: string | null;
+  approved_at: string | null;
+  executed_at: string | null;
+  execution_result: Record<string, unknown> | null;
+  created_at: string;
+}
+
+/** Content briefs (Milestone 6C). */
+export type ContentBriefStatus =
+  | "draft"
+  | "reviewing"
+  | "approved"
+  | "in_progress"
+  | "completed"
+  | "archived";
+export type ContentBriefType =
+  | "new_article"
+  | "existing_page_optimization"
+  | "comparison_page"
+  | "alternative_page"
+  | "use_case_page"
+  | "faq_page"
+  | "product_page"
+  | "research_content"
+  | "case_study"
+  | "glossary"
+  | "documentation";
+
+export interface ContentBrief {
+  id: string;
+  project_id: string;
+  agent_run_id: string | null;
+  source_key: string;
+  title: string;
+  content_type: ContentBriefType;
+  target_prompt_ids: string[];
+  competitor_ids: string[];
+  objective: string;
+  search_intent: string;
+  audience: string;
+  differentiation: string;
+  outline: { structure?: string[]; notes?: string } & Record<string, unknown>;
+  information_requirements: string[];
+  evidence_requirements: Record<string, unknown>;
+  citation_opportunities: Record<string, unknown>[];
+  entity_requirements: string[];
+  internal_link_recommendations: Record<string, unknown>[];
+  confidence: "high" | "medium" | "low";
+  status: ContentBriefStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContentBriefListResponse {
+  items: ContentBrief[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+/** Content optimization reviews (Milestone 6D). */
+export type ContentReviewStatus = "draft" | "reviewing" | "completed" | "archived";
+export type ChangeDecision = "pending" | "accepted" | "edited" | "rejected";
+
+export interface ProposedContentChange {
+  change_id: string;
+  location: string;
+  current_text: string;
+  proposed_text: string;
+  reason: string;
+  evidence: Record<string, unknown>;
+  confidence: "high" | "medium" | "low";
+  decision: ChangeDecision;
+  decided_text: string | null;
+}
+
+export interface ContentOptimizationReview {
+  id: string;
+  project_id: string;
+  page_id: string;
+  agent_run_id: string | null;
+  score: number;
+  findings: Record<string, unknown>[];
+  recommendations: Record<string, unknown>[];
+  proposed_changes: ProposedContentChange[];
+  confidence: string;
+  status: ContentReviewStatus;
+  analysis_version: string;
+  analyzed_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContentReviewListItem {
+  id: string;
+  page_id: string;
+  page_url: string | null;
+  score: number;
+  confidence: string;
+  status: ContentReviewStatus;
+  findings_count: number;
+  changes_count: number;
+  pending_changes: number;
+  analyzed_at: string;
+}
+
+export interface ContentReviewListResponse {
+  items: ContentReviewListItem[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+/** Entity optimization reviews (Milestone 6E). */
+export type EntityReviewStatus = "draft" | "reviewing" | "approved" | "completed" | "archived";
+
+export interface EntityOptimizationReview {
+  id: string;
+  project_id: string;
+  entity_id: string | null;
+  agent_run_id: string | null;
+  review_key: string;
+  entity_type: string;
+  findings: Record<string, unknown>[];
+  recommendations: Record<string, unknown>[];
+  confidence: string;
+  status: EntityReviewStatus;
+  analysis_version: string;
+  analyzed_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EntityReviewListResponse {
+  items: EntityOptimizationReview[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+/** Agent workflows (Milestone 6F). */
+export type WorkflowStatus =
+  | "queued"
+  | "running"
+  | "paused"
+  | "awaiting_approval"
+  | "completed"
+  | "failed"
+  | "cancelled";
+export type WorkflowStepStatus = "pending" | "running" | "completed" | "failed" | "cancelled";
+
+export interface AgentWorkflowStep {
+  id: string;
+  agent_name: string;
+  sequence: number;
+  status: WorkflowStepStatus;
+  agent_run_id: string | null;
+  input_context: Record<string, unknown>;
+  output_summary: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AgentWorkflowPlanItem {
+  priority: number;
+  action: string;
+  action_type: string;
+  reason: string;
+  evidence: Record<string, unknown>;
+  expected_impact_area: string;
+  effort: string;
+  confidence: number | null;
+  approval_status: string;
+  agent: string;
+  step: number;
+}
+
+export interface AgentWorkflow {
+  id: string;
+  project_id: string;
+  workflow_type: string;
+  status: WorkflowStatus;
+  current_step: number;
+  objective: string;
+  hold_reason: string | null;
+  error_message: string | null;
+  action_plan: AgentWorkflowPlanItem[] | null;
+  steps: AgentWorkflowStep[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AgentWorkflowListResponse {
+  items: {
+    id: string;
+    workflow_type: string;
+    status: WorkflowStatus;
+    current_step: number;
+    objective: string;
+    steps_total: number;
+    steps_completed: number;
+    created_at: string;
+  }[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export interface StatusResponse {
   status: string;
 }

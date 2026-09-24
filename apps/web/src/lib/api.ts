@@ -34,6 +34,20 @@ import type {
   CompetitiveOverview,
   CompetitivePrompts,
   CompetitiveTrends,
+  ContentBrief,
+  ContentBriefListResponse,
+  ContentBriefStatus,
+  ContentOptimizationReview,
+  ContentReviewListResponse,
+  ContentReviewStatus,
+  EntityOptimizationReview,
+  EntityReviewListResponse,
+  EntityReviewStatus,
+  AgentAction,
+  AgentRun,
+  AgentRunListResponse,
+  AgentWorkflow,
+  AgentWorkflowListResponse,
   AlertDetectResponse,
   AlertStatus,
   AlertThresholds,
@@ -340,6 +354,88 @@ export const api = {
         method: "PATCH",
         body: JSON.stringify({ status }),
       }),
+  },
+  agents: {
+    list: (projectId: string) =>
+      request<{ name: string; version: string }[]>(`/projects/${projectId}/agents`),
+    run: (projectId: string, agentName: string, objective: string) =>
+      request<AgentRun>(`/projects/${projectId}/agents/${agentName}/run`, {
+        method: "POST",
+        body: JSON.stringify({ objective }),
+      }),
+    runs: (
+      projectId: string,
+      params: { status?: string; agent_name?: string; limit?: number; offset?: number } = {},
+    ) => request<AgentRunListResponse>(`/projects/${projectId}/agent-runs${qs(params)}`),
+    getRun: (runId: string) => request<AgentRun>(`/agent-runs/${runId}`),
+    cancelRun: (runId: string) =>
+      request<AgentRun>(`/agent-runs/${runId}/cancel`, { method: "POST" }),
+    actions: (runId: string) => request<AgentAction[]>(`/agent-runs/${runId}/actions`),
+    approveAction: (actionId: string) =>
+      request<AgentAction>(`/agent-actions/${actionId}/approve`, { method: "POST" }),
+    rejectAction: (actionId: string) =>
+      request<AgentAction>(`/agent-actions/${actionId}/reject`, { method: "POST" }),
+  },
+  contentBriefs: {
+    list: (
+      projectId: string,
+      params: { status?: string; content_type?: string; limit?: number; offset?: number } = {},
+    ) => request<ContentBriefListResponse>(`/projects/${projectId}/content-briefs${qs(params)}`),
+    get: (briefId: string) => request<ContentBrief>(`/content-briefs/${briefId}`),
+    update: (
+      briefId: string,
+      body: { status?: ContentBriefStatus; title?: string; audience?: string },
+    ) => request<ContentBrief>(`/content-briefs/${briefId}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
+  },
+  contentReviews: {
+    list: (projectId: string, params: { status?: string; limit?: number; offset?: number } = {}) =>
+      request<ContentReviewListResponse>(`/projects/${projectId}/content-reviews${qs(params)}`),
+    get: (reviewId: string) => request<ContentOptimizationReview>(`/content-reviews/${reviewId}`),
+    setStatus: (reviewId: string, status: ContentReviewStatus) =>
+      request<ContentOptimizationReview>(`/content-reviews/${reviewId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+      }),
+    decideChange: (
+      reviewId: string,
+      changeId: string,
+      body: { action: "accept" | "edit" | "reject"; text?: string },
+    ) =>
+      request<ContentOptimizationReview>(`/content-reviews/${reviewId}/changes/${changeId}`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+  },
+  entityReviews: {
+    list: (
+      projectId: string,
+      params: { status?: string; entity_type?: string; limit?: number; offset?: number } = {},
+    ) => request<EntityReviewListResponse>(`/projects/${projectId}/entity-reviews${qs(params)}`),
+    get: (reviewId: string) => request<EntityOptimizationReview>(`/entity-reviews/${reviewId}`),
+    setStatus: (reviewId: string, status: EntityReviewStatus) =>
+      request<EntityOptimizationReview>(`/entity-reviews/${reviewId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+      }),
+  },
+  agentWorkflows: {
+    create: (projectId: string, objective: string, workflowType = "full_optimization") =>
+      request<AgentWorkflow>(`/projects/${projectId}/agent-workflows`, {
+        method: "POST",
+        body: JSON.stringify({ objective, workflow_type: workflowType }),
+      }),
+    list: (projectId: string, params: { status?: string; limit?: number; offset?: number } = {}) =>
+      request<AgentWorkflowListResponse>(`/projects/${projectId}/agent-workflows${qs(params)}`),
+    get: (workflowId: string) => request<AgentWorkflow>(`/agent-workflows/${workflowId}`),
+    pause: (workflowId: string) =>
+      request<AgentWorkflow>(`/agent-workflows/${workflowId}/pause`, { method: "POST" }),
+    resume: (workflowId: string) =>
+      request<AgentWorkflow>(`/agent-workflows/${workflowId}/resume`, { method: "POST" }),
+    cancel: (workflowId: string) =>
+      request<AgentWorkflow>(`/agent-workflows/${workflowId}/cancel`, { method: "POST" }),
   },
   crawl: {
     start: (projectId: string, body: CrawlStartRequest = {}) =>

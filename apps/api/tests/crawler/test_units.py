@@ -201,6 +201,33 @@ async def test_fetcher_sends_identifiable_user_agent_and_parses_html() -> None:
     assert seen_ua == [UA] and "Googlebot" not in UA
 
 
+async def test_fetcher_pins_connection_to_validated_address() -> None:
+    """The request must connect to the IP the safety check resolved (with the
+    original hostname as Host header and SNI), so a DNS rebind between the
+    check and the connect cannot reach a different address."""
+    site = FakeSite({"https://example.com/": FakePage("<html>ok</html>")})
+    seen: list[tuple[str, str | None, str | None]] = []
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(
+            (
+                request.url.host,
+                request.headers.get("host"),
+                request.extensions.get("sni_hostname"),
+            )
+        )
+        return await site.handler(request)
+
+    fetcher = Fetcher(
+        FetchConfig(user_agent=UA),
+        UrlSafetyPolicy(make_resolver({"example.com": ["8.8.4.4"]})),
+        transport=httpx.MockTransport(handler),
+    )
+    result = await fetcher.fetch(normalize_crawl_url("https://example.com/"))
+    assert result.ok
+    assert seen == [("8.8.4.4", "example.com", "example.com")]
+
+
 async def test_fetcher_follows_redirects_and_revalidates_each_hop() -> None:
     site = FakeSite(
         {
