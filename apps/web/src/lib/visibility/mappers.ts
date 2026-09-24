@@ -260,5 +260,28 @@ export function promptRows(byPrompt: VisibilityByPrompt, prompts: PromptRow[]): 
         lastRunProvider: last?.provider_key ?? null,
       };
     })
+    .concat(
+      // Prompts that have never produced a parsed response (freshly generated,
+      // or not yet run) still belong in the table with zeroed stats — hiding
+      // them made the prompt list look empty before the first run.
+      prompts
+        .filter((p) => p.is_active && !byPrompt.prompts.some((bp) => bp.prompt_id === p.id))
+        .map((p) => ({
+          id: p.id,
+          prompt: p.prompt,
+          category: p.category,
+          categoryLabel: CATEGORY_LABEL[p.category] ?? p.category,
+          funnelStage: p.funnel_stage,
+          funnelStageLabel: FUNNEL_LABEL[p.funnel_stage] ?? p.funnel_stage,
+          sampleSize: 0,
+          sufficiency: "insufficient" as const,
+          mentions: 0,
+          mentionRate: null,
+          recommendationRate: null,
+          averagePosition: null,
+          lastRun: p.last_run?.completed_at ?? null,
+          lastRunProvider: p.last_run?.provider_key ?? null,
+        })),
+    )
     .sort((a, b) => (b.mentionRate ?? -1) - (a.mentionRate ?? -1) || b.sampleSize - a.sampleSize);
 }

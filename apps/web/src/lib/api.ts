@@ -79,9 +79,13 @@ import type {
   RegisterRequest,
   TokenResponse,
   User,
+  PromptGenerateRequest,
+  PromptGenerateResponse,
   PromptListResponse,
   PromptRunBatch,
   PromptRunListResponse,
+  PromptSet,
+  PromptSetCreateRequest,
   PromptSetListResponse,
   ProviderStatusList,
   ResponseIntelligence,
@@ -564,6 +568,16 @@ export const api = {
   prompts: {
     listSets: (projectId: string) =>
       request<PromptSetListResponse>(`/projects/${projectId}/prompt-sets`),
+    createSet: (projectId: string, body: PromptSetCreateRequest) =>
+      request<PromptSet>(`/projects/${projectId}/prompt-sets`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    generate: (promptSetId: string, body: PromptGenerateRequest = {}) =>
+      request<PromptGenerateResponse>(`/prompt-sets/${promptSetId}/generate`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
     list: (promptSetId: string, limit = 200) =>
       request<PromptListResponse>(`/prompt-sets/${promptSetId}/prompts?limit=${limit}`),
     run: (promptSetId: string, body: RunPromptSetRequest) =>

@@ -92,8 +92,13 @@ export interface VisibilityData {
   configuredProviders: string[];
   /** First prompt set with active prompts, if any — target of "Run Prompt Set". */
   runnableSet: PromptSet | null;
-  actions: { refresh: () => void; runPromptSet: () => Promise<void> };
-  busy: "run" | null;
+  actions: {
+    refresh: () => void;
+    runPromptSet: () => Promise<void>;
+    /** Create a prompt set (when none exists) and generate prompts into it. */
+    generatePrompts: () => Promise<void>;
+  };
+  busy: "run" | "generate" | null;
   /** Set after a run was queued so the page can explain what happens next. */
   runNotice: string | null;
 }
@@ -232,6 +237,33 @@ export function useVisibilityData(projectId: string | null, brandName: string | 
     }
   }, [projectId, source, runnableSet, configuredProviders, refresh, setRunNotice]);
 
+  const generatePrompts = React.useCallback(async () => {
+    if (!projectId || source !== "api") return;
+    setBusy("generate");
+    try {
+      let set = raw?.promptSets[0] ?? null;
+      if (!set) {
+        set = await api.prompts.createSet(projectId, {
+          name: "AI Search Prompts",
+          description: "Generated from the project's business profile.",
+        });
+      }
+      const res = await api.prompts.generate(set.id);
+      setRunNotice(
+        res.generated > 0
+          ? `Generated ${res.generated} prompts. Review them under Prompts, then run the analysis.`
+          : "No new prompts were generated — the set already covers the profile.",
+      );
+      refresh();
+    } catch (err) {
+      setRunNotice(
+        err instanceof Error ? `Could not generate prompts: ${err.message}` : "Could not generate prompts.",
+      );
+    } finally {
+      setBusy(null);
+    }
+  }, [projectId, source, raw, refresh, setRunNotice]);
+
   return React.useMemo<VisibilityData>(() => {
     const brand = source === "mock" ? MOCK_BRAND : (brandName ?? "Your brand");
     const empty = source === "api" && raw !== null && raw.overview.current.data_quality.sample_size === 0;
@@ -263,7 +295,7 @@ export function useVisibilityData(projectId: string | null, brandName: string | 
       raw,
       configuredProviders,
       runnableSet,
-      actions: { refresh, runPromptSet },
+      actions: { refresh, runPromptSet, generatePrompts },
       busy,
       runNotice,
     };
@@ -279,6 +311,7 @@ export function useVisibilityData(projectId: string | null, brandName: string | 
     runnableSet,
     refresh,
     runPromptSet,
+    generatePrompts,
     busy,
     runNotice,
   ]);

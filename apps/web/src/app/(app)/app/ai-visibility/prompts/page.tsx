@@ -26,6 +26,7 @@ export default function PromptsPage() {
   return (
     <VisibilityPageFrame
       vis={vis}
+      hasOwnContent={vis.prompts.length > 0}
       title="Prompts"
       description="Per-prompt results: how often each question led to a brand mention, a recommendation, and where the brand was listed. Open a prompt to read the answers."
     >

@@ -20,11 +20,15 @@ export function VisibilityPageFrame({
   vis,
   title,
   description,
+  hasOwnContent = false,
   children,
 }: {
   vis: Vis;
   title: string;
   description: string;
+  /** Skip the no-responses empty state: the page has content of its own
+   * (e.g. the prompt list, which must be reviewable before any run). */
+  hasOwnContent?: boolean;
   children: React.ReactNode;
 }) {
   const loading = vis.loading || vis.projectLoading;
@@ -36,12 +40,15 @@ export function VisibilityPageFrame({
       <MockNotice source={vis.source} reason={vis.mockReason} />
       {vis.error ? (
         <ErrorState message={vis.error} onRetry={vis.actions.refresh} />
-      ) : !loading && vis.empty ? (
+      ) : !loading && vis.empty && !hasOwnContent ? (
         <NoDataState
           canRun={runDisabledReason(vis) === null}
           runDisabledReason={runDisabledReason(vis)}
           busy={vis.busy === "run"}
+          generating={vis.busy === "generate"}
+          needsPrompts={vis.source === "api" && vis.runnableSet === null}
           onRun={() => void vis.actions.runPromptSet()}
+          onGenerate={() => void vis.actions.generatePrompts()}
           notice={vis.runNotice}
         />
       ) : (

@@ -1244,6 +1244,24 @@ export interface PromptSetListResponse {
   total: number;
 }
 
+export interface PromptSetCreateRequest {
+  name: string;
+  description?: string | null;
+  category?: PromptCategory | null;
+}
+
+export interface PromptGenerateRequest {
+  categories?: PromptCategory[] | null;
+  max_prompts?: number;
+  max_per_category?: number;
+}
+
+export interface PromptGenerateResponse {
+  prompt_set_id: string;
+  generated: number;
+  skipped_duplicates: number;
+}
+
 export interface PromptRunSummary {
   id: string;
   status: PromptRunStatus;
