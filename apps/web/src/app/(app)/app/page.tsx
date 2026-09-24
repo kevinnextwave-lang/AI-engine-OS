@@ -13,7 +13,7 @@ export default function OverviewPage() {
     <>
       <PageHeader
         title={`Welcome${user?.full_name ? `, ${user.full_name}` : ""}`}
-        description="Milestone 1 foundation. AI visibility monitoring and the rest of the product arrive in upcoming milestones."
+        description="Your command center. Create a project, run a crawl, and start measuring how AI engines see your brand."
       />
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
