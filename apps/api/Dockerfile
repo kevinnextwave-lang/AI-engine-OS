@@ -17,4 +17,7 @@ COPY alembic.ini ./
 RUN pip install --upgrade pip && pip install .
 
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run database migrations before serving so a fresh deploy always has its
+# schema, regardless of platform start-command configuration. $PORT is set by
+# managed hosts (Railway); local runs default to 8000.
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
