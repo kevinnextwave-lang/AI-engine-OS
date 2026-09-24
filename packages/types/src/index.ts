@@ -848,7 +848,7 @@ export type CrawlStatus =
   | "partially_completed"
   | "failed"
   | "cancelled";
-export type CrawlType = "full" | "single_page";
+export type CrawlType = "full" | "incremental" | "single_page";
 
 export interface CrawlJob {
   id: string;
@@ -880,6 +880,49 @@ export interface CrawlStartRequest {
   max_pages?: number;
   max_depth?: number;
   url?: string;
+}
+
+export type CrawlUrlStatus = "discovered" | "queued" | "crawling" | "crawled" | "failed" | "skipped";
+
+export interface CrawlPageSummary {
+  id: string;
+  url: string;
+  normalized_url: string;
+  canonical_url: string | null;
+  http_status: number;
+  content_type: string;
+  title: string | null;
+  meta_description: string | null;
+  language: string | null;
+  word_count: number | null;
+  content_hash: string | null;
+  is_duplicate_of_id: string | null;
+  first_crawled_at: string;
+  last_crawled_at: string;
+}
+
+/** One URL a crawl saw, with its outcome (mirrors GET /crawl-jobs/{id}/pages). */
+export interface CrawlUrl {
+  id: string;
+  url: string;
+  normalized_url: string;
+  parent_url: string | null;
+  depth: number;
+  priority: number;
+  status: CrawlUrlStatus;
+  http_status: number | null;
+  content_type: string | null;
+  error_message: string | null;
+  discovered_at: string;
+  crawled_at: string | null;
+  page: CrawlPageSummary | null;
+}
+
+export interface CrawlUrlListResponse {
+  items: CrawlUrl[];
+  total: number;
+  limit: number;
+  offset: number;
 }
 
 export type AuditStatus = "queued" | "running" | "completed" | "failed";

@@ -14,6 +14,7 @@ import type {
   CrawlJob,
   CrawlJobListResponse,
   CrawlStartRequest,
+  CrawlUrlListResponse,
   EntityConsistencyResponse,
   EntityListResponse,
   ProjectSchemaResponse,
@@ -443,6 +444,12 @@ export const api = {
     list: (projectId: string, limit = 20) =>
       request<CrawlJobListResponse>(`/projects/${projectId}/crawl-jobs?limit=${limit}`),
     get: (crawlId: string) => request<CrawlJob>(`/crawl-jobs/${crawlId}`),
+    cancel: (crawlId: string) =>
+      request<CrawlJob>(`/crawl-jobs/${crawlId}/cancel`, { method: "POST" }),
+    pages: (
+      crawlId: string,
+      params: { status?: string; limit?: number; offset?: number } = {},
+    ) => request<CrawlUrlListResponse>(`/crawl-jobs/${crawlId}/pages${qs({ limit: 200, ...params })}`),
   },
   seo: {
     startAudit: (projectId: string, body: SeoAuditStartRequest = {}) =>
@@ -531,23 +538,23 @@ export const api = {
   },
   intelligenceGraph: {
     overview: (projectId: string, params: GraphParams & { source_type?: string; top_sources?: number; top_prompts?: number; top_claims?: number } = {}) =>
-      request<GraphOverview>(`/projects/${projectId}/graph/overview?${qs(params)}`),
+      request<GraphOverview>(`/projects/${projectId}/graph/overview${qs(params)}`),
     sources: (projectId: string, params: GraphParams & { view?: GraphSourceView; source_type?: string; limit?: number; offset?: number } = {}) =>
-      request<GraphSourcesResponse>(`/projects/${projectId}/graph/sources?${qs(params)}`),
+      request<GraphSourcesResponse>(`/projects/${projectId}/graph/sources${qs(params)}`),
     claims: (projectId: string, params: GraphParams & { associated_with?: string; min_occurrences?: number; limit?: number; offset?: number } = {}) =>
-      request<GraphClaimsResponse>(`/projects/${projectId}/graph/claims?${qs(params)}`),
+      request<GraphClaimsResponse>(`/projects/${projectId}/graph/claims${qs(params)}`),
   },
   citations: {
     list: (
       projectId: string,
       params: GraphParams & { source_domain_id?: string; relationship?: string; competitor?: string; prompt_id?: string; limit?: number; offset?: number } = {},
-    ) => request<CitationListResponse>(`/projects/${projectId}/citations?${qs(params)}`),
+    ) => request<CitationListResponse>(`/projects/${projectId}/citations${qs(params)}`),
   },
   citationGaps: {
     list: (
       projectId: string,
       params: { source_type?: string; gap_type?: string; status?: string; confidence?: string; competitor?: string; min_score?: number; max_score?: number; limit?: number; offset?: number } = {},
-    ) => request<CitationGapListResponse>(`/projects/${projectId}/citation-gaps?${qs(params)}`),
+    ) => request<CitationGapListResponse>(`/projects/${projectId}/citation-gaps${qs(params)}`),
     summary: (projectId: string) => request<CitationGapSummary>(`/projects/${projectId}/citation-gaps/summary`),
     analyze: (projectId: string, windowDays?: number) =>
       request<GapAnalyzeResponse>(`/projects/${projectId}/citation-gaps/analyze${windowDays ? `?window_days=${windowDays}` : ""}`, { method: "POST" }),
@@ -563,10 +570,12 @@ interface GraphParams {
   provider?: string;
 }
 
+/** Query string INCLUDING the leading "?" (empty string when no params survive). */
 function qs(params: object): string {
   const q = new URLSearchParams();
   for (const [k, v] of Object.entries(params as Record<string, string | number | undefined | null>)) {
     if (v !== undefined && v !== "" && v !== null) q.set(k, String(v));
   }
-  return q.toString();
+  const out = q.toString();
+  return out ? `?${out}` : "";
 }
