@@ -1218,10 +1218,12 @@ export type PromptCategory =
   | "product"
   | "alternative"
   | "problem_solution"
-  | "industry";
+  | "industry"
+  | "local"
+  | "transactional";
 export type FunnelStage = "awareness" | "consideration" | "decision" | "purchase" | "retention";
 export type PromptRunStatus = "queued" | "running" | "completed" | "failed" | "cancelled";
-export type BatchStatus = "queued" | "running" | "completed" | "partially_completed" | "failed" | "cancelled";
+export type BatchStatus = "queued" | "running" | "completed" | "failed" | "cancelling" | "cancelled";
 
 export interface PromptSet {
   id: string;

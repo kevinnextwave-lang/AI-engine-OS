@@ -37,9 +37,17 @@ class EntityService:
         self._dispatch = dispatcher
         self._repo = EntityRepository(session)
 
-    def request_analysis(self, project_id: uuid.UUID) -> None:
-        self._dispatch(project_id)
+    def request_analysis(self, project_id: uuid.UUID) -> bool:
+        """Enqueue a rebuild. Returns False when the broker is unavailable —
+        the analysis is idempotent and re-runs after the next crawl, so a
+        failed enqueue is reported, not raised."""
+        try:
+            self._dispatch(project_id)
+        except Exception:  # noqa: BLE001 - broker outage must not 500 the request
+            log.exception("entity_analysis_dispatch_failed", project_id=str(project_id))
+            return False
         log.info("entity_analysis_requested", project_id=str(project_id))
+        return True
 
     async def _page_urls(self, page_ids: set[uuid.UUID | None]) -> dict[uuid.UUID, str]:
         ids = [p for p in page_ids if p is not None]

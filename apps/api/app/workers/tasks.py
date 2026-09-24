@@ -392,13 +392,11 @@ def dispatch_agent_workflow(workflow_id: uuid.UUID) -> None:
 @celery_app.task(
     name="app.workers.tasks.notifications.deliver_alerts",
     bind=True,
-    acks_late=True,
-    # Transient failures (DB/broker blips) retry twice with backoff; the
-    # status guards inside each task make a retry of finished work a no-op.
-    autoretry_for=(Exception,),
-    max_retries=2,
-    retry_backoff=60,
-    retry_jitter=True,
+    # At-most-once: webhook sends are not idempotent (no per-alert delivery
+    # record), so no acks_late redelivery and no autoretry — a retry would
+    # re-send alerts that already went out.
+    acks_late=False,
+    max_retries=0,
     soft_time_limit=60 * 5,
     time_limit=60 * 5 + 30,
 )
@@ -434,13 +432,9 @@ def dispatch_alert_delivery(project_id: uuid.UUID, alert_ids: list[uuid.UUID]) -
 @celery_app.task(
     name="app.workers.tasks.notifications.test_channel",
     bind=True,
-    acks_late=True,
-    # Transient failures (DB/broker blips) retry twice with backoff; the
-    # status guards inside each task make a retry of finished work a no-op.
-    autoretry_for=(Exception,),
-    max_retries=2,
-    retry_backoff=60,
-    retry_jitter=True,
+    # At-most-once for the same reason as deliver_alerts.
+    acks_late=False,
+    max_retries=0,
     soft_time_limit=60,
     time_limit=90,
 )
@@ -495,5 +489,37 @@ def run_scheduled_monitoring_task(self) -> str:  # type: ignore[no-untyped-def]
         from app.monitoring.scheduler import run_scheduled_monitoring
 
         return await run_scheduled_monitoring(dispatch_delivery=dispatch_alert_delivery)
+
+    return asyncio.run(_main())
+
+
+@celery_app.task(
+    name="app.workers.tasks.monitoring.reap_stale_jobs",
+    bind=True,
+    acks_late=True,
+    # Transient failures (DB/broker blips) retry twice with backoff; the
+    # status guards inside each task make a retry of finished work a no-op.
+    autoretry_for=(Exception,),
+    max_retries=2,
+    retry_backoff=60,
+    retry_jitter=True,
+    soft_time_limit=60 * 5,
+    time_limit=60 * 5 + 30,
+)
+def reap_stale_jobs_task(self) -> str:  # type: ignore[no-untyped-def]
+    """Hourly backstop: fail RUNNING jobs whose worker died unobserved, so a
+    stuck crawl can't block its project forever. Idempotent."""
+    configure_logging()
+
+    async def _main() -> str:
+        from app.db.session import dispose_engine, get_session_factory
+        from app.monitoring.reaper import reap_stale_jobs
+
+        try:
+            async with get_session_factory()() as session:
+                result = await reap_stale_jobs(session)
+                return f"reaped={result.total}"
+        finally:
+            await dispose_engine()
 
     return asyncio.run(_main())

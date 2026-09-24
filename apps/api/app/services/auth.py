@@ -191,7 +191,17 @@ class AuthService:
                 and now - record.revoked_at <= _ROTATION_GRACE
             ):
                 # A concurrent client just rotated this token (two tabs racing).
-                # Deny this request but leave the family alive.
+                # Deny this request but leave the family alive — and keep an
+                # audit trail so a pattern of grace-window replays (possible
+                # fast token theft) is still visible to investigation.
+                await self._audit.record(
+                    AuthEvent.REFRESH_REUSE_DETECTED,
+                    user_id=record.user_id,
+                    ip_address=client.ip_address,
+                    user_agent=client.user_agent,
+                    details={"family_id": str(record.family_id), "within_grace_window": True},
+                )
+                await self._session.commit()
                 raise InvalidTokenError()
             # Reuse of a rotated token => likely theft. Kill the whole family.
             await self._tokens.revoke_family(record.family_id, now)

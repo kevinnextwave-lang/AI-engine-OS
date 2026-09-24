@@ -462,7 +462,9 @@ class CompetitiveAlertEngine:
             row.competitor_id = (
                 competitors.get(draft.competitor_name) if draft.competitor_name else None
             )
-            row.title = draft.title
+            # The column is String(300); a long gap topic could push a draft
+            # title past it and fail the whole detection transaction.
+            row.title = draft.title[:300]
             row.description = draft.description
             row.evidence = draft.evidence
             row.severity = draft.severity.value

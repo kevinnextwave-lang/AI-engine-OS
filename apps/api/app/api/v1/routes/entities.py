@@ -112,8 +112,8 @@ async def start_entity_analysis(
     session: DBSession,
     dispatcher: DispatcherDep,
 ) -> EntityAnalysisStartResponse:
-    EntityService(session, dispatcher).request_analysis(access.project.id)
-    return EntityAnalysisStartResponse(project_id=access.project.id, queued=True)
+    queued = EntityService(session, dispatcher).request_analysis(access.project.id)
+    return EntityAnalysisStartResponse(project_id=access.project.id, queued=queued)
 
 
 @page_router.get(

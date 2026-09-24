@@ -21,6 +21,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -67,6 +68,14 @@ class CrawlJob(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         Index("ix_crawl_jobs_project_created", "project_id", "created_at"),
         Index("ix_crawl_jobs_status", "status"),
         Index("ix_crawl_jobs_created_at", "created_at"),
+        # The database referees "one queued/running crawl per project";
+        # concurrent starts that both pass the service's check get a 409.
+        Index(
+            "uq_crawl_jobs_one_active_per_project",
+            "project_id",
+            unique=True,
+            postgresql_where=text("status IN ('queued', 'running')"),
+        ),
     )
 
     project_id: Mapped[uuid.UUID] = mapped_column(

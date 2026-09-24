@@ -594,3 +594,39 @@ async def test_crawl_persists_page_intelligence_and_resolves_links(
         await engine_session.scalars(select(PageVersion).where(PageVersion.page_id == home.id))
     ).all()
     assert all(v.response_time_ms is not None for v in versions)
+
+
+async def test_db_error_mid_crawl_finalizes_job_as_failed(
+    engine_session: AsyncSession, monkeypatch: object
+) -> None:
+    """A DB error that poisons the transaction must still end with the job
+    committed as FAILED — never left RUNNING (which would block the project)."""
+    from sqlalchemy import text
+
+    from app.crawler.engine import CrawlEngine
+
+    async def poison(self: CrawlEngine) -> None:
+        # Trigger a real DB error inside the session so the transaction is
+        # poisoned exactly as an integrity/flush failure would.
+        await self._session.execute(text("SELECT * FROM definitely_missing_table"))
+
+    monkeypatch.setattr(CrawlEngine, "_finalize_links", poison)  # type: ignore[attr-defined]
+    project = await make_project(engine_session)
+    job = await make_job(engine_session, project)
+    await engine_session.commit()
+
+    result = await run_crawl_job(engine_session, job.id, options(simple_site()))
+
+    assert result is not None
+    assert result.status == CrawlStatus.FAILED
+    assert "database error" in (result.error_message or "")
+
+    # The terminal state is COMMITTED (visible to a fresh session).
+    from app.db.session import get_session_factory
+
+    factory = get_session_factory()
+    async with factory() as fresh:
+        row = await fresh.get(CrawlJob, job.id)
+        assert row is not None
+        assert row.status == CrawlStatus.FAILED
+        assert row.completed_at is not None

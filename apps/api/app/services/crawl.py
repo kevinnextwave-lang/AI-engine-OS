@@ -8,6 +8,7 @@ enqueued; the engine itself never runs inside a request.
 import uuid
 from collections.abc import Callable
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -92,8 +93,14 @@ class CrawlService:
         )
         await self._jobs.add(job)
         # Commit BEFORE dispatch so the worker can see the row (and so a failed
-        # commit never leaves a phantom queued task).
-        await self._session.commit()
+        # commit never leaves a phantom queued task). The partial unique index
+        # (one queued/running crawl per project) referees concurrent requests
+        # that both passed the active_for_project check above.
+        try:
+            await self._session.commit()
+        except IntegrityError as exc:
+            await self._session.rollback()
+            raise ConflictError("A crawl is already queued or running for this project") from exc
         try:
             self._dispatch(job.id)
         except Exception as exc:  # noqa: BLE001 - broker outage must not strand the job as "queued"

@@ -215,7 +215,13 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
     return await rawRequest<T>(path, init);
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) {
-      const refreshed = await refreshSession();
+      let refreshed = await refreshSession();
+      if (!refreshed) {
+        // Another tab may have rotated the refresh cookie while our attempt
+        // was in flight; one more try uses the browser's CURRENT cookie and
+        // recovers that benign race instead of logging this tab out.
+        refreshed = await refreshSession();
+      }
       if (refreshed) return rawRequest<T>(path, init);
       emitSessionExpired();
     }

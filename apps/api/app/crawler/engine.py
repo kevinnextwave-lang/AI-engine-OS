@@ -152,6 +152,10 @@ class CrawlEngine:
             # finalizing commit below would raise too and the job would stay
             # RUNNING forever (blocking the project from new crawls).
             await self._session.rollback()
+            # rollback expires every attribute; reload the row explicitly so
+            # the finally block's reads never trigger a sync lazy-load
+            # (MissingGreenlet) in async context.
+            await self._session.refresh(job)
             job.status = CrawlStatus.FAILED
             job.error_message = safe_error_message(exc)
         finally:

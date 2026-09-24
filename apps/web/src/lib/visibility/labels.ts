@@ -19,6 +19,8 @@ export const CATEGORY_LABEL: Record<PromptCategory, string> = {
   alternative: "Alternative",
   problem_solution: "Problem / solution",
   industry: "Industry",
+  local: "Local",
+  transactional: "Transactional",
 };
 
 export const FUNNEL_LABEL: Record<FunnelStage, string> = {

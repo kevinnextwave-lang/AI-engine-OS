@@ -63,19 +63,21 @@ def get_rate_limiter(redis: Annotated[Redis | None, Depends(get_redis)]) -> Rate
 def client_ip(request: Request) -> str:
     """Best-effort client IP for rate limiting and the audit trail.
 
-    X-Forwarded-For is honoured only when the direct peer is a private or
-    loopback address (i.e. a reverse proxy on the platform network), and only
-    its RIGHTMOST entry is used — that is the one the trusted proxy appended.
-    Leftmost entries are client-supplied and spoofable, which would let
-    callers rotate identities past the rate limiter and write arbitrary IPs
-    into the audit log.
+    X-Forwarded-For is honoured only when the direct peer is a non-global
+    address (private, loopback, link-local or carrier-grade NAT — i.e. a
+    reverse proxy on the platform's internal network; PaaS ingress meshes
+    commonly present 100.64.0.0/10 peers), and only its RIGHTMOST entry is
+    used — that is the one the trusted proxy appended. Leftmost entries are
+    client-supplied and spoofable, which would let callers rotate identities
+    past the rate limiter and write arbitrary IPs into the audit log.
     """
     peer = request.client.host if request.client else None
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded and peer:
         try:
-            peer_is_proxy = ipaddress.ip_address(peer).is_private or peer == "testclient"
+            peer_is_proxy = not ipaddress.ip_address(peer).is_global
         except ValueError:
+            # Non-IP peers only occur in test transports ("testclient").
             peer_is_proxy = peer == "testclient"
         if peer_is_proxy:
             return forwarded.split(",")[-1].strip()

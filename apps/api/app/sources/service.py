@@ -19,7 +19,7 @@ from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urlsplit
 
-from sqlalchemy import Integer, cast, delete, func, literal_column, select
+from sqlalchemy import Integer, cast, delete, func, literal_column, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import Select
@@ -411,6 +411,15 @@ class SourceIntelligenceService:
     async def aggregate_project_sources(self, project_id: uuid.UUID) -> int:
         """Rebuild `project_sources` for one project from its resolved citations.
         One row per cited domain (page NULL) plus one per cited page."""
+        # Serialize concurrent rebuilds of the same project: two workers
+        # finishing runs together would otherwise race the delete+insert into
+        # the table's unique constraint. The advisory lock is transaction
+        # scoped and released automatically on commit/rollback.
+        await self._session.execute(
+            text("SELECT pg_advisory_xact_lock(hashtext('project_sources:' || :pid))").bindparams(
+                pid=str(project_id)
+            )
+        )
         rel_sub = (
             select(
                 CitationEntity.citation_id.label("cid"),

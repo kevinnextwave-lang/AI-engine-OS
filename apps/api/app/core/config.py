@@ -22,6 +22,13 @@ class Settings(BaseSettings):
     app_env: Literal["development", "test", "production"] = "development"
     app_name: str = "AI Search Growth OS API"
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+
+    @field_validator("log_level", mode="before")
+    @classmethod
+    def _uppercase_log_level(cls, value: object) -> object:
+        # LOG_LEVEL=info worked before this became a Literal; keep it working.
+        return value.upper() if isinstance(value, str) else value
+
     api_v1_prefix: str = "/api/v1"
 
     # Database

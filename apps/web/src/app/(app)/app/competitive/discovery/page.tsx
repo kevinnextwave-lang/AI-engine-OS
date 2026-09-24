@@ -39,6 +39,10 @@ export default function CompetitorDiscoveryPage() {
   const [busy, setBusy] = React.useState<string | null>(null);
   const [notice, setNotice] = React.useState<string | null>(null);
   const [open, setOpen] = React.useState<CompetitorCandidate | null>(null);
+  // Candidate id currently asking for a website URL (accept requires one when
+  // discovery found no domain), plus the typed value.
+  const [urlFor, setUrlFor] = React.useState<string | null>(null);
+  const [urlValue, setUrlValue] = React.useState("");
   const d = res.data;
 
   const act = async (label: string, fn: () => Promise<unknown>) => {
@@ -110,13 +114,52 @@ export default function CompetitorDiscoveryPage() {
             <TableCell onClick={(e) => e.stopPropagation()}>
               {(c.status === "new" || c.status === "reviewing") && (
                 <div className="flex gap-1.5">
+                  {urlFor === c.id ? (
+                    <form
+                      className="flex gap-1.5"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        const website_url = urlValue.trim();
+                        if (!website_url) return;
+                        setUrlFor(null);
+                        setUrlValue("");
+                        void act(c.id + ":a", () => api.competitorCandidates.accept(c.id, { website_url }));
+                      }}
+                    >
+                      <input
+                        aria-label="Competitor website URL"
+                        placeholder="https://…"
+                        type="url"
+                        required
+                        value={urlValue}
+                        onChange={(e) => setUrlValue(e.target.value)}
+                        className="border-input bg-background h-8 w-44 rounded-md border px-2 text-sm"
+                      />
+                      <Button size="sm" type="submit" disabled={busy !== null}>
+                        {busy === c.id + ":a" ? "…" : "OK"}
+                      </Button>
+                      <Button size="sm" type="button" variant="ghost" onClick={() => setUrlFor(null)}>
+                        Cancel
+                      </Button>
+                    </form>
+                  ) : (
                   <Button
                     size="sm"
-                    onClick={() => void act(c.id + ":a", () => api.competitorCandidates.accept(c.id))}
+                    onClick={() => {
+                      // Accepting requires a website; ask for it when discovery
+                      // found no domain (the API rejects the call otherwise).
+                      if (!c.domain) {
+                        setUrlFor(c.id);
+                        setUrlValue("");
+                        return;
+                      }
+                      void act(c.id + ":a", () => api.competitorCandidates.accept(c.id));
+                    }}
                     disabled={busy !== null}
                   >
                     {busy === c.id + ":a" ? "…" : "Accept"}
                   </Button>
+                  )}
                   <Button
                     size="sm"
                     variant="outline"

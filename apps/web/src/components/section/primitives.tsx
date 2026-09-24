@@ -40,10 +40,17 @@ const STATUS_VARIANTS: Record<string, BadgeVariant> = {
   pending: "high",
   edited: "success",
   executed: "success",
+  // crawl URL lifecycle
+  discovered: "info",
+  crawling: "medium",
+  crawled: "success",
+  skipped: "muted",
+  cancelling: "medium",
   // severity / confidence
   critical: "critical",
   high: "high",
   medium: "medium",
+  moderate: "medium",
   low: "low",
   insufficient: "muted",
 };

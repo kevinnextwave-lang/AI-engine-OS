@@ -138,7 +138,19 @@ export function NotificationChannelsSheet({
                 </p>
               )}
               <div className="mt-1 flex gap-1.5">
-                <Button size="sm" variant="outline" disabled={busy} onClick={() => void act(() => api.notificationChannels.test(c.id))}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() =>
+                    void act(async () => {
+                      const res = await api.notificationChannels.test(c.id);
+                      // queued:false means the worker broker refused the job —
+                      // surface it instead of silently looking successful.
+                      if (!res.queued) throw new Error(res.note);
+                    })
+                  }
+                >
                   Send test
                 </Button>
                 <Button

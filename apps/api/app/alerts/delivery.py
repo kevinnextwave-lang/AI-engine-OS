@@ -15,6 +15,7 @@ import asyncio
 import hashlib
 import hmac
 import json
+import time
 import uuid
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -220,14 +221,23 @@ async def deliver_alerts(
             )
         ).all()
     )
+    # Bound the whole run well under the Celery soft time limit (300s): a dead
+    # endpoint costs ~33s per alert, so channels x alerts is otherwise unbounded.
+    deadline = time.monotonic() + 240
     delivered = failed = 0
     for channel in channels:
         sender = WebhookChannel(channel, transport=transport, resolver=resolver)
-        results = [await sender.deliver(alert) for alert in alerts]
+        results: list[DeliveryResult] = []
+        for alert in alerts:
+            if time.monotonic() > deadline:
+                results.append(DeliveryResult(ok=False, detail="delivery time budget exhausted"))
+                break
+            results.append(await sender.deliver(alert))
         delivered += sum(1 for r in results if r.ok)
         failed += sum(1 for r in results if not r.ok)
         await _record(channel, results)
-    await session.commit()
+        # Commit per channel so a later failure can't discard earlier outcomes.
+        await session.commit()
     return {"channels": len(channels), "delivered": delivered, "failed": failed}
 
 

@@ -19,10 +19,16 @@ def get_engine() -> AsyncEngine:
     global _engine
     if _engine is None:
         settings = get_settings()
+        kwargs: dict[str, object] = {}
+        if settings.database_url.startswith("postgresql+asyncpg"):
+            # Fail fast instead of hanging for minutes when the database host
+            # silently drops traffic: bound connection attempts and statements.
+            kwargs["connect_args"] = {"timeout": 10, "command_timeout": 120}
         _engine = create_async_engine(
             settings.database_url,
             echo=settings.db_echo,
             pool_pre_ping=True,
+            **kwargs,
         )
     return _engine
 

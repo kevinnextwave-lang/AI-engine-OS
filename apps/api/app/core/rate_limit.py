@@ -6,7 +6,6 @@ expected to be present.
 """
 
 import time
-from collections import defaultdict
 from typing import Protocol
 
 from redis.asyncio import Redis
@@ -42,21 +41,23 @@ class RedisRateLimiter:
 
 class InMemoryRateLimiter:
     def __init__(self) -> None:
-        self._hits: dict[str, int] = defaultdict(int)
+        # key -> (count, window_expires_at_epoch_seconds)
+        self._hits: dict[str, tuple[int, float]] = {}
 
     async def hit(self, key: str, limit: int, window_seconds: int) -> bool:
-        window = int(time.time() // window_seconds)
+        now = time.time()
+        window = int(now // window_seconds)
         k = f"{key}:{window}"
-        self._hits[k] += 1
-        allowed = self._hits[k] <= limit
+        count, expires = self._hits.get(k, (0, (window + 1) * window_seconds))
+        count += 1
+        self._hits[k] = (count, expires)
         if len(self._hits) > 50_000:
-            # Old windows never get read again; drop them so a long-lived
-            # process without Redis cannot grow this dict without bound.
-            suffix = f":{window}"
-            self._hits = defaultdict(
-                int, {key: count for key, count in self._hits.items() if key.endswith(suffix)}
-            )
-        return allowed
+            # Expired windows never get read again; drop them (by each entry's
+            # OWN expiry, so rules with different window sizes are untouched)
+            # so a long-lived process without Redis cannot grow this dict
+            # without bound.
+            self._hits = {kk: v for kk, v in self._hits.items() if v[1] > now}
+        return count <= limit
 
     def reset(self) -> None:
         self._hits.clear()

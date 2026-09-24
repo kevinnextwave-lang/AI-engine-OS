@@ -10,6 +10,7 @@ from typing import Any
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import IntegrityError
 
 from app.core.logging import get_logger
 
@@ -89,6 +90,20 @@ def register_exception_handlers(app: FastAPI) -> None:
             status_code=exc.status_code,
             content=_envelope(exc.code, exc.message, exc.details),
             headers=headers,
+        )
+
+    @app.exception_handler(IntegrityError)
+    async def _integrity_handler(request: Request, exc: IntegrityError) -> JSONResponse:
+        # Two requests raced a check-then-insert (duplicate competitor, second
+        # crawl, colliding slug, ...). A 409 tells the client to retry/refresh;
+        # a 500 would look like an outage. The exception text (SQL + params)
+        # stays in the logs, never in the response.
+        log.warning("integrity_conflict", path=request.url.path, error=type(exc.orig).__name__)
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content=_envelope(
+                "conflict", "The request conflicts with a concurrent change. Please retry."
+            ),
         )
 
     @app.exception_handler(RequestValidationError)
