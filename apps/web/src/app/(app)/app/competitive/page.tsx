@@ -30,22 +30,36 @@ function Trend({ trend, change }: { trend: string; change: number | null }) {
 }
 
 function AdvantageCard({ adv }: { adv: CompetitiveAdvantage }) {
+  // `advantage` is competitor_score − brand_score: positive means the
+  // competitor leads, negative means your brand leads.
+  const gap = adv.advantage;
+  const ahead = gap != null && gap > 0;
+  const label =
+    gap == null
+      ? "not enough data"
+      : ahead
+        ? `+${gap} pts ahead of you`
+        : gap < 0
+          ? `${Math.abs(gap)} pts behind you`
+          : "level with you";
   return (
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center justify-between text-base">
           <span>{adv.competitor}</span>
           <span className="flex items-center gap-2">
-            {adv.material && <Badge variant="high">material</Badge>}
-            <span className="text-sm font-normal tabular-nums">
-              +{adv.advantage} pts ahead
+            {adv.material && ahead && <Badge variant="high">material</Badge>}
+            <span
+              className={`text-sm font-normal tabular-nums ${ahead ? "text-red-600" : "text-muted-foreground"}`}
+            >
+              {label}
             </span>
           </span>
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-2 text-sm">
         {adv.reason && <p className="text-muted-foreground">{adv.reason}</p>}
-        {adv.where_they_win.length > 0 && (
+        {ahead && adv.where_they_win.length > 0 && (
           <p>
             <span className="text-muted-foreground">Where they lead: </span>
             {adv.where_they_win.join(", ")}
@@ -133,7 +147,12 @@ export default function CompetitiveOverviewPage() {
       )}
       {d && d.advantages.length > 0 && (
         <div className="mt-6">
-          <h2 className="mb-3 text-lg font-semibold">Competitor advantages</h2>
+          <h2 className="mb-1 text-lg font-semibold">Competitive gap by competitor</h2>
+          {!d.advantages.some((a) => a.advantage != null && a.advantage > 0) && (
+            <p className="text-muted-foreground mb-3 text-sm">
+              Your brand currently leads every configured competitor in this window.
+            </p>
+          )}
           <div className="grid gap-3 md:grid-cols-2">
             {d.advantages.map((a) => (
               <AdvantageCard key={a.competitor} adv={a} />
