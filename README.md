@@ -2,7 +2,7 @@
 
 A SaaS platform that helps businesses understand and improve how their brands appear, are recommended, and are represented across AI search and answer engines.
 
-**Current milestone: 1A — Repository Foundation.** Multi-tenant auth, organizations, the application shell, and the platform skeleton. Product modules (visibility monitoring, citations, GEO audits, agents, …) come in later milestones.
+The platform is feature-complete across its core modules: multi-tenant auth and organizations; safe website crawling with page intelligence; technical SEO, structured-data and AI-readiness audits (GEO); AI visibility measurement across engines with prompt tracking; citation intelligence and citation gaps; competitor discovery, competitive visibility scoring, "why competitors win" insights, competitive content gaps and alerts; and an agent layer (research, content strategy, content optimization, entity optimization) with human approval gates and a multi-agent workflow orchestrator. Every number shown in the product is measured, never invented; agents propose and humans approve.
 
 See [`docs/architecture.md`](docs/architecture.md) for the design.
 
@@ -24,7 +24,14 @@ docker-compose.yml Postgres + Redis (+ optional api/worker containers)
 .env.example       Environment template
 ```
 
-## Quick start
+## Quick start (everything in Docker)
+
+```bash
+cp apps/api/.env.example apps/api/.env   # set JWT_SECRET / JWT_REFRESH_SECRET
+docker compose up --build                # web :3000 · api :8000 · worker · postgres · redis
+```
+
+## Quick start (local dev)
 
 Prerequisites: Python 3.11+, Node 22+, Docker.
 
@@ -52,9 +59,9 @@ npm install
 npm run dev:web
 ```
 
-Routes: `/` → `/login` · `/signup` · `/app` · `/app/projects` · `/app/settings`.
+App sections: `/app` (overview) · `/app/geo` (audits + crawls) · `/app/ai-visibility` · `/app/ai-intelligence` (citations, claims, gaps) · `/app/competitive` (discovery, insights, content gaps, alerts) · `/app/agents` (runs & approvals, workflows, briefs, reviews) · `/app/projects` · `/app/settings`.
 
-Crawling requires the worker: `cd apps/api && celery -A app.workers.celery_app:celery_app worker -Q default,crawler,analytics,ai_search --loglevel=INFO`.
+Crawls, prompt runs, and agents require the worker: `cd apps/api && celery -A app.workers.celery_app:celery_app worker -Q default,crawler,analytics,ai_search,agents --loglevel=INFO`.
 
 ## Quality gates
 
