@@ -566,6 +566,46 @@ export interface AlertThresholds {
   content_gap_min_score?: number;
 }
 
+/** Alert notification channels (webhook delivery; secrets are write-only). */
+export type NotificationChannelType = "webhook";
+export type NotificationDeliveryStatus = "delivered" | "failed";
+
+export interface NotificationChannel {
+  id: string;
+  project_id: string;
+  channel_type: NotificationChannelType;
+  name: string;
+  url: string;
+  has_secret: boolean;
+  enabled: boolean;
+  last_delivery_at: string | null;
+  last_delivery_status: NotificationDeliveryStatus | null;
+  last_delivery_error: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NotificationChannelListResponse {
+  items: NotificationChannel[];
+  total: number;
+}
+
+export interface NotificationChannelCreateRequest {
+  channel_type?: NotificationChannelType;
+  name: string;
+  url: string;
+  secret?: string;
+  enabled?: boolean;
+}
+
+export interface NotificationChannelUpdateRequest {
+  name?: string;
+  url?: string;
+  secret?: string;
+  clear_secret?: boolean;
+  enabled?: boolean;
+}
+
 export interface AlertDetectResponse {
   project_id: string;
   window_days: number;

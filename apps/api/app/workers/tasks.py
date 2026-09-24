@@ -345,3 +345,98 @@ def run_agent_workflow_task(self, workflow_id: str) -> str:  # type: ignore[no-u
 def dispatch_agent_workflow(workflow_id: uuid.UUID) -> None:
     """Enqueue a workflow advance. Callers must have COMMITTED first."""
     run_agent_workflow_task.apply_async(args=(str(workflow_id),), queue="agents")
+
+
+@celery_app.task(
+    name="app.workers.tasks.notifications.deliver_alerts",
+    bind=True,
+    acks_late=True,
+    max_retries=0,
+    soft_time_limit=60 * 5,
+    time_limit=60 * 5 + 30,
+)
+def deliver_alert_notifications_task(self, project_id: str, alert_ids: list[str]) -> str:  # type: ignore[no-untyped-def]
+    """Deliver freshly detected alerts through the project's enabled channels."""
+    configure_logging()
+
+    async def _main() -> str:
+        from app.alerts.delivery import deliver_alerts
+        from app.db.session import dispose_engine, get_session_factory
+
+        try:
+            async with get_session_factory()() as session:
+                summary = await deliver_alerts(
+                    session, uuid.UUID(project_id), [uuid.UUID(a) for a in alert_ids]
+                )
+                return f"{summary['delivered']} delivered, {summary['failed']} failed"
+        finally:
+            await dispose_engine()
+
+    return asyncio.run(_main())
+
+
+def dispatch_alert_delivery(project_id: uuid.UUID, alert_ids: list[uuid.UUID]) -> None:
+    """Enqueue webhook delivery for new alerts. Callers must have COMMITTED first."""
+    if not alert_ids:
+        return
+    deliver_alert_notifications_task.apply_async(
+        args=(str(project_id), [str(a) for a in alert_ids]), queue="default"
+    )
+
+
+@celery_app.task(
+    name="app.workers.tasks.notifications.test_channel",
+    bind=True,
+    acks_late=True,
+    max_retries=0,
+    soft_time_limit=60,
+    time_limit=90,
+)
+def test_notification_channel_task(self, channel_id: str) -> str:  # type: ignore[no-untyped-def]
+    """Send a synthetic test alert to one channel; outcome lands on the row."""
+    configure_logging()
+
+    async def _main() -> str:
+        from app.alerts.delivery import deliver_test
+        from app.db.session import dispose_engine, get_session_factory
+
+        try:
+            async with get_session_factory()() as session:
+                result = await deliver_test(session, uuid.UUID(channel_id))
+                if result is None:
+                    return "missing"
+                return "delivered" if result.ok else f"failed: {result.detail}"
+        finally:
+            await dispose_engine()
+
+    return asyncio.run(_main())
+
+
+def dispatch_channel_test(channel_id: uuid.UUID) -> None:
+    """Enqueue a test delivery. Callers must have COMMITTED first."""
+    test_notification_channel_task.apply_async(args=(str(channel_id),), queue="default")
+
+
+@celery_app.task(
+    name="app.workers.tasks.monitoring.run_scheduled_monitoring",
+    bind=True,
+    acks_late=True,
+    max_retries=0,
+    soft_time_limit=60 * 30,
+    time_limit=60 * 30 + 60,
+)
+def run_scheduled_monitoring_task(self) -> str:  # type: ignore[no-untyped-def]
+    """Daily competitive-alert detection for projects with recent AI responses.
+
+    Fired by `celery beat` (see celery_app.py). Each project runs in its own
+    session; one project's failure never blocks the rest. Newly created alerts
+    are handed to webhook delivery.
+    """
+    configure_logging()
+
+    async def _main() -> str:
+        from app.monitoring.scheduler import run_scheduled_monitoring
+
+        return await run_scheduled_monitoring(dispatch_delivery=dispatch_alert_delivery)
+
+    return asyncio.run(_main())

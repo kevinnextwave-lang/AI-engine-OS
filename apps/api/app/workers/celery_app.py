@@ -7,6 +7,7 @@ deployments without code changes.
 """
 
 from celery import Celery
+from celery.schedules import crontab
 
 from app.core.config import get_settings
 
@@ -39,4 +40,17 @@ celery_app.conf.update(
         "app.workers.tasks.agents.*": {"queue": "agents"},
         "app.workers.tasks.analytics.*": {"queue": "analytics"},
     },
+    # Scheduled monitoring fires only when an operator runs `celery beat`
+    # (e.g. `celery -A app.workers.celery_app beat`). The task itself also
+    # honours MONITORING_ENABLED, so it can be switched off without redeploys.
+    beat_schedule=(
+        {
+            "daily-competitive-monitoring": {
+                "task": "app.workers.tasks.monitoring.run_scheduled_monitoring",
+                "schedule": crontab(minute=0, hour=settings.monitoring_hour_utc),
+            }
+        }
+        if settings.monitoring_enabled
+        else {}
+    ),
 )

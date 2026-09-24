@@ -66,6 +66,11 @@ from app.models.intelligence import (
     ResponseClaim,
 )
 from app.models.membership import Membership, MembershipRole, OrganizationMember
+from app.models.notification_channels import (
+    DeliveryStatus,
+    NotificationChannelConfig,
+    NotificationChannelType,
+)
 from app.models.organization import Organization, OrganizationPlan, OrganizationStatus
 from app.models.page_intelligence import (
     LinkStatus,
@@ -185,6 +190,9 @@ __all__ = [
     "LinkStatus",
     "LinkType",
     "Membership",
+    "NotificationChannelConfig",
+    "NotificationChannelType",
+    "DeliveryStatus",
     "MembershipRole",
     "ObservationCategory",
     "ObservationStatus",

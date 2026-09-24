@@ -54,6 +54,10 @@ import type {
   AlertThresholds,
   CompetitiveAlert,
   CompetitiveAlertListResponse,
+  NotificationChannel,
+  NotificationChannelCreateRequest,
+  NotificationChannelListResponse,
+  NotificationChannelUpdateRequest,
   ContentGap,
   ContentGapAnalyzeResponse,
   ContentGapListResponse,
@@ -354,6 +358,26 @@ export const api = {
       request<CompetitiveAlert>(`/competitive-alerts/${alertId}`, {
         method: "PATCH",
         body: JSON.stringify({ status }),
+      }),
+  },
+  notificationChannels: {
+    list: (projectId: string) =>
+      request<NotificationChannelListResponse>(`/projects/${projectId}/notification-channels`),
+    create: (projectId: string, body: NotificationChannelCreateRequest) =>
+      request<NotificationChannel>(`/projects/${projectId}/notification-channels`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    update: (channelId: string, body: NotificationChannelUpdateRequest) =>
+      request<NotificationChannel>(`/notification-channels/${channelId}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
+    remove: (channelId: string) =>
+      request<void>(`/notification-channels/${channelId}`, { method: "DELETE" }),
+    test: (channelId: string) =>
+      request<{ queued: boolean; note: string }>(`/notification-channels/${channelId}/test`, {
+        method: "POST",
       }),
   },
   agents: {

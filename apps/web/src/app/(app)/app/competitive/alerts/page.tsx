@@ -4,6 +4,7 @@ import * as React from "react";
 
 import { DrawerSection, EvidenceList } from "@/components/section/evidence";
 import { DataTable, StatusBadge, label } from "@/components/section/primitives";
+import { NotificationChannelsSheet } from "@/components/section/notification-channels";
 import { SectionFrame, Toolbar } from "@/components/section/section-frame";
 import { useProjectResource } from "@/components/section/use-project-resource";
 import { fmtDateTime } from "@/components/visibility/format";
@@ -52,6 +53,7 @@ export default function CompetitiveAlertsPage() {
   const [busy, setBusy] = React.useState<string | null>(null);
   const [notice, setNotice] = React.useState<string | null>(null);
   const [open, setOpen] = React.useState<CompetitiveAlert | null>(null);
+  const [channelsOpen, setChannelsOpen] = React.useState(false);
   const d = res.data;
   const liveOpen = open ? (d?.items.find((a) => a.id === open.id) ?? open) : null;
 
@@ -91,9 +93,14 @@ export default function CompetitiveAlertsPage() {
       error={res.error}
       onRetry={res.refresh}
       tools={
-        <Button onClick={() => void detect()} disabled={!res.projectId || busy !== null}>
-          {busy === "detect" ? "Detecting…" : "Run detection"}
-        </Button>
+        <>
+          <Button variant="outline" onClick={() => setChannelsOpen(true)} disabled={!res.projectId}>
+            Notification channels
+          </Button>
+          <Button onClick={() => void detect()} disabled={!res.projectId || busy !== null}>
+            {busy === "detect" ? "Detecting…" : "Run detection"}
+          </Button>
+        </>
       }
     >
       <Toolbar>
@@ -192,6 +199,11 @@ export default function CompetitiveAlertsPage() {
           )}
         </SheetContent>
       </Sheet>
+      <NotificationChannelsSheet
+        projectId={res.projectId}
+        open={channelsOpen}
+        onClose={() => setChannelsOpen(false)}
+      />
     </SectionFrame>
   );
 }

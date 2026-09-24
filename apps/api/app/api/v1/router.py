@@ -20,6 +20,7 @@ from app.api.v1.routes import (
     health,
     insights,
     intelligence,
+    notification_channels,
     organizations,
     pages,
     projects,
@@ -66,6 +67,8 @@ api_router.include_router(content_gaps.project_router)
 api_router.include_router(content_gaps.gap_router)
 api_router.include_router(alerts.project_router)
 api_router.include_router(alerts.alert_router)
+api_router.include_router(notification_channels.project_router)
+api_router.include_router(notification_channels.channel_router)
 api_router.include_router(agents.project_router)
 api_router.include_router(agents.run_router)
 api_router.include_router(agents.action_router)

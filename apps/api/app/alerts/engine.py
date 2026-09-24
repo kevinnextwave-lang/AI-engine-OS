@@ -8,7 +8,7 @@ never reset, so a dismissed alert stays dismissed and a read one stays read.
 """
 
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -58,6 +58,10 @@ class AlertDetectionResult:
     detected_at: datetime
     thresholds: dict[str, Any]
     note: str
+    # Ids of alerts persisted for the first time in this run — the caller uses
+    # them to enqueue notification delivery AFTER committing. Internal; not
+    # part of the API response schema.
+    created_alert_ids: list[uuid.UUID] = field(default_factory=list)
 
 
 class CompetitiveAlertEngine:
@@ -151,6 +155,7 @@ class CompetitiveAlertEngine:
                 "periods; insignificant changes never alert. Re-detection updates "
                 "existing alerts instead of duplicating them."
             ),
+            created_alert_ids=[row.id for row in new_rows],
         )
 
     # -- measurements ------------------------------------------------------------------

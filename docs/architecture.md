@@ -319,6 +319,16 @@ The existing `competitors` table is extended, not replaced (`hostname` is the co
 
 `apps/api/app/agents/workflow.py` chains agents (initially research → content-strategy → content-optimization → entity-optimization) into `agent_workflows` / `agent_workflow_steps` without widening any agent's access: each step is an ordinary 6A run, context passing is output summaries only (stored per step, exposed as `context.workflow_input`, including which prior actions were approved), and nothing executes automatically. The Celery worker advances steps sequentially, re-checking status between steps so pause/cancel take effect mid-run; a step that proposes content/entity/external changes holds the workflow in `awaiting_approval`, and resume is refused until every pending action is explicitly approved or rejected. Failures mark step + workflow failed. After the last step a consolidated action plan is built across all non-rejected actions (priority, action, reason, evidence, expected impact area, effort, confidence, approval status). Routes: `POST/GET /projects/{id}/agent-workflows`, `GET /agent-workflows/{id}`, `POST /agent-workflows/{id}/pause|resume|cancel`. See `docs/agent-workflows.md`.
 
+## Alert notifications & scheduled monitoring
+
+Webhook delivery for competitive alerts (`app/alerts/delivery.py`, table
+`notification_channels`) plus a daily `celery beat` monitoring task
+(`app/monitoring/scheduler.py`) that re-runs detection for recently active
+projects. Targets pass the crawler's SSRF policy (syntax check at create, DNS
+resolution + connection pinning at every delivery); payloads are HMAC-signed
+when a secret is set; secrets are write-only and never logged; delivery runs
+only in workers, enqueued after commit. See docs/alert-notifications.md.
+
 ## Background jobs
 
 Celery app in `apps/api/app/workers/celery_app.py` with Redis as broker/backend. Tasks are routed by module name to the `crawler`, `ai_search`, `agents`, and `analytics` queues. `app.workers.tasks.crawler.run_crawl_job` runs crawls on the `crawler` queue (acks-late, 6h hard limit); `app.workers.tasks.analytics.run_seo_audit` runs SEO audits and `app.workers.tasks.analytics.run_entity_analysis` rebuilds entity intelligence and `app.workers.tasks.analytics.run_ai_readiness_audit` runs readiness audits on the `analytics` queue; `app.workers.tasks.ai_search.run_prompt` executes prompt runs on the priority-enabled `ai_search` queue (30 min limit); `ping` remains for health checks.

@@ -118,6 +118,17 @@ class Settings(BaseSettings):
     crawl_html_storage_path: str = "./var/crawl-html"
     crawl_status_check_interval: int = 10  # URLs between cancellation checks
 
+    # Alert notifications (webhook delivery runs in workers, never in requests)
+    notification_webhook_timeout_seconds: float = 10.0
+    notification_webhook_max_retries: int = 2
+    notification_webhook_retry_backoff_seconds: float = 1.0
+
+    # Scheduled monitoring (requires a `celery beat` process; see docs)
+    monitoring_enabled: bool = True
+    monitoring_hour_utc: int = 6  # daily detection run, UTC hour
+    monitoring_activity_window_days: int = 2  # only projects with recent responses
+    monitoring_detection_window_days: int = 30
+
     # Stripe (config only in Milestone 1)
     stripe_secret_key: str | None = None
     stripe_webhook_secret: str | None = None

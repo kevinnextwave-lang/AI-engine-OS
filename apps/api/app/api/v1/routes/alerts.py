@@ -7,6 +7,7 @@ per-user-facing inbox action, but stored per project).
 """
 
 import uuid
+from collections.abc import Callable
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Path, Query
@@ -22,6 +23,7 @@ from app.api.deps import (
 )
 from app.api.v1.routes.prompts import _require
 from app.core.errors import NotFoundError
+from app.core.logging import get_logger
 from app.core.permissions import Permission
 from app.models.alerts import AlertSeverity, AlertStatus, AlertType, CompetitiveAlert
 from app.schemas.alerts import (
@@ -31,6 +33,17 @@ from app.schemas.alerts import (
     AlertUpdateRequest,
     AlertView,
 )
+
+log = get_logger(__name__)
+
+DeliveryDispatcher = Callable[[uuid.UUID, list[uuid.UUID]], None]
+
+
+def get_delivery_dispatcher() -> DeliveryDispatcher:
+    from app.workers.tasks import dispatch_alert_delivery
+
+    return dispatch_alert_delivery
+
 
 project_router = APIRouter(prefix="/projects/{project_id}/competitive-alerts", tags=["alerts"])
 alert_router = APIRouter(prefix="/competitive-alerts/{alert_id}", tags=["alerts"])
@@ -94,14 +107,25 @@ async def list_alerts(
     responses=_ERRORS,
 )
 async def detect_alerts(
-    access: ManageAccess, session: DBSession, body: AlertDetectRequest | None = None
+    access: ManageAccess,
+    session: DBSession,
+    delivery: Annotated[DeliveryDispatcher, Depends(get_delivery_dispatcher)],
+    body: AlertDetectRequest | None = None,
 ) -> AlertDetectResponse:
     body = body or AlertDetectRequest()
     result = await CompetitiveAlertEngine(session).detect(
         access.project.id, window_days=body.window_days, thresholds=body.thresholds
     )
     await session.commit()
-    return AlertDetectResponse(**result.__dict__)
+    # Delivery is a worker concern: enqueue AFTER commit so the task can see
+    # the rows; a broker hiccup must not fail the detection request.
+    if result.created_alert_ids:
+        try:
+            delivery(access.project.id, result.created_alert_ids)
+        except Exception:  # noqa: BLE001 - detection succeeded; log and move on
+            log.exception("alert_delivery_dispatch_failed")
+    payload = {k: v for k, v in result.__dict__.items() if k != "created_alert_ids"}
+    return AlertDetectResponse(**payload)
 
 
 async def get_alert_access(
