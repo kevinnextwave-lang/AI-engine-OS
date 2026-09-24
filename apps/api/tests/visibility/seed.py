@@ -23,7 +23,11 @@ from tests.conftest import auth_header
 from tests.test_authz import org_id_for, signup
 from tests.test_projects_api import create_project
 
-NOW = datetime(2026, 8, 22, 12, 0, tzinfo=UTC)
+# Anchored to the real clock (rounded down to the hour, so it is never in the
+# future) because several engines window on datetime.now(UTC) internally; a
+# hardcoded date silently ages out of their windows. Tests only ever use
+# offsets from NOW, never its literal value.
+NOW = datetime.now(UTC).replace(minute=0, second=0, microsecond=0)
 PV = "response-parser/v1"
 
 

@@ -24,8 +24,10 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=8.2",
-    "pytest-asyncio>=0.23",
+    # pytest 9 / pytest-asyncio 1.x change event-loop scoping and break the
+    # session-scoped DB fixtures; keep within the verified ranges.
+    "pytest>=8.2,<9",
+    "pytest-asyncio>=0.26,<1",
     "aiosqlite>=0.20",
     "mypy>=1.10",
     "ruff>=0.5",
