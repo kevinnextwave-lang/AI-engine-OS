@@ -2,6 +2,7 @@
  * Pure functions from API contract types to GEO view models. No React, no I/O.
  */
 
+import { relativeTime as relative } from "@/lib/format";
 import type {
   AiReadinessAuditDetail,
   AiReadinessObservation,
@@ -250,16 +251,10 @@ export function structuredDataOverview(schema: ProjectSchemaResponse | null): St
   };
 }
 
-function relative(iso: string | null): string {
-  if (!iso) return "not yet run";
-  const diff = Date.now() - new Date(iso).getTime();
-  const minutes = Math.round(diff / 60_000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes} min ago`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 48) return `${hours} h ago`;
-  return `${Math.round(hours / 24)} d ago`;
-}
+// Date/time formatting is centralized in lib/format.ts; these re-exports keep
+// the geo modules' existing import paths working.
+export { relativeTime } from "@/lib/format";
+export { fmtDateTime as formatDateTime } from "@/lib/format";
 
 export function formatDuration(seconds: number | null): string {
   if (seconds == null) return "–";
@@ -267,15 +262,6 @@ export function formatDuration(seconds: number | null): string {
   const m = Math.floor(seconds / 60);
   const s = Math.round(seconds % 60);
   return `${m} min ${s} s`;
-}
-
-export function formatDateTime(iso: string | null): string {
-  if (!iso) return "–";
-  return new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
-}
-
-export function relativeTime(iso: string | null): string {
-  return relative(iso);
 }
 
 /** The five overview metrics. Each carries its own provenance and source. */

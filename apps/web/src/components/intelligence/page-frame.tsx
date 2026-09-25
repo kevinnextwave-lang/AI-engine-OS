@@ -6,12 +6,12 @@ import * as React from "react";
 
 import { MockNotice, DataSourceBadge } from "@/components/geo/data-source-badge";
 import { EmptyState } from "@/components/geo/empty-state";
-import { useProject } from "@/components/project-provider";
 import { PageHeader } from "@/components/shell/page-header";
+import { ProjectSelect } from "@/components/shell/project-select";
 import { ErrorState } from "@/components/visibility/states";
 import type { useProjectIntelligence } from "@/components/intelligence/use-project-intelligence";
 import type { IntelligenceWindow } from "@/lib/intelligence/use-intelligence-data";
-import { Button, NativeSelect } from "@ai-search-growth-os/ui";
+import { Button, SegmentedControl } from "@ai-search-growth-os/ui";
 
 type Intel = ReturnType<typeof useProjectIntelligence>;
 const WINDOWS: { key: IntelligenceWindow; label: string }[] = [
@@ -28,31 +28,16 @@ export function runDisabledReason(d: Intel): string | null {
 }
 
 export function IntelligenceTools({ intel }: { intel: Intel }) {
-  const { projects, current, select, loading } = useProject();
   return (
     <div className="flex flex-wrap items-center gap-2">
       <DataSourceBadge source={intel.source} reason={intel.mockReason} />
-      <NativeSelect aria-label="Project" className="w-44" value={current?.id ?? ""} disabled={loading || projects.length === 0} onChange={(e) => select(e.target.value)}>
-        {projects.length === 0 && <option value="">No projects</option>}
-        {projects.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name}
-          </option>
-        ))}
-      </NativeSelect>
-      <div role="group" aria-label="Date range" className="bg-muted inline-flex rounded-md p-0.5 text-sm">
-        {WINDOWS.map((w) => (
-          <button
-            key={w.key}
-            type="button"
-            aria-pressed={intel.window === w.key}
-            onClick={() => intel.setWindow(w.key)}
-            className={intel.window === w.key ? "bg-background text-foreground rounded-[5px] px-3 py-1 font-medium shadow-sm" : "text-muted-foreground hover:text-foreground rounded-[5px] px-3 py-1"}
-          >
-            {w.label}
-          </button>
-        ))}
-      </div>
+      <ProjectSelect />
+      <SegmentedControl
+        aria-label="Date range"
+        value={intel.window}
+        onValueChange={(w) => intel.setWindow(w as IntelligenceWindow)}
+        options={WINDOWS.map((w) => ({ value: w.key, label: w.label }))}
+      />
     </div>
   );
 }

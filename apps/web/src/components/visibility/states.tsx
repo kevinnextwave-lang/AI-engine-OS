@@ -1,24 +1,14 @@
 "use client";
 
-import { AlertTriangleIcon, SparklesIcon } from "lucide-react";
+import { SparklesIcon } from "lucide-react";
 import Link from "next/link";
 
 import { EmptyState } from "@/components/geo/empty-state";
+import { LoadError } from "@/components/shell/load-error";
 import { Button } from "@ai-search-growth-os/ui";
 
 export function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
-  return (
-    <div role="alert" className="border-destructive/40 bg-destructive/5 flex flex-col items-start gap-3 rounded-xl border p-5 text-sm">
-      <p className="flex items-center gap-2 font-medium">
-        <AlertTriangleIcon className="text-destructive size-4" aria-hidden="true" />
-        Could not load AI visibility data
-      </p>
-      <p className="text-muted-foreground">{message}</p>
-      <Button size="sm" variant="outline" onClick={onRetry}>
-        Retry
-      </Button>
-    </div>
-  );
+  return <LoadError what="AI visibility data" message={message} onRetry={onRetry} />;
 }
 
 /**

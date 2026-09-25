@@ -51,7 +51,7 @@ export default function ContentPage() {
               <div key={c.key} className="flex flex-col gap-1.5">
                 <div className="flex items-baseline justify-between text-sm">
                   <span className="font-medium">{c.label}</span>
-                  <span className="text-muted-foreground tabular-nums">{c.applicable && c.value != null ? `${c.value}/100` : "n/a"}</span>
+                  <span className="text-muted-foreground tabular-nums">{c.applicable && c.value != null ? `${c.value}/100` : "–"}</span>
                 </div>
                 <Progress value={c.value ?? 0} aria-label={c.label} />
                 <p className="text-muted-foreground text-xs">{c.explanation}</p>

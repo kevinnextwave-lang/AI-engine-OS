@@ -1,3 +1,4 @@
+import { fmtDate } from "@/lib/format";
 import { SUFFICIENCY_LABEL } from "@/lib/visibility/labels";
 import type { DataQualitySummary } from "@/lib/visibility/types";
 import type { Sufficiency } from "@ai-search-growth-os/types";
@@ -25,9 +26,6 @@ export function ConfidenceBadge({ sufficiency, sampleSize }: { sufficiency: Suff
   );
 }
 
-function fmtDate(iso: string | null): string {
-  return iso ? new Date(iso).toLocaleDateString() : "–";
-}
 
 /** One line that says exactly what the numbers on the page are based on. */
 export function DataBasis({ quality, brandName }: { quality: DataQualitySummary; brandName: string }) {

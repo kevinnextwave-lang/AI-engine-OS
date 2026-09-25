@@ -14,19 +14,5 @@ export function fmtChange(change: number | null, unit: MetricUnit): string {
   return unit === "percent" ? `${sign}${n} pts` : `${sign}${n}`;
 }
 
-export function fmtDateTime(iso: string | null): string {
-  // "Sep 22, 2026, 6:00 AM" — no seconds; fits table cells without truncating.
-  return iso
-    ? new Date(iso).toLocaleString(undefined, {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-      })
-    : "–";
-}
-
-export function fmtDate(iso: string | null): string {
-  return iso ? new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "–";
-}
+// Date/time formatting is centralized; see lib/format.ts for the conventions.
+export { fmtDate, fmtDateTime } from "@/lib/format";

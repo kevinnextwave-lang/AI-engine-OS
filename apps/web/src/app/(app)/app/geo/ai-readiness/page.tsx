@@ -27,7 +27,7 @@ function CategoryCard({ category, onOpen }: { category: ReadinessCategoryView; o
             <p className="font-medium">{category.label}</p>
             <p className="text-muted-foreground mt-0.5 text-xs">Weight {category.weight}{!category.applicable && category.weight > 0 ? " · not applicable to this site" : category.weight === 0 ? " · informational" : ""}</p>
           </div>
-          <span className="text-2xl font-semibold tabular-nums">{category.applicable && category.value != null ? category.value : <span className="text-muted-foreground text-base">n/a</span>}</span>
+          <span className="text-2xl font-semibold tabular-nums">{category.applicable && category.value != null ? category.value : <span className="text-muted-foreground text-base">–</span>}</span>
         </div>
         <Progress value={category.applicable ? (category.value ?? 0) : 0} aria-label={category.label} />
         <p className="text-muted-foreground text-sm leading-relaxed">{category.explanation}</p>

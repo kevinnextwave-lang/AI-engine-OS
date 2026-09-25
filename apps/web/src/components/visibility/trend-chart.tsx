@@ -160,7 +160,7 @@ export function TrendChart({
                     <span className="text-muted-foreground">{s.label}</span>
                     {p && (
                       <span className="tabular-nums">
-                        {p.value == null ? "n/a" : mode === "competitor" ? `${p.value}%` : p.value}
+                        {p.value == null ? "–" : mode === "competitor" ? `${p.value}%` : p.value}
                         <span className="text-muted-foreground"> (n={p.sampleSize})</span>
                       </span>
                     )}

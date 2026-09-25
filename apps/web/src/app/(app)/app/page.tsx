@@ -5,7 +5,7 @@ import Link from "next/link";
 
 import { useAuth } from "@/components/auth-provider";
 import { useOrganization } from "@/components/organization-provider";
-import { ProjectProvider, useProject } from "@/components/project-provider";
+import { useProject } from "@/components/project-provider";
 import { PageHeader } from "@/components/shell/page-header";
 import {
   Badge,
@@ -25,14 +25,6 @@ import {
  * already loads (auth, organization and project providers).
  */
 export default function OverviewPage() {
-  return (
-    <ProjectProvider>
-      <OverviewInner />
-    </ProjectProvider>
-  );
-}
-
-function OverviewInner() {
   const { user } = useAuth();
   const { current: org, organizations, loading: orgLoading, error: orgError } = useOrganization();
   const { projects, current, loading: projectsLoading, select } = useProject();
