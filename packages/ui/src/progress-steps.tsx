@@ -48,7 +48,8 @@ function ProgressSteps({
   className?: string;
 }) {
   return (
-    <div data-slot="progress-steps" role="status" className={cn("flex flex-col gap-2", className)}>
+    // fade-in marks the block appearing when an operation starts reporting.
+    <div data-slot="progress-steps" role="status" className={cn("animate-in fade-in flex flex-col gap-2 duration-300", className)}>
       {title && <p className="text-sm font-medium">{title}</p>}
       <ol className="flex flex-col gap-1.5">
         {steps.map((step, i) => (

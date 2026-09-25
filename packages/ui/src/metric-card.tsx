@@ -130,7 +130,9 @@ function MetricCard({
   return (
     <div
       data-slot="metric-card"
-      className={cn("bg-card shadow-card flex flex-col gap-2 rounded-xl border p-4", className)}
+      // fade-in marks the moment measured content replaces the skeleton
+      // (or a window/filter change swaps the numbers).
+      className={cn("bg-card shadow-card animate-in fade-in flex flex-col gap-2 rounded-xl border p-4 duration-300", className)}
     >
       <div className="flex items-center justify-between gap-2">
         <p className="text-muted-foreground truncate text-[11px] font-medium tracking-wider uppercase">{label}</p>

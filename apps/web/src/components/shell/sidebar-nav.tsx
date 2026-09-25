@@ -124,17 +124,29 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
                 {section.label}
                 <ChevronDownIcon
                   className={cn(
-                    "size-3.5 opacity-0 transition-transform group-hover/section:opacity-100",
+                    "size-3.5 opacity-0 transition-[transform,opacity] group-hover/section:opacity-100",
                     !open && "-rotate-90 opacity-100",
                   )}
                   aria-hidden="true"
                 />
               </button>
             )}
-            {open &&
-              section.items.map((item) => (
-                <NavLink key={item.href} item={item} active={isActive(pathname, item)} onNavigate={onNavigate} />
-              ))}
+            {/* Animated collapse: the grid-rows trick transitions height
+                without measuring it. Items stay mounted; `inert` keeps the
+                hidden links out of the tab order and the a11y tree. */}
+            <div
+              className={cn(
+                "grid transition-[grid-template-rows] duration-200 ease-out",
+                open ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+              )}
+              inert={!open}
+            >
+              <div className="flex flex-col gap-px overflow-hidden">
+                {section.items.map((item) => (
+                  <NavLink key={item.href} item={item} active={isActive(pathname, item)} onNavigate={onNavigate} />
+                ))}
+              </div>
+            </div>
           </div>
         );
       })}

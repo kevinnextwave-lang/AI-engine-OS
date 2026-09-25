@@ -134,10 +134,37 @@ No colored shadows, no glows, no inner shadows.
 
 ## 6. Motion
 
-Only functional transitions: overlay enter/exit (sheet slide 200–300ms,
-dialog/tooltip fade+zoom via `tw-animate-css`), and `transition-colors` on
-interactive hovers. Nothing loops, nothing bounces, nothing animates on
-scroll. Skeletons pulse — that's the loading affordance, not decoration.
+Every animation must carry information — a state changed, content arrived,
+a panel came from somewhere. Nothing decorative, nothing loops (except the
+two loading affordances), nothing bounces, nothing animates on scroll.
+
+The vocabulary, in full:
+
+- **Overlay enter/exit** — sheet slides 200–300ms, dialog/dropdown/tooltip
+  fade+zoom (via `tw-animate-css`). Tells the user where the panel came
+  from and that it's transient.
+- **Hover/press feedback** — `transition-colors` on interactive surfaces;
+  buttons additionally get `motion-safe:active:scale-[0.98]` so a click
+  visibly registers. ~150ms.
+- **Content arrival** — `animate-in fade-in duration-300` where measured
+  content replaces a skeleton in place (`MetricCard`, `ProgressSteps`) or
+  a transient confirmation appears. Marks "this is new", nothing more.
+- **Expand/collapse** — sidebar sections animate height with the
+  `grid-rows-[1fr]/[0fr]` trick (200ms, ease-out) + `inert` on the hidden
+  content; `<details>` chevrons rotate with `transition-transform`.
+- **Loading** — skeletons pulse, active progress steps spin. The only
+  looping animations allowed.
+- **Progress** — `Progress` transitions width, so real value changes are
+  followable.
+
+Only animate opacity, transform, color, shadow — never layout properties.
+Success confirmations render inline in the layout slot the action occupied
+(with `role="status"`), not as floating toasts.
+
+**Reduced motion**: a global guard in `styles.css` collapses all animation
+and transition durations to one imperceptible frame when the OS asks for
+reduced motion. End states still apply, so no information is motion-gated.
+Anything that would still move (the press scale) opts out via `motion-safe:`.
 
 ---
 

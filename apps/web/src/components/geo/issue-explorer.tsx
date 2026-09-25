@@ -1,6 +1,6 @@
 "use client";
 
-import { SearchIcon, XIcon } from "lucide-react";
+import { CheckIcon, SearchIcon, XIcon } from "lucide-react";
 import * as React from "react";
 
 import { IssueDrawer } from "@/components/geo/issue-drawer";
@@ -51,6 +51,12 @@ export function IssueExplorer({
   const [page, setPage] = React.useState(0);
   const [selectedIds, setSelectedIds] = React.useState<ReadonlySet<string>>(new Set());
   const [bulkBusy, setBulkBusy] = React.useState(false);
+  // Transient success confirmation after a bulk update ("N issues marked …").
+  const [bulkDone, setBulkDone] = React.useState<string | null>(null);
+  const bulkDoneTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  React.useEffect(() => () => {
+    if (bulkDoneTimer.current) clearTimeout(bulkDoneTimer.current);
+  }, []);
 
   const categories = React.useMemo(
     () => [...new Map(issues.map((i) => [i.categoryKey, i.category])).entries()].sort((a, b) => a[1].localeCompare(b[1])),
@@ -103,11 +109,16 @@ export function IssueExplorer({
 
   const bulkSet = async (status: ObservationStatus) => {
     setBulkBusy(true);
+    setBulkDone(null);
+    const n = selected.length;
     try {
       for (const issue of selected) {
         await onUpdateStatus(issue, status);
       }
       setSelectedIds(new Set());
+      setBulkDone(`${n} issue${n === 1 ? "" : "s"} marked ${STATUS_LABEL[status].toLowerCase()}`);
+      if (bulkDoneTimer.current) clearTimeout(bulkDoneTimer.current);
+      bulkDoneTimer.current = setTimeout(() => setBulkDone(null), 4000);
     } finally {
       setBulkBusy(false);
     }
@@ -194,6 +205,18 @@ export function IssueExplorer({
               <XIcon aria-hidden="true" />
             </Button>
           </div>
+        </div>
+      )}
+
+      {/* Success feedback in the slot the bulk bar occupied; announced via
+          role="status", fades in, and clears itself after a few seconds. */}
+      {bulkEnabled && selected.length === 0 && bulkDone && (
+        <div
+          role="status"
+          className="border-success/30 bg-success/5 text-success animate-in fade-in flex items-center gap-2 rounded-lg border px-3 py-2 text-sm duration-300"
+        >
+          <CheckIcon className="size-4 shrink-0" aria-hidden="true" />
+          {bulkDone}
         </div>
       )}
 

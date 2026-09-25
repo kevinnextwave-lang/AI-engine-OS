@@ -154,4 +154,24 @@
   [data-slot="metric-card-value"] {
     font-variant-numeric: tabular-nums;
   }
+
+  /* Motion conventions (see DESIGN.md → Motion):
+     - Animate only opacity, transform, color and shadow; never layout.
+     - Durations: ~150ms for hover/press feedback, 200–300ms for
+       enter/expand. Ease-out for entering, ease-in for leaving.
+     - Every animation must carry information (state changed, content
+       arrived, where a panel came from). Nothing decorative.
+     Reduced motion: collapse all animation and transition to a single
+     imperceptible frame. End states still apply, so nothing is lost —
+     panels appear in place, sections snap open, content just shows up. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
