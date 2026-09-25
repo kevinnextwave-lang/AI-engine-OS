@@ -14,9 +14,13 @@ import { Badge, Button, Card, CardContent, ProgressSteps, Skeleton, Table, Table
 
 function Stat({ label, value, loading }: { label: string; value: React.ReactNode; loading: boolean }) {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex min-w-0 flex-col gap-1">
       <p className="text-muted-foreground text-xs font-medium">{label}</p>
-      {loading ? <Skeleton className="h-7 w-24" /> : <p className="text-xl font-semibold tabular-nums">{value}</p>}
+      {loading ? (
+        <Skeleton className="h-7 w-24" />
+      ) : (
+        <p className="min-w-0 truncate text-xl font-semibold tabular-nums">{value}</p>
+      )}
     </div>
   );
 }
