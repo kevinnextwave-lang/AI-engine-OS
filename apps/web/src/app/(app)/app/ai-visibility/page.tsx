@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import * as React from "react";
 
 import { AiInsightCard } from "@/components/ai-insight-card";
@@ -14,23 +13,8 @@ import { PromptTable } from "@/components/visibility/prompt-table";
 import { ResponseDrawer } from "@/components/visibility/response-drawer";
 import { TrendChart } from "@/components/visibility/trend-chart";
 import { useProjectVisibility } from "@/components/visibility/use-project-visibility";
+import { SectionHeader } from "@/components/shell/section-header";
 import type { ChartMode, PromptPerformanceRow } from "@/lib/visibility/types";
-
-function SectionTitle({ title, hint, href }: { title: string; hint?: string; href?: string }) {
-  return (
-    <div className="mb-3 flex items-baseline justify-between gap-3">
-      <div>
-        <h2 className="text-base font-semibold">{title}</h2>
-        {hint && <p className="text-muted-foreground text-xs">{hint}</p>}
-      </div>
-      {href && (
-        <Link href={href} className="text-primary shrink-0 text-sm underline-offset-4 hover:underline">
-          Open
-        </Link>
-      )}
-    </div>
-  );
-}
 
 export default function AiVisibilityOverviewPage() {
   const vis = useProjectVisibility();
@@ -63,7 +47,7 @@ export default function AiVisibilityOverviewPage() {
       title="AI Visibility"
       description="How often AI engines mention, recommend and cite your brand when answering your prompts. Measured from real AI responses; the score is our own methodology."
     >
-      <section aria-label="Primary metrics" className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+      <section aria-label="Primary metrics" className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
         {loading
           ? Array.from({ length: 6 }, (_, i) => <MetricTileSkeleton key={i} />)
           : vis.metrics.map((m) => (
@@ -79,7 +63,7 @@ export default function AiVisibilityOverviewPage() {
       </section>
 
       {!loading && (
-        <div className="mb-4">
+        <div className="mb-6">
           <AiInsightCard
             insight={competitorGapInsight({
               brandName: vis.brandName,
@@ -98,11 +82,11 @@ export default function AiVisibilityOverviewPage() {
 
       <div className="mb-6 grid gap-6 lg:grid-cols-2">
         <section aria-label="AI engine comparison">
-          <SectionTitle title="By AI engine" hint="AI Visibility Score per provider, same period." href="/app/ai-visibility/ai-engines" />
+          <SectionHeader title="By AI engine" hint="AI Visibility Score per provider, same period." href="/app/ai-visibility/ai-engines" />
           <EngineTable rows={vis.engines} loading={loading} />
         </section>
         <section aria-label="Competitor comparison">
-          <SectionTitle
+          <SectionHeader
             title="Who is beating you"
             hint="Measured mention rate in AI responses — share of responses naming each brand."
             href="/app/ai-visibility/competitors"
@@ -113,7 +97,7 @@ export default function AiVisibilityOverviewPage() {
       </div>
 
       <section aria-label="Prompt performance">
-        <SectionTitle title="Why — prompt performance" hint="Click a prompt to read the actual AI answers." href="/app/ai-visibility/prompts" />
+        <SectionHeader title="Why — prompt performance" hint="Click a prompt to read the actual AI answers." href="/app/ai-visibility/prompts" />
         <PromptTable rows={vis.prompts} loading={loading} onOpen={setOpenPrompt} limit={8} />
       </section>
 

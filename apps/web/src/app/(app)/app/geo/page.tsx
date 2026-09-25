@@ -14,6 +14,7 @@ import {
   ScoreTileSkeleton,
 } from "@/components/geo/overview-sections";
 import { AiInsightCard } from "@/components/ai-insight-card";
+import { SectionHeader } from "@/components/shell/section-header";
 import { GeoPageTools } from "@/components/geo/page-tools";
 import { useProjectGeo } from "@/components/geo/use-project-geo";
 import { PageHeader } from "@/components/shell/page-header";
@@ -121,12 +122,10 @@ export default function GeoOverviewPage() {
 
       {/* PRIORITIZE */}
       <section aria-label="Priority opportunities" className="mb-6">
-        <div className="mb-3">
-          <h2 className="text-lg font-semibold">Priority opportunities</h2>
-          <p className="text-muted-foreground text-sm">
-            The open findings with the biggest reach, ranked by severity. Fix these first.
-          </p>
-        </div>
+        <SectionHeader
+          title="Priority opportunities"
+          hint="The open findings with the biggest reach, ranked by severity. Fix these first."
+        />
         <PriorityOpportunities
           opportunities={opportunities}
           loading={loading}
@@ -153,15 +152,12 @@ export default function GeoOverviewPage() {
 
       {/* Recent issues */}
       <section aria-label="Recent issues">
-        <div className="mb-3 flex items-baseline justify-between">
-          <div>
-            <h2 className="text-lg font-semibold">Recent issues</h2>
-            <p className="text-muted-foreground text-sm">Most severe first. Open a row for evidence and triage.</p>
-          </div>
-          <Link href="/app/geo/technical-seo" className="text-primary text-sm underline-offset-4 hover:underline">
-            Open full table
-          </Link>
-        </div>
+        <SectionHeader
+          title="Recent issues"
+          hint="Most severe first. Open a row for evidence and triage."
+          href="/app/geo/technical-seo"
+          linkLabel="Open full table"
+        />
         <IssueExplorer
           issues={geo.issues}
           loading={loading}

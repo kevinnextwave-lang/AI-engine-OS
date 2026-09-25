@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { StatusBadge } from "@/components/section/primitives";
+import { SectionHeader } from "@/components/shell/section-header";
 import { SectionFrame } from "@/components/section/section-frame";
 import { useProjectResource } from "@/components/section/use-project-resource";
 import { fmtDateTime } from "@/components/visibility/format";
@@ -117,12 +118,11 @@ export default function AgentsPage() {
       </div>
       {runs.data && runs.data.items.length > 0 && (
         <div className="mt-8">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Recent runs</h2>
+          <SectionHeader title="Recent runs">
             <Button asChild size="sm" variant="outline">
               <Link href="/app/agents/runs">All runs & approvals</Link>
             </Button>
-          </div>
+          </SectionHeader>
           <ul className="flex flex-col gap-2">
             {runs.data.items.map((r) => (
               <li key={r.id} className="flex items-center justify-between rounded-lg border px-4 py-2.5 text-sm">

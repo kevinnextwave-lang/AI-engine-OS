@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 
+import { SectionHeader } from "@/components/shell/section-header";
 import { GapDrawer } from "@/components/intelligence/gap-drawer";
 import { IntelligenceMetricSkeleton, IntelligenceMetricTile } from "@/components/intelligence/metric-tiles";
 import { OpportunityCard } from "@/components/intelligence/opportunity-card";
@@ -48,15 +48,12 @@ export default function AiIntelligenceOverviewPage() {
           <SourceChart items={intel.topSources} loading={loading} onSelect={selectSource} />
         </div>
         <section aria-label="Citation gaps" className="lg:col-span-3">
-          <div className="mb-3 flex items-baseline justify-between gap-3">
-            <div>
-              <h2 className="text-base font-semibold">Where competitors are winning</h2>
-              <p className="text-muted-foreground text-xs">Sources that cite competitors more than you. A citation there would not guarantee better AI visibility — it makes it possible.</p>
-            </div>
-            <Link href="/app/ai-intelligence/citation-gaps" className="text-primary shrink-0 text-sm underline-offset-4 hover:underline">
-              All gaps
-            </Link>
-          </div>
+          <SectionHeader
+            title="Where competitors are winning"
+            hint="Sources that cite competitors more than you. A citation there would not guarantee better AI visibility — it makes it possible."
+            href="/app/ai-intelligence/citation-gaps"
+            linkLabel="All gaps"
+          />
           {loading ? (
             <div className="grid gap-3 sm:grid-cols-2">
               {Array.from({ length: 2 }, (_, i) => (

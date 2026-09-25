@@ -66,7 +66,7 @@ export function GeoHero({
 }) {
   const openIssues = summary.critical + summary.high + summary.medium + summary.low;
   return (
-    <Card className="mb-4 py-5">
+    <Card className="mb-6 py-5">
       <CardContent className="px-5">
         <div className="flex flex-col gap-5 md:flex-row md:items-center">
           {loading ? (

@@ -1,6 +1,7 @@
 "use client";
 
 import { EmptyAction } from "@/components/empty-action";
+import { SectionHeader } from "@/components/shell/section-header";
 import * as React from "react";
 
 import { DrawerSection, EvidenceList } from "@/components/section/evidence";
@@ -157,7 +158,7 @@ export default function CompetitiveOverviewPage() {
       )}
       {d && d.advantages.length > 0 && (
         <div className="mt-6">
-          <h2 className="mb-1 text-lg font-semibold">Competitive gap by competitor</h2>
+          <SectionHeader title="Competitive gap by competitor" />
           {!d.advantages.some((a) => a.advantage != null && a.advantage > 0) && (
             <p className="text-muted-foreground mb-3 text-sm">
               Your brand currently leads every configured competitor in this window.

@@ -78,7 +78,8 @@ model/technical identifiers only.
 | Secondary text | `text-sm text-muted-foreground` |
 | Caption / label | `text-xs text-muted-foreground` (`font-medium tracking-wide` for tile labels) |
 | Metric number | `text-2xl font-semibold tracking-tight tabular-nums` (`text-3xl` for the hero tile) |
-| Table text | `text-sm`; numeric cells `tabular-nums text-right` |
+| Table text | `text-sm`; numeric cells `tabular-nums text-right`; cells `py-3` (the standard density) |
+| Section hint | `text-sm text-muted-foreground leading-relaxed`, one line under the section title (SectionHeader) |
 
 Nothing bigger than `text-3xl` anywhere. Tables and stat-tile values get
 tabular figures automatically via `data-slot` rules in styles.css.
