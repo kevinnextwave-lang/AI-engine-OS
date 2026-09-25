@@ -6,7 +6,7 @@ import { EmptyState } from "@/components/geo/empty-state";
 import { fmtDateTime, fmtValue } from "@/components/visibility/format";
 import { providerLabel } from "@/lib/visibility/labels";
 import type { PromptPerformanceRow } from "@/lib/visibility/types";
-import { Badge, Skeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@ai-search-growth-os/ui";
+import { Badge, Progress, Skeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@ai-search-growth-os/ui";
 
 export function PromptTable({
   rows,
@@ -45,7 +45,7 @@ export function PromptTable({
           <TableRow className="hover:bg-transparent">
             <TableHead>Prompt</TableHead>
             <TableHead className="hidden w-36 lg:table-cell">Category</TableHead>
-            <TableHead className="w-28 text-right">Brand mention</TableHead>
+            <TableHead className="w-40">Brand mention</TableHead>
             <TableHead className="hidden w-32 text-right md:table-cell">Recommendation</TableHead>
             <TableHead className="hidden w-24 text-right md:table-cell">Position</TableHead>
             <TableHead className="hidden w-44 xl:table-cell">Last run</TableHead>
@@ -74,13 +74,21 @@ export function PromptTable({
               <TableCell className="hidden lg:table-cell">
                 <Badge variant="secondary">{r.categoryLabel}</Badge>
               </TableCell>
-              <TableCell className="text-right tabular-nums" title={`${r.mentions} of ${r.sampleSize} responses`}>
+              <TableCell title={`${r.mentions} of ${r.sampleSize} responses`}>
                 {r.mentionRate == null ? (
-                  <span className="text-muted-foreground" title="Fewer than 5 responses">
+                  <span className="text-muted-foreground tabular-nums" title="Fewer than 5 responses">
                     {r.mentions}/{r.sampleSize}
                   </span>
                 ) : (
-                  fmtValue(r.mentionRate, "percent")
+                  // Same anatomy as the engine table: number + comparative bar.
+                  <div className="flex items-center gap-2">
+                    <span className="w-10 text-right tabular-nums">{fmtValue(r.mentionRate, "percent")}</span>
+                    <Progress
+                      value={r.mentionRate}
+                      className="flex-1"
+                      aria-label={`Brand mention rate for this prompt: ${r.mentionRate}%`}
+                    />
+                  </div>
                 )}
               </TableCell>
               <TableCell className="hidden text-right tabular-nums md:table-cell">{fmtValue(r.recommendationRate, "percent")}</TableCell>

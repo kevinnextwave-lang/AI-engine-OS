@@ -4,6 +4,7 @@ import { ExternalLinkIcon, SearchXIcon } from "lucide-react";
 import * as React from "react";
 
 import { EmptyState } from "@/components/geo/empty-state";
+import { CitationsChart } from "@/components/intelligence/citations-chart";
 import { IntelligencePageFrame } from "@/components/intelligence/page-frame";
 import { SourceDrawer } from "@/components/intelligence/source-drawer";
 import { useProjectIntelligence } from "@/components/intelligence/use-project-intelligence";
@@ -36,6 +37,13 @@ export default function CitationsPage() {
 
   return (
     <IntelligencePageFrame intel={intel} title="Citations" description="Each citation an AI engine made while answering your prompts: the URL, the prompt, the engine, and whether it relates to your brand or a competitor.">
+      <CitationsChart
+        citations={intel.raw?.citations ?? []}
+        total={intel.raw?.citationsTotal ?? 0}
+        windowDays={intel.window === "30d" ? 30 : intel.window === "90d" ? 90 : 180}
+        windowLabel={`Last ${intel.window.replace("d", " days")}`}
+        loading={loading}
+      />
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <Input aria-label="Search citations" placeholder="Search URL or prompt…" value={query} onChange={(e) => setQuery(e.target.value)} className="w-64" />
         <NativeSelect aria-label="AI engine" value={provider} onChange={(e) => setProvider(e.target.value)} className="w-40">

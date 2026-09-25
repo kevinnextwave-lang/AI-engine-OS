@@ -1,5 +1,6 @@
 "use client";
 
+import { CategoryBreakdown } from "@/components/geo/category-breakdown";
 import { MockNotice } from "@/components/geo/data-source-badge";
 import { IssueExplorer } from "@/components/geo/issue-explorer";
 import { GeoPageTools } from "@/components/geo/page-tools";
@@ -25,7 +26,8 @@ export default function TechnicalSeoPage() {
         <p className="text-destructive mb-4 text-sm">{geo.error ?? geo.actionError}</p>
       )}
 
-      <Card className="mb-4 py-4">
+      <div className="mb-6 grid gap-4 lg:grid-cols-[1fr_minmax(20rem,26rem)]">
+      <Card className="py-4">
         <CardContent className="flex flex-wrap items-center gap-5 px-5">
           <ScoreRing value={audit?.health_score ?? null} label="Technical SEO Health" />
           <div className="text-sm">
@@ -45,6 +47,8 @@ export default function TechnicalSeoPage() {
           </div>
         </CardContent>
       </Card>
+      <CategoryBreakdown issues={issues} loading={loading} />
+      </div>
 
       <IssueExplorer issues={issues} loading={loading} busy={geo.busy === "status"} onUpdateStatus={geo.actions.updateIssueStatus} showOrigin={false} />
     </>
