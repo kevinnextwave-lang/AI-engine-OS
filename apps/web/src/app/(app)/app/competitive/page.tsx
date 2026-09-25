@@ -4,7 +4,7 @@ import { EmptyAction } from "@/components/empty-action";
 import { SectionHeader } from "@/components/shell/section-header";
 import * as React from "react";
 
-import { DrawerSection, EvidenceList } from "@/components/section/evidence";
+import { EvidenceList } from "@/components/section/evidence";
 import { DataTable, StatusBadge } from "@/components/section/primitives";
 import { SectionFrame, Toolbar } from "@/components/section/section-frame";
 import { useProjectResource } from "@/components/section/use-project-resource";
@@ -12,7 +12,7 @@ import { fmtDateTime } from "@/components/visibility/format";
 import { api } from "@/lib/api";
 import type { CompetitiveAdvantage, CompetitiveOverview, VisibilityWindow } from "@ai-search-growth-os/types";
 import { Badge, Card, CardContent, CardHeader, CardTitle, NativeSelect, TableCell, TableRow } from "@ai-search-growth-os/ui";
-import { MinusIcon, TrendingDownIcon, TrendingUpIcon } from "lucide-react";
+import { ChevronRightIcon, MinusIcon, TrendingDownIcon, TrendingUpIcon } from "lucide-react";
 
 const WINDOWS: VisibilityWindow[] = ["7d", "30d", "90d"];
 
@@ -172,12 +172,16 @@ export default function CompetitiveOverviewPage() {
         </div>
       )}
       {d && (
-        <div className="mt-6">
-          <DrawerSection title="Method">
-            <p className="text-muted-foreground text-sm">{d.note}</p>
+        <details className="group mt-6 rounded-lg border">
+          <summary className="text-muted-foreground hover:text-foreground flex cursor-pointer items-center gap-1.5 px-3 py-2 text-xs font-semibold tracking-wide uppercase select-none">
+            <ChevronRightIcon className="size-3.5 transition-transform group-open:rotate-90" aria-hidden="true" />
+            Method &amp; weights
+          </summary>
+          <div className="flex flex-col gap-3 border-t px-3 py-3">
+            <p className="text-muted-foreground text-sm leading-relaxed">{d.note}</p>
             <EvidenceList evidence={{ weights: d.weights, material_advantage_threshold: d.material_advantage_threshold }} />
-          </DrawerSection>
-        </div>
+          </div>
+        </details>
       )}
     </SectionFrame>
   );
