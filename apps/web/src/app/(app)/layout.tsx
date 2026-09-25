@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import * as React from "react";
 
 import { useAuth } from "@/components/auth-provider";
+import { AppSplash } from "@/components/shell/app-splash";
 import { OrganizationProvider } from "@/components/organization-provider";
 import { AppShell } from "@/components/shell/app-shell";
 
@@ -17,11 +18,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [user, loading, router]);
 
   if (loading || !user) {
-    return (
-      <main className="flex min-h-screen items-center justify-center">
-        <p className="text-muted-foreground text-sm">Loading…</p>
-      </main>
-    );
+    return <AppSplash />;
   }
 
   return (

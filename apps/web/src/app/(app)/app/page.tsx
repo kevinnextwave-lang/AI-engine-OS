@@ -3,7 +3,7 @@
 import { useAuth } from "@/components/auth-provider";
 import { useOrganization } from "@/components/organization-provider";
 import { PageHeader } from "@/components/shell/page-header";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@ai-search-growth-os/ui";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, Skeleton } from "@ai-search-growth-os/ui";
 
 export default function OverviewPage() {
   const { user } = useAuth();
@@ -23,7 +23,12 @@ export default function OverviewPage() {
           </CardHeader>
           <CardContent>
             {error && <p className="text-destructive text-sm">{error}</p>}
-            {!error && loading && <p className="text-muted-foreground text-sm">Loading…</p>}
+            {!error && loading && (
+              <div className="flex flex-col gap-2">
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="h-3.5 w-24" />
+              </div>
+            )}
             {!error && !loading && current && (
               <div className="flex items-center justify-between">
                 <div>

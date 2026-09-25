@@ -209,6 +209,14 @@ score-threshold tones above.
 **Skeleton / TableSkeleton / MetricCardSkeleton** — loading states mirror the
 layout they replace; never a spinner-only page.
 
+**ProgressSteps** — THE live-progress pattern for long-running operations
+(crawls, audits, agent workflows): a step list with done ✓ / active
+(spinner) / pending ○ / failed ✕ states and an optional per-step detail.
+Every status and detail must come from the backend (job statuses, crawler
+counters) — steps are never advanced client-side and percentages are never
+invented. When the backend reports no progress, use a plain honest loading
+state (skeleton or one sentence) instead.
+
 **Inputs** — `Input`, `Label`, `NativeSelect`: `rounded-md border-input`,
 focus ring in `ring` (indigo). Labels always visible, not placeholder-only.
 

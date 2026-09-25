@@ -18,6 +18,7 @@ import { GeoPageTools } from "@/components/geo/page-tools";
 import { useProjectGeo } from "@/components/geo/use-project-geo";
 import { PageHeader } from "@/components/shell/page-header";
 import { geoActionPlanInsight } from "@/lib/ai-insights";
+import { geoLiveProgress } from "@/lib/geo/progress";
 import { aiRecommendations, geoTrends, metricChanges, overallScore, priorityOpportunities } from "@/lib/geo/overview";
 import { Button } from "@ai-search-growth-os/ui";
 
@@ -62,6 +63,15 @@ export default function GeoOverviewPage() {
   );
   const pagesAnalyzed =
     geo.latestSeoAudit?.pages_analyzed ?? geo.raw.readiness?.pages_analyzed ?? geo.crawl.pagesCrawled;
+  // One-line live status from backend-reported progress (crawl counters,
+  // audit job statuses); null when nothing is running.
+  const progress = geoLiveProgress(geo.raw.crawlJobs[0] ?? null, geo.raw.seoAudits[0] ?? null, geo.raw.readiness);
+  const progressText = progress
+    ? `${progress.title} — ${progress.steps
+        .map((s) => `${typeof s.label === "string" ? s.label : ""}${s.detail ? ` (${String(s.detail)})` : ""}`)
+        .filter(Boolean)
+        .join(" · ")}`
+    : null;
 
   return (
     <>
@@ -82,6 +92,7 @@ export default function GeoOverviewPage() {
         summary={geo.summary}
         auditTimestamp={geo.crawl.auditTimestamp}
         auditRunning={geo.crawl.auditRunning}
+        progressText={progressText}
         pagesAnalyzed={pagesAnalyzed}
         loading={loading}
         actions={

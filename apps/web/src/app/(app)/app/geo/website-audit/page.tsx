@@ -1,6 +1,6 @@
 "use client";
 
-import { GlobeIcon, PlayIcon, RefreshCwIcon } from "lucide-react";
+import { GlobeIcon, PlayIcon } from "lucide-react";
 
 import { MockNotice } from "@/components/geo/data-source-badge";
 import { EmptyState } from "@/components/geo/empty-state";
@@ -9,7 +9,8 @@ import { useProjectGeo } from "@/components/geo/use-project-geo";
 import { StatusBadge } from "@/components/section/primitives";
 import { PageHeader } from "@/components/shell/page-header";
 import { formatDateTime, formatDuration, relativeTime } from "@/lib/geo/mappers";
-import { Badge, Button, Card, CardContent, Skeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@ai-search-growth-os/ui";
+import { geoLiveProgress } from "@/lib/geo/progress";
+import { Badge, Button, Card, CardContent, ProgressSteps, Skeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@ai-search-growth-os/ui";
 
 function Stat({ label, value, loading }: { label: string; value: React.ReactNode; loading: boolean }) {
   return (
@@ -26,6 +27,7 @@ export default function WebsiteAuditPage() {
   const crawl = geo.crawl;
   const canAct = geo.source === "api" && geo.busy === null;
   const crawlActive = crawl.status === "queued" || crawl.status === "running";
+  const progress = geoLiveProgress(geo.raw.crawlJobs[0] ?? null, geo.raw.seoAudits[0] ?? null, geo.raw.readiness);
 
   return (
     <>
@@ -49,7 +51,6 @@ export default function WebsiteAuditPage() {
               ) : (
                 <StatusBadge value={crawl.status} />
               )}
-              {crawlActive && <RefreshCwIcon className="text-muted-foreground size-4 animate-spin" aria-label="Crawl in progress" />}
             </div>
             <div className="flex gap-2">
               <Button variant="outline" disabled={!canAct || crawlActive} onClick={() => void geo.actions.runCrawl()}>
@@ -74,6 +75,12 @@ export default function WebsiteAuditPage() {
             <Stat label="Root URL" value={<span className="truncate font-mono text-sm" title={crawl.job?.root_url}>{crawl.job?.root_url ?? "–"}</span>} loading={loading} />
           </div>
           {crawl.job?.error_message && <p className="text-destructive mt-4 text-sm">{crawl.job.error_message}</p>}
+          {/* Live progress from backend-reported counters/statuses only. */}
+          {progress && (
+            <div className="mt-5 border-t pt-4">
+              <ProgressSteps title={progress.title} steps={progress.steps} note={progress.note} />
+            </div>
+          )}
         </CardContent>
       </Card>
 

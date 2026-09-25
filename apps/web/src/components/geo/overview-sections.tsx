@@ -49,6 +49,8 @@ export function GeoHero({
   summary,
   auditTimestamp,
   auditRunning,
+  /** Real live status line while work runs (from lib/geo/progress). */
+  progressText,
   pagesAnalyzed,
   loading,
   actions,
@@ -57,6 +59,7 @@ export function GeoHero({
   summary: AuditSummary;
   auditTimestamp: string | null;
   auditRunning: boolean;
+  progressText?: string | null;
   pagesAnalyzed: number;
   loading: boolean;
   actions: React.ReactNode;
@@ -84,11 +87,12 @@ export function GeoHero({
               ) : (
                 <>
                   <span>
-                    {auditRunning
-                      ? "Audit running — results refresh automatically"
-                      : auditTimestamp
-                        ? `Last audit ${relativeTime(auditTimestamp)}`
-                        : "No audit yet"}
+                    {progressText ??
+                      (auditRunning
+                        ? "Audit running — results refresh automatically"
+                        : auditTimestamp
+                          ? `Last audit ${relativeTime(auditTimestamp)}`
+                          : "No audit yet")}
                   </span>
                   <span aria-hidden="true">·</span>
                   <span>{pagesAnalyzed} pages analyzed</span>

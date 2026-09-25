@@ -7,7 +7,7 @@ import { ScoreRing } from "@/components/geo/score-ring";
 import { useProjectGeo } from "@/components/geo/use-project-geo";
 import { PageHeader } from "@/components/shell/page-header";
 import { relativeTime } from "@/lib/geo/mappers";
-import { Card, CardContent } from "@ai-search-growth-os/ui";
+import { Card, CardContent, Skeleton } from "@ai-search-growth-os/ui";
 
 export default function TechnicalSeoPage() {
   const geo = useProjectGeo();
@@ -34,11 +34,13 @@ export default function TechnicalSeoPage() {
               Internal 0–100 score: 100 minus capped, severity-weighted deductions per category, scaled by the share of pages affected. Not an industry benchmark.
             </p>
             <p className="text-muted-foreground mt-1 text-xs">
-              {audit
-                ? `${audit.pages_analyzed} pages analyzed · ${audit.observation_count} observations · ${relativeTime(audit.completed_at)}`
-                : loading
-                  ? "Loading…"
-                  : "No completed audit"}
+              {audit ? (
+                `${audit.pages_analyzed} pages analyzed · ${audit.observation_count} observations · ${relativeTime(audit.completed_at)}`
+              ) : loading ? (
+                <Skeleton className="h-3.5 w-56" />
+              ) : (
+                "No completed audit"
+              )}
             </p>
           </div>
         </CardContent>

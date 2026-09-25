@@ -13,6 +13,7 @@ import {
   Badge,
   Button,
   Input,
+  ProgressSteps,
   Separator,
   Sheet,
   SheetContent,
@@ -26,16 +27,17 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  type ProgressStepStatus,
 } from "@ai-search-growth-os/ui";
-import { CheckIcon, CircleIcon, Loader2Icon, XIcon } from "lucide-react";
 
 const ACTIVE = new Set(["queued", "running", "awaiting_approval", "paused"]);
 
-function StepIcon({ status }: { status: string }) {
-  if (status === "completed") return <CheckIcon className="size-4 text-success" aria-hidden="true" />;
-  if (status === "running") return <Loader2Icon className="size-4 animate-spin text-caution" aria-hidden="true" />;
-  if (status === "failed" || status === "cancelled") return <XIcon className="text-destructive size-4" aria-hidden="true" />;
-  return <CircleIcon className="text-muted-foreground size-4" aria-hidden="true" />;
+/** Backend workflow-step status → the shared ProgressSteps status. */
+function stepStatus(status: string): ProgressStepStatus {
+  if (status === "completed") return "done";
+  if (status === "running" || status === "awaiting_approval") return "active";
+  if (status === "failed" || status === "cancelled") return "failed";
+  return "pending";
 }
 
 function WorkflowDrawer({
@@ -134,15 +136,13 @@ function WorkflowDrawerBody({ workflowId, onChanged }: { workflowId: string; onC
                     )}
                   </div>
                   <DrawerSection title="Steps">
-                    <ol className="flex flex-col gap-2">
-                      {wf.steps.map((s) => (
-                        <li key={s.id} className="flex items-center gap-3 rounded-lg border px-3 py-2 text-sm">
-                          <StepIcon status={s.status} />
-                          <span className="font-medium">{label(s.agent_name)}</span>
-                          <StatusBadge value={s.status} className="ml-auto" />
-                        </li>
-                      ))}
-                    </ol>
+                    <ProgressSteps
+                      steps={wf.steps.map((s) => ({
+                        label: label(s.agent_name),
+                        status: stepStatus(s.status),
+                        detail: <StatusBadge value={s.status} />,
+                      }))}
+                    />
                   </DrawerSection>
                   {wf.action_plan && wf.action_plan.length > 0 && (
                     <>

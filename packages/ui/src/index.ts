@@ -28,6 +28,7 @@ export {
 export { Badge, badgeVariants } from "./badge";
 export { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./table";
 export { Progress } from "./progress";
+export { ProgressSteps, type ProgressStep, type ProgressStepStatus } from "./progress-steps";
 export { Skeleton } from "./skeleton";
 export { NativeSelect } from "./native-select";
 export {

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import * as React from "react";
 
 import { useAuth } from "@/components/auth-provider";
+import { AppSplash } from "@/components/shell/app-splash";
 
 /** Root route: sends signed-in users to the app, everyone else to login. */
 export default function HomePage() {
@@ -15,9 +16,5 @@ export default function HomePage() {
     router.replace(user ? "/app" : "/login");
   }, [user, loading, router]);
 
-  return (
-    <main className="flex min-h-screen items-center justify-center">
-      <p className="text-muted-foreground text-sm">Loading…</p>
-    </main>
-  );
+  return <AppSplash />;
 }
