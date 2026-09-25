@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { AuthProvider } from "@/components/auth-provider";
 import { TooltipProvider } from "@ai-search-growth-os/ui";
+import { Analytics } from "@vercel/analytics/next";
 
 import "./globals.css";
 
@@ -29,6 +30,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <TooltipProvider>
           <AuthProvider>{children}</AuthProvider>
         </TooltipProvider>
+        <Analytics />
       </body>
     </html>
   );
