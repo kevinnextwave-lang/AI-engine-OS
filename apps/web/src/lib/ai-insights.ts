@@ -13,6 +13,7 @@
  */
 
 import type { AiEvidenceFact } from "@ai-search-growth-os/ui";
+import type { EngineRow } from "@/lib/visibility/types";
 import type { CitationGap } from "@ai-search-growth-os/types";
 
 import { relativeTime } from "@/lib/geo/mappers";
@@ -200,5 +201,37 @@ export function citationGapInsight(gaps: CitationGap[]): InsightModel | null {
     ],
     source: `From the citation gap analysis (${open.length} open gap${open.length === 1 ? "" : "s"})`,
     ctaLabel: "Review gap",
+  };
+}
+
+// --- AI Engines: an engine measuring zero ----------------------------------
+
+
+/**
+ * Built ONLY when an engine has a genuinely measured zero score (n > 0 and
+ * score === 0). Null score (unavailable / not yet measured) never triggers
+ * it, and no cause is asserted — the data only supports "not visible in the
+ * measured prompts".
+ */
+export function engineZeroInsight(engines: EngineRow[], brandName: string): InsightModel | null {
+  const zeros = engines.filter((e) => e.score === 0 && e.sampleSize > 0);
+  if (zeros.length === 0) return null;
+  const names = zeros.map((z) => z.label).join(", ");
+  const n = zeros.reduce((a, z) => a + z.sampleSize, 0);
+  return {
+    headline: `${names} ${zeros.length === 1 ? "returned" : "returned"} ${brandName ? `no ${brandName} visibility` : "zero visibility"} across ${n} measured response${n === 1 ? "" : "s"}.`,
+    whyItMatters:
+      "A measured zero means this engine's answers to your prompts never mentioned, recommended or cited the brand in the window — buyers asking there see only other options. The measurement itself says nothing about why.",
+    actions: [
+      "Open the prompt-level results filtered to prompts with no brand mention and read what these engines answered instead.",
+      "Check which sources those answers cited — visibility on an engine tends to follow the sources it trusts.",
+    ],
+    evidence: [
+      { label: zeros.length === 1 ? "Engine" : "Engines", value: names },
+      { label: "Responses measured", value: n },
+      { label: "Visibility score", value: "0/100 (measured, not missing)" },
+    ],
+    source: "From this window's parsed responses for these engines",
+    ctaLabel: "Review prompts without a mention",
   };
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 
 import { DrawerSection, EvidenceList } from "@/components/section/evidence";
 import { DataTable, StatusBadge, label } from "@/components/section/primitives";
@@ -22,6 +23,19 @@ import {
   TableCell,
   TableRow,
 } from "@ai-search-growth-os/ui";
+
+
+/** Where each alert type is investigated — existing surfaces only. */
+const ALERT_DESTINATION: Partial<Record<CompetitiveAlertType, { href: string; label: string; hint: string }>> = {
+  competitor_overtakes_brand: { href: "/app/ai-visibility/competitors", label: "Review competitor comparison", hint: "Opens the measured mention shares and the evidence behind them." },
+  competitor_visibility_jump: { href: "/app/ai-visibility/competitors", label: "Review competitor comparison", hint: "Opens the measured mention shares and the evidence behind them." },
+  new_competitor: { href: "/app/competitive/discovery", label: "Review competitor candidates", hint: "Confirm or reject what discovery found." },
+  visibility_drop: { href: "/app/ai-visibility/trends", label: "Review visibility trend", hint: "See when the drop happened and at what confidence." },
+  new_citation_source: { href: "/app/ai-intelligence/sources", label: "Review cited sources", hint: "Opens the source profiles behind recent answers." },
+  citation_gap_increase: { href: "/app/ai-intelligence/citation-gaps", label: "Review citation gaps", hint: "The sources citing competitors but not you." },
+  new_competitor_claim: { href: "/app/ai-intelligence/claims", label: "Review competitor claims", hint: "What AI answers assert about competitors." },
+  content_gap: { href: "/app/competitive/content-gaps", label: "Review content gaps", hint: "Topics where competitors have coverage you lack." },
+};
 
 const ALERT_TYPES: CompetitiveAlertType[] = [
   "competitor_overtakes_brand",
@@ -205,6 +219,20 @@ export default function CompetitiveAlertsPage() {
                 <DrawerSection title="Evidence">
                   <EvidenceList evidence={liveOpen.evidence} />
                 </DrawerSection>
+                {/* The ACT step: every alert type routes to the existing
+                    surface where this kind of change is investigated. */}
+                {ALERT_DESTINATION[liveOpen.alert_type] && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button asChild size="sm">
+                      <Link href={ALERT_DESTINATION[liveOpen.alert_type]!.href}>
+                        {ALERT_DESTINATION[liveOpen.alert_type]!.label}
+                      </Link>
+                    </Button>
+                    <span className="text-muted-foreground text-xs">
+                      {ALERT_DESTINATION[liveOpen.alert_type]!.hint}
+                    </span>
+                  </div>
+                )}
               </div>
             </>
           )}

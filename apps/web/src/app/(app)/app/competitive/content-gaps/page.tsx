@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import * as React from "react";
 import { rowButtonProps } from "@/lib/a11y";
 
@@ -155,6 +156,22 @@ export default function CompetitiveContentGapsPage() {
                 </SheetDescription>
               </SheetHeader>
               <div className="flex flex-col gap-5 px-4 pb-6">
+                {/* The ACT step: hand this gap's real context to the existing
+                    Content Strategy workflow. Nothing runs automatically. */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button asChild size="sm">
+                    <Link
+                      href={`/app/agents?agent=content-strategy&objective=${encodeURIComponent(
+                        `Draft a content brief for “${liveOpen.topic}” — ${label(liveOpen.gap_type).toLowerCase()} gap, opportunity score ${Math.round(liveOpen.opportunity_score)}/100 (${liveOpen.confidence} confidence).`,
+                      )}`}
+                    >
+                      Draft a brief from this gap
+                    </Link>
+                  </Button>
+                  <span className="text-muted-foreground text-xs">
+                    Opens the Content Strategy Agent with this gap as the objective.
+                  </span>
+                </div>
                 <DrawerSection title="Status">
                   <NativeSelect
                     aria-label="Gap status"

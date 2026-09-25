@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import * as React from "react";
 
 import { StatusBadge } from "@/components/section/primitives";
@@ -9,7 +10,7 @@ import { useProjectResource } from "@/components/section/use-project-resource";
 import { fmtDateTime } from "@/components/visibility/format";
 import { api } from "@/lib/api";
 import type { AgentRunListResponse } from "@ai-search-growth-os/types";
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from "@ai-search-growth-os/ui";
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, cn } from "@ai-search-growth-os/ui";
 import Link from "next/link";
 
 const AGENT_INFO: Record<string, { title: string; description: string }> = {
@@ -36,6 +37,19 @@ const AGENT_INFO: Record<string, { title: string; description: string }> = {
 };
 
 export default function AgentsPage() {
+  return (
+    <React.Suspense fallback={null}>
+      <AgentsPageInner />
+    </React.Suspense>
+  );
+}
+
+function AgentsPageInner() {
+  // Handoff from finding surfaces (e.g. a content gap): ?objective= prefills
+  // the run objective and ?agent= points at the agent that should act on it.
+  // Nothing runs automatically — the user reviews and clicks Run.
+  const params = useSearchParams();
+  const focusAgent = params.get("agent");
   const agents = useProjectResource<{ name: string; version: string }[]>(
     React.useCallback((pid) => api.agents.list(pid), []),
   );
@@ -43,7 +57,7 @@ export default function AgentsPage() {
     React.useCallback((pid) => api.agents.runs(pid, { limit: 8 }), []),
     { pollMs: 4000, isActive: (d) => d.items.some((r) => r.status === "queued" || r.status === "running") },
   );
-  const [objective, setObjective] = React.useState("");
+  const [objective, setObjective] = React.useState(() => params.get("objective") ?? "");
   const [busy, setBusy] = React.useState<string | null>(null);
   const [notice, setNotice] = React.useState<string | null>(null);
 
@@ -91,6 +105,11 @@ export default function AgentsPage() {
           onChange={(e) => setObjective(e.target.value)}
         />
       </div>
+      {focusAgent && AGENT_INFO[focusAgent] && (
+        <p className="text-muted-foreground mb-4 text-sm" role="status">
+          Objective prefilled from your finding — review it, then run the {AGENT_INFO[focusAgent].title} below.
+        </p>
+      )}
       {notice && <p className="text-muted-foreground mb-4 text-sm">{notice}</p>}
       {agents.loading && (
         <div className="grid gap-4 md:grid-cols-2">
@@ -103,7 +122,7 @@ export default function AgentsPage() {
         {(agents.data ?? []).map((a) => {
           const info = AGENT_INFO[a.name] ?? { title: a.name, description: "" };
           return (
-            <Card key={a.name}>
+            <Card key={a.name} className={cn(focusAgent === a.name && "ring-primary/40 ring-2")}>
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center justify-between text-base">
                   {info.title}

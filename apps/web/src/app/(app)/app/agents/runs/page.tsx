@@ -174,6 +174,13 @@ function RunDrawerBody({ runId, onChanged }: { runId: string; onChanged: () => v
   const result = (run?.result ?? {}) as {
     summary?: string;
     findings?: Finding[];
+    recommendations?: {
+      title?: string;
+      why_now?: string;
+      recommended_action?: string;
+      expected_area_of_impact?: string;
+      confidence?: string;
+    }[];
     warnings?: string[];
     confidence?: string | null;
   };
@@ -223,6 +230,27 @@ function RunDrawerBody({ runId, onChanged }: { runId: string; onChanged: () => v
                       <div className="flex flex-col gap-2">
                         {result.findings.map((f, i) => (
                           <FindingCard key={i} finding={f} />
+                        ))}
+                      </div>
+                    </DrawerSection>
+                  )}
+                  {result.recommendations && result.recommendations.length > 0 && (
+                    <DrawerSection title={`Recommended opportunities (${result.recommendations.length})`}>
+                      {/* Stored by the agent alongside the findings; each names
+                          the area it is expected to improve — no invented
+                          attribution, just the agent's own stated intent. */}
+                      <div className="flex flex-col gap-2">
+                        {result.recommendations.map((r, i) => (
+                          <div key={i} className="rounded-lg border p-3 text-sm">
+                            <p className="font-medium">{r.title ?? "Opportunity"}</p>
+                            {r.recommended_action && <p className="mt-1">{r.recommended_action}</p>}
+                            {r.why_now && <p className="text-muted-foreground mt-1 text-xs">{r.why_now}</p>}
+                            {r.expected_area_of_impact && (
+                              <p className="text-muted-foreground mt-1.5 text-xs">
+                                Expected to improve: <span className="text-foreground font-medium">{r.expected_area_of_impact}</span>
+                              </p>
+                            )}
+                          </div>
                         ))}
                       </div>
                     </DrawerSection>

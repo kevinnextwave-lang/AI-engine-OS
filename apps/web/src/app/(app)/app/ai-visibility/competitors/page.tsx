@@ -115,28 +115,56 @@ export default function CompetitorsPage() {
         <CompetitorPrompts citations={intelCitations} selectedCompetitor={selected} loading={intelLoading} />
       </section>
 
-      {/* 5. Action */}
+      {/* 5. Action — ordered and labeled by what THIS page measured, so the
+          strongest evidence leads. No signal → the neutral default order. */}
       <section aria-label="Go deeper" className="mb-2">
         <SectionHeader title="Act on the gaps" hint="The analysis views that turn these comparisons into work items." />
-        <div className="flex flex-wrap gap-2">
-          <Button asChild size="sm" variant="outline">
-            <Link href="/app/competitive/content-gaps">Content gaps</Link>
-          </Button>
-          <Button asChild size="sm" variant="outline">
-            <Link href="/app/ai-intelligence/citation-gaps">Citation gaps</Link>
-          </Button>
-          <Button asChild size="sm" variant="outline">
-            <Link href="/app/competitive/insights">Competitor insights</Link>
-          </Button>
-          <Button asChild size="sm" variant="outline">
-            <Link href="/app/competitive/discovery">
-              Discover more competitors
-              <Badge variant="secondary" className="ml-1">
-                scan
-              </Badge>
-            </Link>
-          </Button>
-        </div>
+        {(() => {
+          // Signals already on this page: sources where competitors are cited
+          // and you are not (from the citation-overlap table above), and how
+          // many configured competitors out-mention you (from the comparison).
+          const overlapOnly = intel.sources.filter((s) => s.competitorCitations > 0 && s.brandCitations === 0).length;
+          const actions: { href: string; label: React.ReactNode; hasSignal: boolean }[] = [
+            {
+              href: "/app/ai-intelligence/citation-gaps",
+              hasSignal: overlapOnly > 0,
+              label:
+                overlapOnly > 0
+                  ? `Review citation gaps — ${overlapOnly} source${overlapOnly === 1 ? "" : "s"} cite only competitors`
+                  : "Citation gaps",
+            },
+            {
+              href: "/app/competitive/insights",
+              hasSignal: ahead > 0,
+              label:
+                ahead > 0
+                  ? `Why competitors win — ${ahead} mentioned more often than ${vis.brandName}`
+                  : "Competitor insights",
+            },
+            { href: "/app/competitive/content-gaps", hasSignal: false, label: "Content gaps" },
+            {
+              href: "/app/competitive/discovery",
+              hasSignal: false,
+              label: (
+                <>
+                  Discover more competitors
+                  <Badge variant="secondary" className="ml-1">
+                    scan
+                  </Badge>
+                </>
+              ),
+            },
+          ].sort((a, b) => Number(b.hasSignal) - Number(a.hasSignal));
+          return (
+            <div className="flex flex-wrap gap-2">
+              {actions.map((a, i) => (
+                <Button key={a.href} asChild size="sm" variant={i === 0 && a.hasSignal ? "default" : "outline"}>
+                  <Link href={a.href}>{a.label}</Link>
+                </Button>
+              ))}
+            </div>
+          );
+        })()}
       </section>
 
       <SourceDrawer
