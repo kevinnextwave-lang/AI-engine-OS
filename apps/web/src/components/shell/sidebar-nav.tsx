@@ -1,72 +1,140 @@
 "use client";
 
+import { ChevronDownIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import * as React from "react";
 
-import { NAV_ITEMS, isActive, type NavItem } from "@/components/shell/nav-items";
+import { NAV_SECTIONS, isActive, sectionActive, type NavItem } from "@/components/shell/nav-items";
 import { cn } from "@ai-search-growth-os/ui";
 
-function NavLink({
-  item,
-  active,
-  nested,
-  onNavigate,
-}: {
-  item: NavItem;
-  active: boolean;
-  nested?: boolean;
-  onNavigate?: () => void;
-}) {
+/**
+ * Persisted section-collapse state, exposed through useSyncExternalStore so it
+ * is hydration-safe: the server (and first client render) sees "nothing
+ * collapsed", then the stored state applies. Storage failures (private mode)
+ * simply mean the state doesn't persist.
+ */
+const COLLAPSE_KEY = "nav-collapsed-sections";
+const NONE: string[] = [];
+let cache: { raw: string | null; value: string[] } | null = null;
+const listeners = new Set<() => void>();
+
+function getCollapsed(): string[] {
+  let raw: string | null = null;
+  try {
+    raw = window.localStorage.getItem(COLLAPSE_KEY);
+  } catch {
+    return cache?.value ?? NONE;
+  }
+  if (cache && cache.raw === raw) return cache.value;
+  let value = NONE;
+  try {
+    const parsed: unknown = raw ? JSON.parse(raw) : [];
+    if (Array.isArray(parsed)) value = parsed.filter((v): v is string => typeof v === "string");
+  } catch {
+    value = NONE;
+  }
+  cache = { raw, value };
+  return value;
+}
+
+function setCollapsed(next: string[]) {
+  const raw = JSON.stringify(next);
+  try {
+    window.localStorage.setItem(COLLAPSE_KEY, raw);
+  } catch {
+    // Not persistable; still update in-memory state for this page.
+  }
+  cache = { raw, value: next };
+  listeners.forEach((cb) => cb());
+}
+
+function subscribeCollapsed(cb: () => void): () => void {
+  listeners.add(cb);
+  window.addEventListener("storage", cb);
+  return () => {
+    listeners.delete(cb);
+    window.removeEventListener("storage", cb);
+  };
+}
+
+export function NavLink({ item, active, onNavigate }: { item: NavItem; active: boolean; onNavigate?: () => void }) {
+  const ref = React.useRef<HTMLAnchorElement>(null);
+  // Keep the current page's item visible when landing deep in a long nav.
+  React.useEffect(() => {
+    if (active) ref.current?.scrollIntoView({ block: "nearest" });
+  }, [active]);
   return (
     <Link
+      ref={ref}
       href={item.href}
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-        nested && "py-1.5 pl-9 text-[13px]",
+        "flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13px] transition-colors",
         active
-          ? "bg-sidebar-accent text-sidebar-accent-foreground"
-          : "text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground",
+          ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+          : "text-sidebar-foreground/75 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
       )}
     >
-      <item.icon className={cn("size-4", nested && "size-3.5")} aria-hidden="true" />
-      {item.label}
+      <item.icon
+        className={cn("size-4 shrink-0", active ? "" : "text-sidebar-foreground/50")}
+        aria-hidden="true"
+      />
+      <span className="truncate">{item.label}</span>
     </Link>
   );
 }
 
+/**
+ * Grouped, collapsible primary navigation.
+ *
+ * - Sections are product areas (see nav-items.ts); collapse state persists per
+ *   browser and a section is always shown open while it contains the current
+ *   page, so the active item can never be hidden.
+ * - Visually quiet by design: neutral text, one soft accent tint for the
+ *   active item, no colors beyond the sidebar tokens.
+ */
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const collapsed = React.useSyncExternalStore(subscribeCollapsed, getCollapsed, () => NONE);
+
+  function toggle(label: string) {
+    const next = collapsed.includes(label) ? collapsed.filter((l) => l !== label) : [...collapsed, label];
+    setCollapsed(next);
+  }
+
   return (
-    <nav aria-label="Primary" className="flex flex-col gap-1 p-2">
-      {NAV_ITEMS.map((item) => {
-        if (!item.children) {
-          return (
-            <NavLink key={item.href} item={item} active={isActive(pathname, item)} onNavigate={onNavigate} />
-          );
-        }
-        const groupActive = isActive(pathname, item);
+    <nav aria-label="Primary" className="flex flex-col px-3 py-2">
+      {NAV_SECTIONS.map((section, i) => {
+        const containsCurrent = sectionActive(pathname, section);
+        const open = !section.label || !collapsed.includes(section.label) || containsCurrent;
         return (
-          <div key={item.href} className="flex flex-col gap-0.5">
-            <div
-              className={cn(
-                "flex items-center gap-3 px-3 pt-3 pb-1 text-xs font-semibold tracking-wide uppercase",
-                groupActive ? "text-foreground" : "text-muted-foreground",
-              )}
-            >
-              <item.icon className="size-4" aria-hidden="true" />
-              {item.label}
-            </div>
-            {item.children.map((child) => (
-              <NavLink
-                key={child.href}
-                item={child}
-                nested
-                active={isActive(pathname, child)}
-                onNavigate={onNavigate}
-              />
-            ))}
+          <div key={section.label ?? "workspace"} className={cn("flex flex-col gap-px", i > 0 && "mt-5")}>
+            {section.label && (
+              <button
+                type="button"
+                onClick={() => toggle(section.label!)}
+                aria-expanded={open}
+                className={cn(
+                  "group/section mb-1 flex h-6 w-full items-center justify-between rounded px-2.5 text-[11px] font-medium tracking-wider uppercase transition-colors",
+                  "text-sidebar-foreground/50 hover:text-sidebar-foreground/80",
+                )}
+              >
+                {section.label}
+                <ChevronDownIcon
+                  className={cn(
+                    "size-3.5 opacity-0 transition-transform group-hover/section:opacity-100",
+                    !open && "-rotate-90 opacity-100",
+                  )}
+                  aria-hidden="true"
+                />
+              </button>
+            )}
+            {open &&
+              section.items.map((item) => (
+                <NavLink key={item.href} item={item} active={isActive(pathname, item)} onNavigate={onNavigate} />
+              ))}
           </div>
         );
       })}

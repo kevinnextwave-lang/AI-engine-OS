@@ -2,14 +2,15 @@
 
 import { MenuIcon } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import * as React from "react";
 
+import { isActive, SETTINGS_ITEM } from "@/components/shell/nav-items";
 import { OrganizationSwitcher } from "@/components/shell/organization-switcher";
-import { SidebarNav } from "@/components/shell/sidebar-nav";
+import { NavLink, SidebarNav } from "@/components/shell/sidebar-nav";
 import { UserMenu } from "@/components/shell/user-menu";
 import {
   Button,
-  Separator,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -20,7 +21,7 @@ import {
 
 function Brand() {
   return (
-    <Link href="/app" className="flex items-center gap-2 font-semibold tracking-tight">
+    <Link href="/app" className="flex items-center gap-2 text-sm font-semibold tracking-tight">
       <span className="bg-primary text-primary-foreground flex size-7 items-center justify-center rounded-md text-xs">
         AI
       </span>
@@ -29,24 +30,42 @@ function Brand() {
   );
 }
 
+/** Sidebar body shared between the desktop rail and the mobile sheet. */
+function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
+  const pathname = usePathname();
+  return (
+    <>
+      <div className="shrink-0 px-3 pt-3 pb-2">
+        <OrganizationSwitcher variant="sidebar" />
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <SidebarNav onNavigate={onNavigate} />
+      </div>
+      <div className="shrink-0 border-t px-3 py-2">
+        <NavLink item={SETTINGS_ITEM} active={isActive(pathname, SETTINGS_ITEM)} onNavigate={onNavigate} />
+      </div>
+    </>
+  );
+}
+
 /**
  * Reusable application shell: persistent sidebar on ≥md screens, a sheet-based
- * drawer on mobile, and a top bar with the organization selector and user menu.
+ * drawer on mobile, and a top bar with the user menu.
+ *
+ * Sidebar anatomy (top to bottom): brand, organization switcher, scrollable
+ * grouped navigation, pinned Settings. Only the navigation scrolls, so the
+ * workspace context and Settings stay visible at any window height.
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
   return (
     <div className="flex min-h-screen">
-      <aside className="bg-sidebar sticky top-0 hidden h-screen w-60 shrink-0 flex-col overflow-y-auto border-r md:flex">
-        <div className="flex h-14 items-center px-4">
+      <aside className="bg-sidebar sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r md:flex">
+        <div className="flex h-14 shrink-0 items-center border-b px-4">
           <Brand />
         </div>
-        <Separator />
-        <div className="p-2">
-          <OrganizationSwitcher className="w-full justify-start" />
-        </div>
-        <SidebarNav />
+        <SidebarBody />
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -57,8 +76,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <MenuIcon />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-72 overflow-y-auto p-0">
-              <SheetHeader>
+            <SheetContent side="left" className="bg-sidebar flex w-72 flex-col gap-0 p-0">
+              <SheetHeader className="shrink-0 border-b px-4 py-3">
                 <SheetTitle asChild>
                   <div>
                     <Brand />
@@ -66,11 +85,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </SheetTitle>
                 <SheetDescription className="sr-only">Application navigation</SheetDescription>
               </SheetHeader>
-              <Separator />
-              <div className="p-2">
-                <OrganizationSwitcher className="w-full justify-start" />
-              </div>
-              <SidebarNav onNavigate={() => setMobileOpen(false)} />
+              <SidebarBody onNavigate={() => setMobileOpen(false)} />
             </SheetContent>
           </Sheet>
 
