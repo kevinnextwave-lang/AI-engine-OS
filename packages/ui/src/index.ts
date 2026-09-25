@@ -45,5 +45,5 @@ export {
 export { Callout, calloutVariants } from "./callout";
 export { EmptyState } from "./empty-state";
 export { SegmentedControl } from "./segmented-control";
-export { StatTile, StatTileSkeleton } from "./stat-tile";
+export { MetricCard, MetricCardSkeleton, type MetricDelta, type MetricTone } from "./metric-card";
 export { SimpleTooltip, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./tooltip";

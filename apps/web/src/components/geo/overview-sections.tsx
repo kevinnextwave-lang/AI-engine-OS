@@ -6,12 +6,12 @@
  * lib/geo/overview.ts and contain only data the audits actually produced.
  */
 
-import { ArrowRightIcon, SparklesIcon } from "lucide-react";
-import Link from "next/link";
+import { SparklesIcon } from "lucide-react";
 import * as React from "react";
 
 import { ScoreRing } from "@/components/geo/score-ring";
 import { SeverityBadge } from "@/components/geo/severity-badge";
+import { MetricAction } from "@/components/metric-action";
 import { relativeTime } from "@/lib/geo/mappers";
 import {
   METRIC_HREF,
@@ -25,7 +25,16 @@ import {
 } from "@/lib/geo/overview";
 import type { AuditSummary, GeoMetric } from "@/lib/geo/types";
 import type { MetricKey } from "@/lib/geo/types";
-import { Button, Card, CardContent, Progress, Skeleton, cn } from "@ai-search-growth-os/ui";
+import {
+  Button,
+  Card,
+  CardContent,
+  MetricCard,
+  MetricCardSkeleton,
+  Skeleton,
+  cn,
+  type MetricTone,
+} from "@ai-search-growth-os/ui";
 
 // --- MEASURE: hero --------------------------------------------------------
 
@@ -114,70 +123,43 @@ export function GeoHero({
 
 // --- UNDERSTAND: supporting scores ----------------------------------------
 
-function scoreTone(value: number | null): string {
-  if (value == null) return "bg-muted-foreground/40";
-  if (value >= 80) return "bg-success";
-  if (value >= 60) return "bg-caution";
-  return "bg-warning";
-}
-
-const STATUS_TEXT: Record<ReturnType<typeof metricStatus>, string> = {
-  healthy: "text-success",
-  attention: "text-caution",
-  risk: "text-warning",
-  unmeasured: "text-muted-foreground",
+const STATUS_TONE: Record<ReturnType<typeof metricStatus>, MetricTone> = {
+  healthy: "success",
+  attention: "caution",
+  risk: "warning",
+  unmeasured: "neutral",
 };
 
 export function ScoreTile({ metric, change }: { metric: GeoMetric; change?: MetricChange }) {
   const status = metricStatus(metric.value);
   return (
-    <Card className="gap-3 py-4">
-      <CardContent className="flex h-full flex-col gap-2.5 px-4">
-        <div className="flex items-baseline justify-between gap-2">
-          <p className="text-muted-foreground truncate text-sm font-medium">{metric.label}</p>
-          <span className={cn("shrink-0 text-xs font-medium", STATUS_TEXT[status])}>
-            {METRIC_STATUS_LABEL[status]}
-          </span>
-        </div>
-        <p className="text-2xl font-semibold tabular-nums">
-          {metric.value == null ? <span className="text-muted-foreground">–</span> : Math.round(metric.value)}
-          {metric.value != null && <span className="text-muted-foreground ml-1 text-sm font-normal">/100</span>}
-        </p>
-        <Progress value={metric.value ?? 0} indicatorClassName={scoreTone(metric.value)} aria-label={metric.label} />
-        <p className="text-muted-foreground line-clamp-2 text-xs" title={metric.description}>
-          {metric.description}
-        </p>
-        <div className="mt-auto flex items-center justify-between gap-2 pt-1">
-          <p className="text-muted-foreground truncate text-xs" title={metric.basis}>
-            {change
-              ? `${change.delta > 0 ? "+" : ""}${change.delta} vs audit ${relativeTime(change.previousAt)}`
-              : metric.basis}
-          </p>
-          <Link
-            href={METRIC_HREF[metric.key as MetricKey]}
-            className="text-primary inline-flex shrink-0 items-center gap-1 text-xs font-medium underline-offset-4 hover:underline"
-          >
-            Details
-            <ArrowRightIcon className="size-3" aria-hidden="true" />
-          </Link>
-        </div>
-      </CardContent>
-    </Card>
+    <MetricCard
+      label={metric.label}
+      value={metric.value == null ? "–" : Math.round(metric.value)}
+      unit={metric.value == null ? undefined : "/100"}
+      status={{ tone: STATUS_TONE[status], label: METRIC_STATUS_LABEL[status] }}
+      delta={
+        change
+          ? {
+              text: `${change.delta > 0 ? "+" : ""}${change.delta} points`,
+              direction: change.delta > 0 ? "up" : change.delta < 0 ? "down" : "flat",
+              good: change.delta === 0 ? null : change.delta > 0,
+              caption: `vs audit ${relativeTime(change.previousAt)}`,
+            }
+          : null
+      }
+      progress={metric.value}
+      progressTone={STATUS_TONE[status]}
+      meaning={metric.description}
+      context={metric.basis}
+      action={<MetricAction href={METRIC_HREF[metric.key as MetricKey]} />}
+      className="h-full"
+    />
   );
 }
 
 export function ScoreTileSkeleton() {
-  return (
-    <Card className="gap-3 py-4">
-      <CardContent className="flex flex-col gap-2.5 px-4">
-        <Skeleton className="h-4 w-32" />
-        <Skeleton className="h-8 w-16" />
-        <Skeleton className="h-2 w-full" />
-        <Skeleton className="h-3 w-full" />
-        <Skeleton className="h-3 w-24" />
-      </CardContent>
-    </Card>
-  );
+  return <MetricCardSkeleton />;
 }
 
 // --- PRIORITIZE: opportunities --------------------------------------------

@@ -1,30 +1,34 @@
+import { MetricAction } from "@/components/metric-action";
 import type { IntelligenceMetric } from "@/lib/intelligence/types";
-import { Card, CardContent, Skeleton } from "@ai-search-growth-os/ui";
+import { MetricCard, MetricCardSkeleton } from "@ai-search-growth-os/ui";
+
+/** Where each metric's detail view lives (only where a natural one exists). */
+const METRIC_HREF: Partial<Record<IntelligenceMetric["key"], string>> = {
+  citations: "/app/ai-intelligence/citations",
+  sources: "/app/ai-intelligence/sources",
+  gaps: "/app/ai-intelligence/citation-gaps",
+};
 
 export function IntelligenceMetricTile({ metric }: { metric: IntelligenceMetric }) {
+  const href = METRIC_HREF[metric.key];
   return (
-    <Card className="gap-2 py-4">
-      <CardContent className="flex flex-col gap-1.5 px-4">
-        <p className="text-muted-foreground text-sm font-medium" title={metric.note}>
-          {metric.label}
-        </p>
-        <p className="text-3xl font-semibold tabular-nums">
-          {metric.value == null ? <span className="text-muted-foreground">–</span> : metric.unit === "percent" ? `${metric.value}%` : metric.value.toLocaleString()}
-        </p>
-        <p className="text-muted-foreground line-clamp-2 text-xs">{metric.note}</p>
-      </CardContent>
-    </Card>
+    <MetricCard
+      label={metric.label}
+      value={
+        metric.value == null
+          ? "–"
+          : metric.unit === "percent"
+            ? metric.value
+            : metric.value.toLocaleString()
+      }
+      unit={metric.value != null && metric.unit === "percent" ? "%" : undefined}
+      meaning={metric.note}
+      action={href ? <MetricAction href={href}>View details</MetricAction> : undefined}
+      className="h-full"
+    />
   );
 }
 
 export function IntelligenceMetricSkeleton() {
-  return (
-    <Card className="gap-2 py-4">
-      <CardContent className="flex flex-col gap-2 px-4">
-        <Skeleton className="h-4 w-28" />
-        <Skeleton className="h-9 w-16" />
-        <Skeleton className="h-3 w-40" />
-      </CardContent>
-    </Card>
-  );
+  return <MetricCardSkeleton />;
 }

@@ -148,7 +148,7 @@
   }
   /* Numbers line up in tables and metric tiles. */
   [data-slot="table"],
-  [data-slot="stat-tile-value"] {
+  [data-slot="metric-card-value"] {
     font-variant-numeric: tabular-nums;
   }
 }

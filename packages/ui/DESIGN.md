@@ -157,10 +157,15 @@ Destructive actions confirm via `ConfirmDialog`, never `window.confirm`.
 variant (`critical/high/medium/low/info/success/muted`) and Sentence-cases
 the label. New statuses get added to that map, not styled inline.
 
-**StatTile / StatTileSkeleton** — THE metric tile: label, value(+unit),
-delta (colored by direction via `positiveIsGood`), context line
-(sample size / methodology). `size="hero"` for a page's single headline
-number. No bespoke KPI markup in pages.
+**MetricCard / MetricCardSkeleton** — THE metric/KPI card. Anatomy, top to
+bottom: uppercase label + status (tone dot + word), big value(+unit), delta
+("↑ 8 points · vs previous audit" — **real stored history only, never an
+invented trend**), an optional progress bar *or* sparkline (sparklines also
+only from real series with ≥2 points), one-line meaning, context line
+(n =, provenance), and an action slot (pages pass the app-level
+`MetricAction` link, "View analysis →"). Everything after the value is
+optional — omit what the data doesn't support. `size="hero"` for a page's
+headline number. No bespoke KPI markup in pages.
 
 **Callout** — inline notices: `info | success | warning | error | sample`.
 `sample` is the standard "Sample data" notice (never call it "mock").
@@ -190,7 +195,7 @@ filter). Radix ToggleGroup underneath; always pass `aria-label`.
 **Progress** — score/percentage bars; tint via `indicatorClassName` with the
 score-threshold tones above.
 
-**Skeleton / TableSkeleton / StatTileSkeleton** — loading states mirror the
+**Skeleton / TableSkeleton / MetricCardSkeleton** — loading states mirror the
 layout they replace; never a spinner-only page.
 
 **Inputs** — `Input`, `Label`, `NativeSelect`: `rounded-md border-input`,
@@ -202,7 +207,7 @@ focus ring in `ring` (indigo). Labels always visible, not placeholder-only.
   `bg-sidebar-accent text-sidebar-accent-foreground` — the only nav accent.
 - One `default` (indigo) button per view; supporting actions are
   `outline`/`ghost`.
-- Dashboard pattern: hero StatTile → supporting StatTile row → charts →
+- Dashboard pattern: hero MetricCard → supporting MetricCard row → charts →
   tables. Data always carries its context (n=, period, source).
 
 ---

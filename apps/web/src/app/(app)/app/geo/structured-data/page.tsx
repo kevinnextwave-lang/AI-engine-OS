@@ -8,17 +8,36 @@ import { GeoPageTools } from "@/components/geo/page-tools";
 import { useProjectGeo } from "@/components/geo/use-project-geo";
 import { PageHeader } from "@/components/shell/page-header";
 import { relativeTime } from "@/lib/geo/mappers";
-import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, Progress, Skeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@ai-search-growth-os/ui";
+import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, MetricCard, MetricCardSkeleton, Progress, Skeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, type MetricTone } from "@ai-search-growth-os/ui";
 
-function Stat({ label, value, loading, hint }: { label: string; value: React.ReactNode; loading: boolean; hint?: string }) {
+function Stat({
+  label,
+  value,
+  loading,
+  hint,
+  status,
+  progress,
+  progressTone,
+}: {
+  label: string;
+  value: React.ReactNode;
+  loading: boolean;
+  hint?: string;
+  status?: { tone: MetricTone; label: string };
+  progress?: number | null;
+  progressTone?: MetricTone;
+}) {
+  if (loading) return <MetricCardSkeleton />;
   return (
-    <Card className="gap-2 py-4">
-      <CardContent className="px-5">
-        <p className="text-muted-foreground text-xs font-medium">{label}</p>
-        {loading ? <Skeleton className="mt-1 h-8 w-16" /> : <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>}
-        {hint && <p className="text-muted-foreground mt-1 text-xs">{hint}</p>}
-      </CardContent>
-    </Card>
+    <MetricCard
+      label={label}
+      value={value}
+      status={status}
+      progress={progress}
+      progressTone={progressTone}
+      context={hint}
+      className="h-full"
+    />
   );
 }
 
@@ -42,9 +61,37 @@ export default function StructuredDataPage() {
       )}
 
       <div className="mb-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Stat label="Pages with schema" value={`${sd.pagesWithSchema} / ${sd.pagesCrawled}`} hint={`${coverage}% coverage`} loading={loading} />
+        <Stat
+          label="Pages with schema"
+          value={`${sd.pagesWithSchema} / ${sd.pagesCrawled}`}
+          hint={`${coverage}% coverage`}
+          status={
+            sd.pagesCrawled === 0
+              ? undefined
+              : coverage >= 80
+                ? { tone: "success", label: "Broad" }
+                : coverage >= 60
+                  ? { tone: "caution", label: "Partial" }
+                  : { tone: "warning", label: "Sparse" }
+          }
+          progress={sd.pagesCrawled > 0 ? coverage : null}
+          progressTone={coverage >= 80 ? "success" : coverage >= 60 ? "caution" : "warning"}
+          loading={loading}
+        />
         <Stat label="Schema blocks" value={sd.blocksTotal} hint={Object.entries(sd.formats).map(([f, n]) => `${n} ${f.replace("_", "-")}`).join(" · ") || "–"} loading={loading} />
-        <Stat label="Invalid blocks" value={sd.blocksInvalid} hint="Could not be parsed" loading={loading} />
+        <Stat
+          label="Invalid blocks"
+          value={sd.blocksInvalid}
+          hint="Could not be parsed"
+          status={
+            sd.blocksTotal === 0
+              ? undefined
+              : sd.blocksInvalid > 0
+                ? { tone: "warning", label: "Needs review" }
+                : { tone: "success", label: "All valid" }
+          }
+          loading={loading}
+        />
         <Stat label="Last analysis" value={sd.analyzedAt ? relativeTime(sd.analyzedAt) : "–"} loading={loading} />
       </div>
 

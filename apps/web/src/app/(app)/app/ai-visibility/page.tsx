@@ -3,6 +3,7 @@
 import Link from "next/link";
 import * as React from "react";
 
+import { MetricAction } from "@/components/metric-action";
 import { CompetitorTable } from "@/components/visibility/competitor-table";
 import { EngineTable } from "@/components/visibility/engine-table";
 import { MetricTile, MetricTileSkeleton } from "@/components/visibility/metric-tile";
@@ -35,6 +36,13 @@ export default function AiVisibilityOverviewPage() {
   const [mode, setMode] = React.useState<ChartMode>("overall");
   const [openPrompt, setOpenPrompt] = React.useState<PromptPerformanceRow | null>(null);
 
+  // Sparkline data: the measured overall-score buckets (real responses only).
+  const scoreSpark = React.useMemo(() => {
+    const points = vis.chart.overall[0]?.points ?? [];
+    const values = points.map((p) => p.value).filter((v): v is number => v != null);
+    return values.length >= 2 ? values : undefined;
+  }, [vis.chart.overall]);
+
   const ahead = vis.competitorsAhead;
   const summaryLine = loading
     ? null
@@ -56,7 +64,16 @@ export default function AiVisibilityOverviewPage() {
       <section aria-label="Primary metrics" className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
         {loading
           ? Array.from({ length: 6 }, (_, i) => <MetricTileSkeleton key={i} />)
-          : vis.metrics.map((m) => <MetricTile key={m.key} metric={m} emphasis={m.key === "score"} />)}
+          : vis.metrics.map((m) => (
+              <MetricTile
+                key={m.key}
+                metric={m}
+                emphasis={m.key === "score"}
+                // Real measured score history from the same series the chart shows.
+                spark={m.key === "score" ? scoreSpark : undefined}
+                action={m.key === "score" ? <MetricAction href="/app/ai-visibility/trends">View trends</MetricAction> : undefined}
+              />
+            ))}
       </section>
 
       <div className="mb-6">
