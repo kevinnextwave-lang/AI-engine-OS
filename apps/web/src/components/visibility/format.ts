@@ -15,7 +15,16 @@ export function fmtChange(change: number | null, unit: MetricUnit): string {
 }
 
 export function fmtDateTime(iso: string | null): string {
-  return iso ? new Date(iso).toLocaleString() : "–";
+  // "Sep 22, 2026, 6:00 AM" — no seconds; fits table cells without truncating.
+  return iso
+    ? new Date(iso).toLocaleString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      })
+    : "–";
 }
 
 export function fmtDate(iso: string | null): string {

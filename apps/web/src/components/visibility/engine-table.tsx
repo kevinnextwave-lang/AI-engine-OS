@@ -2,6 +2,7 @@ import { CpuIcon } from "lucide-react";
 import * as React from "react";
 
 import { ConfidenceBadge } from "@/components/visibility/confidence";
+import { SUFFICIENCY_LABEL } from "@/lib/visibility/labels";
 import { EmptyState } from "@/components/geo/empty-state";
 import { fmtValue } from "@/components/visibility/format";
 import type { EngineRow } from "@/lib/visibility/types";
@@ -87,8 +88,13 @@ export function EngineTable({
                     <TableCell className="hidden md:table-cell" />
                     <TableCell className="hidden lg:table-cell" />
                     <TableCell className="text-right tabular-nums">{m.sampleSize}</TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      <ConfidenceBadge sufficiency={m.sufficiency} sampleSize={m.sampleSize} />
+                    {/* Plain text on model sub-rows: a column of repeated badge
+                        chips reads as noise; the engine row carries the badge. */}
+                    <TableCell
+                      className="hidden sm:table-cell"
+                      title={`${SUFFICIENCY_LABEL[m.sufficiency]} — based on ${m.sampleSize} AI responses`}
+                    >
+                      {SUFFICIENCY_LABEL[m.sufficiency]}
                     </TableCell>
                   </TableRow>
                 ))}

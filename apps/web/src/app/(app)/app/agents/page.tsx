@@ -78,13 +78,17 @@ export default function AgentsPage() {
         runs.refresh();
       }}
     >
-      <div className="mb-4 flex flex-wrap items-center gap-2">
+      {/* Visible label ties the input to the Run buttons below — it read as
+          a stray search box without one. */}
+      <div className="mb-4 flex max-w-xl flex-col gap-1">
+        <label htmlFor="agent-objective" className="text-xs font-medium">
+          Objective for the next run <span className="text-muted-foreground font-normal">(optional — applies to whichever agent you run)</span>
+        </label>
         <Input
-          aria-label="Objective"
-          placeholder="Optional objective, e.g. “Grow AI visibility for comparison prompts”"
+          id="agent-objective"
+          placeholder="e.g. “Grow AI visibility for comparison prompts”"
           value={objective}
           onChange={(e) => setObjective(e.target.value)}
-          className="max-w-xl flex-1"
         />
       </div>
       {notice && <p className="text-muted-foreground mb-4 text-sm">{notice}</p>}

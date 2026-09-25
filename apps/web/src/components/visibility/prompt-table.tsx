@@ -48,7 +48,7 @@ export function PromptTable({
             <TableHead className="w-40">Brand mention</TableHead>
             <TableHead className="hidden w-32 text-right md:table-cell">Recommendation</TableHead>
             <TableHead className="hidden w-24 text-right md:table-cell">Position</TableHead>
-            <TableHead className="hidden w-44 xl:table-cell">Last run</TableHead>
+            <TableHead className="hidden w-52 xl:table-cell">Last run</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
