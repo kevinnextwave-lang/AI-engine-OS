@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { AiInsightCard } from "@/components/ai-insight-card";
+import { VisibilityFunnel } from "@/components/visibility/funnel";
 import { MetricAction } from "@/components/metric-action";
 import { competitorGapInsight } from "@/lib/ai-insights";
 import { CompetitorTable } from "@/components/visibility/competitor-table";
@@ -61,6 +62,18 @@ export default function AiVisibilityOverviewPage() {
               />
             ))}
       </section>
+
+      <VisibilityFunnel
+        brandName={vis.brandName}
+        promptsTracked={vis.prompts.length}
+        enginesMonitored={vis.configuredProviders.length}
+        enginesAnswering={vis.engines.length}
+        responses={vis.quality?.sampleSize ?? 0}
+        mentionResponses={vis.prompts.reduce((a, r) => a + r.mentions, 0)}
+        citationRate={vis.metrics.find((m) => m.key === "citation_rate")?.value ?? null}
+        windowLabel={`Last ${vis.window.replace("d", " days")}`}
+        loading={loading}
+      />
 
       {!loading && (
         <div className="mb-6">

@@ -1,6 +1,7 @@
 "use client";
 
 import { ExternalLinkIcon } from "lucide-react";
+import Link from "next/link";
 import * as React from "react";
 
 import { ErrorState } from "@/components/visibility/states";
@@ -265,6 +266,19 @@ export function ResponseDrawer({
                           </li>
                         ))}
                       </ul>
+                      {/* Close the loop: from this answer's citations into the
+                          citation-intelligence views for all of them. */}
+                      <p className="text-muted-foreground mt-1 text-xs">
+                        Follow up in{" "}
+                        <Link href="/app/ai-intelligence/citations" className="text-primary underline-offset-4 hover:underline">
+                          Citations
+                        </Link>{" "}
+                        or{" "}
+                        <Link href="/app/ai-intelligence/sources" className="text-primary underline-offset-4 hover:underline">
+                          Sources
+                        </Link>{" "}
+                        to see every answer citing these domains.
+                      </p>
                     </Section>
                   )}
 

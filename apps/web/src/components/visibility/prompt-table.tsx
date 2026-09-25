@@ -13,11 +13,15 @@ export function PromptTable({
   loading,
   onOpen,
   limit,
+  emptyTitle = "No prompt has a parsed response in this period",
+  emptyDescription = "Run a prompt set to collect AI answers; each prompt's measured mention and recommendation rates appear here.",
 }: {
   rows: PromptPerformanceRow[];
   loading?: boolean;
   onOpen: (row: PromptPerformanceRow) => void;
   limit?: number;
+  emptyTitle?: string;
+  emptyDescription?: string;
 }) {
   if (loading) {
     return (
@@ -30,11 +34,7 @@ export function PromptTable({
   }
   if (rows.length === 0) {
     return (
-      <EmptyState
-        icon={MessageSquareTextIcon}
-        title="No prompt has a parsed response in this period"
-        description="Run a prompt set to collect AI answers; each prompt's measured mention and recommendation rates appear here."
-      />
+      <EmptyState icon={MessageSquareTextIcon} tone="neutral" title={emptyTitle} description={emptyDescription} />
     );
   }
   const shown = limit ? rows.slice(0, limit) : rows;
