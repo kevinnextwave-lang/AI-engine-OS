@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { AuthProvider } from "@/components/auth-provider";
 import { TooltipProvider } from "@ai-search-growth-os/ui";
 
@@ -29,6 +30,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <TooltipProvider>
           <AuthProvider>{children}</AuthProvider>
         </TooltipProvider>
+        <SpeedInsights />
       </body>
     </html>
   );
