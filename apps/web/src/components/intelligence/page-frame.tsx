@@ -4,11 +4,10 @@ import { NetworkIcon } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
 
-import { MockNotice, DataSourceBadge } from "@/components/geo/data-source-badge";
+import { DataSourceBadge } from "@/components/geo/data-source-badge";
 import { EmptyState } from "@/components/geo/empty-state";
-import { PageHeader } from "@/components/shell/page-header";
+import { AppPageFrame } from "@/components/shell/app-page-frame";
 import { ProjectSelect } from "@/components/shell/project-select";
-import { ErrorState } from "@/components/visibility/states";
 import type { useProjectIntelligence } from "@/components/intelligence/use-project-intelligence";
 import type { IntelligenceWindow } from "@/lib/intelligence/use-intelligence-data";
 import { Button, SegmentedControl } from "@ai-search-growth-os/ui";
@@ -42,40 +41,49 @@ export function IntelligenceTools({ intel }: { intel: Intel }) {
   );
 }
 
-/** Shared frame: header, provenance, error / empty states. */
+/**
+ * Frame for the Citation Intelligence pages: shared chrome via AppPageFrame,
+ * plus this domain's specific empty state (no citations observed yet, with
+ * the run action).
+ */
 export function IntelligencePageFrame({ intel, title, description, hasOwnContent = false, children }: { intel: Intel; title: string; description: string; /** Skip the citations-empty state: the page has content of its own to show (e.g. stored responses). */ hasOwnContent?: boolean; children: React.ReactNode }) {
   const loading = intel.loading || intel.projectLoading;
   const reason = runDisabledReason(intel);
+  const showEmpty = !loading && intel.empty && !hasOwnContent;
   return (
-    <>
-      <PageHeader title={title} description={description}>
-        <IntelligenceTools intel={intel} />
-      </PageHeader>
-      <MockNotice source={intel.source} reason={intel.mockReason} />
-      {intel.error ? (
-        <ErrorState message={intel.error} onRetry={intel.actions.refresh} />
-      ) : !loading && intel.empty && !hasOwnContent ? (
-        <EmptyState
-          icon={NetworkIcon}
-          title="Run more AI searches to build your citation intelligence graph."
-          description="Citation intelligence is built from the sources AI engines cite when answering your prompts. No citations were observed in this period yet."
-        >
-          <div className="flex flex-col items-center gap-2">
-            <div className="flex gap-2">
-              <Button onClick={() => void intel.actions.runPromptSet()} disabled={reason !== null || intel.busy === "run"} title={reason ?? undefined}>
-                {intel.busy === "run" ? "Queuing…" : "Run AI Search Analysis"}
-              </Button>
-              <Button asChild variant="outline">
-                <Link href="/app/ai-visibility/prompts">Prompts</Link>
-              </Button>
+    <AppPageFrame
+      title={title}
+      description={description}
+      tools={<IntelligenceTools intel={intel} />}
+      source={intel.source}
+      mockReason={intel.mockReason}
+      error={intel.error}
+      errorWhat="citation intelligence data"
+      onRetry={intel.actions.refresh}
+      gate={
+        showEmpty ? (
+          <EmptyState
+            icon={NetworkIcon}
+            title="Run more AI searches to build your citation intelligence graph."
+            description="Citation intelligence is built from the sources AI engines cite when answering your prompts. No citations were observed in this period yet."
+          >
+            <div className="flex flex-col items-center gap-2">
+              <div className="flex gap-2">
+                <Button onClick={() => void intel.actions.runPromptSet()} disabled={reason !== null || intel.busy === "run"} title={reason ?? undefined}>
+                  {intel.busy === "run" ? "Queuing…" : "Run AI Search Analysis"}
+                </Button>
+                <Button asChild variant="outline">
+                  <Link href="/app/ai-visibility/prompts">Prompts</Link>
+                </Button>
+              </div>
+              {intel.runNotice && <p className="text-muted-foreground max-w-md text-xs">{intel.runNotice}</p>}
+              {reason && <p className="text-muted-foreground max-w-md text-xs">{reason}</p>}
             </div>
-            {intel.runNotice && <p className="text-muted-foreground max-w-md text-xs">{intel.runNotice}</p>}
-            {reason && <p className="text-muted-foreground max-w-md text-xs">{reason}</p>}
-          </div>
-        </EmptyState>
-      ) : (
-        children
-      )}
-    </>
+          </EmptyState>
+        ) : null
+      }
+    >
+      {children}
+    </AppPageFrame>
   );
 }

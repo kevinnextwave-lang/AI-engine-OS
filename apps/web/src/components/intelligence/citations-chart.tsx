@@ -8,6 +8,7 @@
  */
 
 import * as React from "react";
+import { fmtDate } from "@/lib/format";
 
 import type { CitationListItem } from "@ai-search-growth-os/types";
 import { Card, CardContent, Skeleton } from "@ai-search-growth-os/ui";
@@ -79,7 +80,7 @@ export function CitationsChart({
   const bw = Math.min(28, (innerW / weeks.length) * 0.6);
   const x = (i: number) => PAD.left + (weeks.length === 1 ? innerW / 2 : (i * innerW) / (weeks.length - 1 || 1));
   const y = (v: number) => PAD.top + innerH - (v / max) * innerH;
-  const fmt = (t: number) => new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  const fmt = fmtDate;
   const brandTotal = weeks.reduce((a, w) => a + w.brand, 0);
 
   return (

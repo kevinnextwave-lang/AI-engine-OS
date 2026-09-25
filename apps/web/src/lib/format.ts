@@ -21,9 +21,12 @@ export function fmtDateTime(iso: string | null): string {
     : "–";
 }
 
-/** "Sep 22" — for chart axes and compact contexts within the current year. */
-export function fmtDate(iso: string | null): string {
-  return iso ? new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "–";
+/** "Sep 22" — for chart axes and compact contexts within the current year.
+ * Accepts an ISO string or an epoch-ms number (chart tick values). */
+export function fmtDate(value: string | number | null): string {
+  return value != null && value !== ""
+    ? new Date(value).toLocaleDateString(undefined, { month: "short", day: "numeric" })
+    : "–";
 }
 
 /** "Sep 22, 2026" — when the day matters but the time doesn't. */

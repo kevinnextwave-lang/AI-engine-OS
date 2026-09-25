@@ -7,6 +7,7 @@
  */
 
 import * as React from "react";
+import { fmtDate } from "@/lib/format";
 
 import { ScoreRing } from "@/components/geo/score-ring";
 import { SeverityBadge } from "@/components/geo/severity-badge";
@@ -246,8 +247,7 @@ export function GeoTrendChart({ series }: { series: TrendSeriesView[] }) {
   const max = Math.max(...times);
   const x = (t: number) => PAD.left + (max === min ? 0 : ((t - min) * (W - PAD.left - PAD.right)) / (max - min));
   const y = (v: number) => PAD.top + ((100 - v) * (H - PAD.top - PAD.bottom)) / 100;
-  const fmt = (t: number) =>
-    new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  const fmt = fmtDate;
   return (
     <Card className="py-4">
       <CardContent className="px-4">
