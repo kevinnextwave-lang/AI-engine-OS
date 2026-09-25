@@ -7,11 +7,16 @@ export function CompetitorTable({
   loading,
   detailed = false,
   competitorsConfigured,
+  selected,
+  onSelect,
 }: {
   rows: CompetitorShareRow[];
   loading?: boolean;
   detailed?: boolean;
   competitorsConfigured: number;
+  /** Selected competitor name; clicking a competitor row toggles it. */
+  selected?: string | null;
+  onSelect?: (name: string | null) => void;
 }) {
   if (loading) {
     return (
@@ -46,7 +51,16 @@ export function CompetitorTable({
         </TableHeader>
         <TableBody>
           {sorted.map((r) => (
-            <TableRow key={r.name} className={cn(r.isBrand && "bg-primary/5")}>
+            <TableRow
+              key={r.name}
+              className={cn(
+                r.isBrand && "bg-primary/5",
+                onSelect && !r.isBrand && "cursor-pointer",
+                selected === r.name && "bg-sidebar-accent/60",
+              )}
+              aria-selected={selected === r.name || undefined}
+              onClick={onSelect && !r.isBrand ? () => onSelect(selected === r.name ? null : r.name) : undefined}
+            >
               <TableCell className="font-medium">
                 <span className="flex items-center gap-2">
                   {r.name}
