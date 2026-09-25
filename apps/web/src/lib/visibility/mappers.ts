@@ -240,11 +240,13 @@ export function competitorsAhead(rows: CompetitorShareRow[]): CompetitorShareRow
 
 export function promptRows(byPrompt: VisibilityByPrompt, prompts: PromptRow[]): PromptPerformanceRow[] {
   const lastRunById = new Map(prompts.map((p) => [p.id, p.last_run]));
-  return byPrompt.prompts
+  const perRecord = byPrompt.prompts
     .map((p) => {
       const last = lastRunById.get(p.prompt_id) ?? null;
       return {
         id: p.prompt_id,
+        memberIds: [p.prompt_id],
+        recordCount: 1,
         prompt: p.text,
         category: p.category,
         categoryLabel: CATEGORY_LABEL[p.category] ?? p.category,
@@ -268,6 +270,8 @@ export function promptRows(byPrompt: VisibilityByPrompt, prompts: PromptRow[]): 
         .filter((p) => p.is_active && !byPrompt.prompts.some((bp) => bp.prompt_id === p.id))
         .map((p) => ({
           id: p.id,
+          memberIds: [p.id],
+          recordCount: 1,
           prompt: p.prompt,
           category: p.category,
           categoryLabel: CATEGORY_LABEL[p.category] ?? p.category,
@@ -284,4 +288,61 @@ export function promptRows(byPrompt: VisibilityByPrompt, prompts: PromptRow[]): 
         })),
     )
     .sort((a, b) => (b.mentionRate ?? -1) - (a.mentionRate ?? -1) || b.sampleSize - a.sampleSize);
+  return aggregatePromptRows(perRecord);
+}
+
+/**
+ * Collapse prompt RECORDS that share the same text into one logical prompt
+ * row, so the table doesn't show visually duplicated prompts differing only
+ * by "last run". Nothing is dropped: every record id is kept in `memberIds`
+ * (the drawer loads all their runs; deep links by any member id resolve to
+ * the aggregate), and all aggregate numbers are recomputed from the members'
+ * measured values — rates are weighted by each record's sample size, never
+ * invented.
+ */
+export function aggregatePromptRows(rows: PromptPerformanceRow[]): PromptPerformanceRow[] {
+  const groups = new Map<string, PromptPerformanceRow[]>();
+  for (const r of rows) {
+    const key = r.prompt.trim().replace(/\s+/g, " ").toLowerCase();
+    const g = groups.get(key);
+    if (g) g.push(r);
+    else groups.set(key, [r]);
+  }
+  const weighted = (members: PromptPerformanceRow[], pick: (r: PromptPerformanceRow) => number | null): number | null => {
+    const known = members.filter((m) => pick(m) != null && m.sampleSize > 0);
+    if (known.length === 0) return null;
+    const n = known.reduce((a, m) => a + m.sampleSize, 0);
+    if (n === 0) return null;
+    const sum = known.reduce((a, m) => a + (pick(m) as number) * m.sampleSize, 0);
+    return Math.round((sum / n) * 10) / 10;
+  };
+  const out: PromptPerformanceRow[] = [];
+  for (const members of groups.values()) {
+    if (members.length === 1) {
+      out.push(members[0]!);
+      continue;
+    }
+    // Primary record: the most recently run member (drawer opens there first).
+    const primary = [...members].sort(
+      (a, b) => (b.lastRun ? Date.parse(b.lastRun) : 0) - (a.lastRun ? Date.parse(a.lastRun) : 0) || b.sampleSize - a.sampleSize,
+    )[0]!;
+    // Sufficiency: from the member with the largest sample — a conservative
+    // lower bound for the combined sample (never upgraded client-side).
+    const biggest = [...members].sort((a, b) => b.sampleSize - a.sampleSize)[0]!;
+    out.push({
+      ...primary,
+      id: primary.id,
+      memberIds: members.map((m) => m.id),
+      recordCount: members.length,
+      sampleSize: members.reduce((a, m) => a + m.sampleSize, 0),
+      mentions: members.reduce((a, m) => a + m.mentions, 0),
+      mentionRate: weighted(members, (m) => m.mentionRate),
+      recommendationRate: weighted(members, (m) => m.recommendationRate),
+      averagePosition: weighted(members, (m) => m.averagePosition),
+      sufficiency: biggest.sufficiency,
+      lastRun: primary.lastRun,
+      lastRunProvider: primary.lastRunProvider,
+    });
+  }
+  return out.sort((a, b) => (b.mentionRate ?? -1) - (a.mentionRate ?? -1) || b.sampleSize - a.sampleSize);
 }

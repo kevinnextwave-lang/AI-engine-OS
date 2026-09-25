@@ -106,7 +106,22 @@ export default function CitationsPage() {
                         className="text-primary inline-flex max-w-full items-center gap-1 underline-offset-4 hover:underline"
                         title={c.url}
                       >
-                        <span className="truncate">{c.url}</span>
+                        {/* Domain leads; the path stays visible but quiet so
+                            long URLs stop dominating the table. */}
+                        {(() => {
+                          try {
+                            const u = new URL(c.url);
+                            const rest = `${u.pathname}${u.search}`;
+                            return (
+                              <span className="truncate">
+                                <span className="font-medium">{u.hostname.replace(/^www\./, "")}</span>
+                                {rest !== "/" && <span className="text-muted-foreground">{rest}</span>}
+                              </span>
+                            );
+                          } catch {
+                            return <span className="truncate">{c.url}</span>;
+                          }
+                        })()}
                         <ExternalLinkIcon className="size-3 shrink-0" aria-hidden="true" />
                       </a>
                     ) : (

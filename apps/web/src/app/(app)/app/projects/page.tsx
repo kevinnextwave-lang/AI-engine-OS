@@ -20,7 +20,7 @@ function readSelectedId(): string | null {
   }
 }
 
-function CompetitorManager({ project }: { project: Project }) {
+function CompetitorManager({ project, editing }: { project: Project; editing: boolean }) {
   const [competitors, setCompetitors] = React.useState<Competitor[] | null>(null);
   const [name, setName] = React.useState("");
   const [url, setUrl] = React.useState("");
@@ -74,57 +74,115 @@ function CompetitorManager({ project }: { project: Project }) {
     }
   };
 
+  // Default state: a quiet read-only summary. The remove buttons and the
+  // add form appear only in edit mode — the whole page stays scannable.
+  const SUMMARY_MAX = 6;
   return (
     <div className="flex flex-col gap-2">
       <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">Competitors</p>
       {error && <p className="text-destructive text-xs">{error}</p>}
-      {!competitors && !error && <Skeleton className="h-8 w-full" />}
+      {!competitors && !error && <Skeleton className="h-6 w-48" />}
       {competitors && competitors.length === 0 && (
-        <p className="text-muted-foreground text-sm">None yet — add the brands AI answers compare you with.</p>
+        <p className="text-muted-foreground text-sm">
+          {editing ? "None yet — add the brands AI answers compare you with." : "None yet."}
+        </p>
       )}
       {competitors && competitors.length > 0 && (
         <ul className="flex flex-wrap gap-1.5">
-          {competitors.map((c) => (
+          {(editing ? competitors : competitors.slice(0, SUMMARY_MAX)).map((c) => (
             <li key={c.id}>
-              <Badge variant="secondary" className="gap-1.5 pr-1">
+              <Badge variant="secondary" className={editing ? "gap-1.5 pr-1" : undefined}>
                 {c.name}
-                <button
-                  type="button"
-                  aria-label={`Remove ${c.name}`}
-                  onClick={() => void remove(c.id)}
-                  disabled={busy}
-                  className="hover:text-destructive rounded p-0.5"
-                >
-                  <XIcon className="size-3" aria-hidden="true" />
-                </button>
+                {editing && (
+                  <button
+                    type="button"
+                    aria-label={`Remove ${c.name}`}
+                    onClick={() => void remove(c.id)}
+                    disabled={busy}
+                    className="hover:text-destructive rounded p-0.5"
+                  >
+                    <XIcon className="size-3" aria-hidden="true" />
+                  </button>
+                )}
               </Badge>
             </li>
           ))}
+          {!editing && competitors.length > SUMMARY_MAX && (
+            <li>
+              <Badge variant="outline">+{competitors.length - SUMMARY_MAX}</Badge>
+            </li>
+          )}
         </ul>
       )}
-      <form className="flex flex-wrap gap-2" onSubmit={(e) => void add(e)}>
-        <Input
-          aria-label="Competitor name"
-          placeholder="Name, e.g. QuickBooks"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-          className="h-8 w-40 text-sm"
-        />
-        <Input
-          aria-label="Competitor website"
-          placeholder="https://quickbooks.intuit.com"
-          type="url"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          required
-          className="h-8 w-64 text-sm"
-        />
-        <Button type="submit" size="sm" variant="outline" disabled={busy} className="h-8">
-          {busy ? "…" : "Add"}
-        </Button>
-      </form>
+      {editing && (
+        <form className="flex flex-wrap gap-2" onSubmit={(e) => void add(e)}>
+          <Input
+            aria-label="Competitor name"
+            placeholder="Name, e.g. QuickBooks"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            className="h-8 w-40 text-sm"
+          />
+          <Input
+            aria-label="Competitor website"
+            placeholder="https://quickbooks.intuit.com"
+            type="url"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            required
+            className="h-8 w-64 text-sm"
+          />
+          <Button type="submit" size="sm" variant="outline" disabled={busy} className="h-8">
+            {busy ? "…" : "Add"}
+          </Button>
+        </form>
+      )}
     </div>
+  );
+}
+
+/** One project: summary by default, competitor editing on demand. */
+function ProjectCard({
+  project,
+  isActive,
+  onSelect,
+}: {
+  project: Project;
+  isActive: boolean;
+  onSelect: () => void;
+}) {
+  const [editing, setEditing] = React.useState(false);
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex flex-wrap items-center justify-between gap-2 text-base">
+          <span className="flex items-center gap-2">
+            {project.name}
+            {project.primary_domain && (
+              <span className="text-muted-foreground text-sm font-normal">{project.primary_domain.hostname}</span>
+            )}
+          </span>
+          <span className="flex items-center gap-2">
+            {isActive ? (
+              <Badge variant="success" className="gap-1">
+                <CheckIcon className="size-3" aria-hidden="true" /> Active project
+              </Badge>
+            ) : (
+              <Button size="sm" variant="outline" onClick={onSelect}>
+                Use this project
+              </Button>
+            )}
+            <Button size="sm" variant="ghost" aria-expanded={editing} onClick={() => setEditing((v) => !v)}>
+              {editing ? "Done" : "Edit competitors"}
+            </Button>
+          </span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <CompetitorManager project={project} editing={editing} />
+      </CardContent>
+    </Card>
   );
 }
 
@@ -282,34 +340,7 @@ export default function ProjectsPage() {
             chosenId != null && projects.some((x) => x.id === chosenId)
               ? p.id === chosenId
               : index === 0;
-          return (
-          <Card key={p.id}>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex flex-wrap items-center justify-between gap-2 text-base">
-                <span className="flex items-center gap-2">
-                  {p.name}
-                  {p.primary_domain && (
-                    <span className="text-muted-foreground text-sm font-normal">
-                      {p.primary_domain.hostname}
-                    </span>
-                  )}
-                </span>
-                {isActive ? (
-                  <Badge variant="success" className="gap-1">
-                    <CheckIcon className="size-3" aria-hidden="true" /> Active project
-                  </Badge>
-                ) : (
-                  <Button size="sm" variant="outline" onClick={() => select(p.id)}>
-                    Use this project
-                  </Button>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CompetitorManager project={p} />
-            </CardContent>
-          </Card>
-          );
+          return <ProjectCard key={p.id} project={p} isActive={isActive} onSelect={() => select(p.id)} />;
         })}
       </div>
     </>

@@ -89,7 +89,13 @@ export interface CompetitorShareRow {
 }
 
 export interface PromptPerformanceRow {
+  /** Primary prompt record id (the most recently run member). */
   id: string;
+  /** Every underlying prompt-record id this logical prompt aggregates.
+   * Always contains `id`; length 1 unless duplicate records share the text. */
+  memberIds: string[];
+  /** Number of underlying prompt records (1 = no duplicates). */
+  recordCount: number;
   prompt: string;
   category: PromptCategory;
   categoryLabel: string;

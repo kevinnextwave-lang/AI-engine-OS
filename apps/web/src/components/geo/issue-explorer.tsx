@@ -66,12 +66,26 @@ export function IssueExplorer({
     () => sortIssues(applyFilters(issues, filters), sortKey, sortDir),
     [issues, filters, sortKey, sortDir],
   );
-  const pageCount = limit ? 1 : Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  // Informational observations don't compete with actionable issues: with no
+  // explicit severity filter, the table leads with critical→low and the info
+  // rows sit behind a count band (nothing is hidden permanently — the toggle
+  // and the severity filter both reveal them; classification is untouched).
+  const [showInfo, setShowInfo] = React.useState(false);
+  const infoBanded = !limit && filters.severity === "all";
+  const informationalCount = React.useMemo(
+    () => (infoBanded ? filtered.filter((i) => i.severity === "info").length : 0),
+    [filtered, infoBanded],
+  );
+  const tableSource = React.useMemo(
+    () => (infoBanded && !showInfo ? filtered.filter((i) => i.severity !== "info") : filtered),
+    [filtered, infoBanded, showInfo],
+  );
+  const pageCount = limit ? 1 : Math.max(1, Math.ceil(tableSource.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount - 1);
   const visible = React.useMemo(() => {
-    if (limit) return filtered.slice(0, limit);
-    return filtered.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
-  }, [filtered, limit, safePage]);
+    if (limit) return tableSource.slice(0, limit);
+    return tableSource.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
+  }, [tableSource, limit, safePage]);
   const open = issues.find((i) => i.id === openId) ?? null;
   const selected = React.useMemo(
     () => issues.filter((i) => selectedIds.has(i.id) && i.canUpdateStatus),
@@ -235,10 +249,22 @@ export function IssueExplorer({
         emptyDescription={emptyDescription}
       />
 
+      {informationalCount > 0 && !loading && (
+        <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-sm">
+          <p>
+            {informationalCount} informational observation{informationalCount === 1 ? "" : "s"}
+            <span> — measured context, nothing to fix</span>
+          </p>
+          <Button size="sm" variant="ghost" aria-expanded={showInfo} onClick={() => { setShowInfo((v) => !v); setPage(0); }}>
+            {showInfo ? "Hide" : "Show"}
+          </Button>
+        </div>
+      )}
+
       {!limit && !loading && pageCount > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-muted-foreground text-xs tabular-nums">
-            {safePage * PAGE_SIZE + 1}–{Math.min((safePage + 1) * PAGE_SIZE, filtered.length)} of {filtered.length}
+            {safePage * PAGE_SIZE + 1}–{Math.min((safePage + 1) * PAGE_SIZE, tableSource.length)} of {tableSource.length}
           </p>
           <div className="flex gap-1.5">
             <Button size="sm" variant="outline" disabled={safePage === 0} onClick={() => setPage(safePage - 1)}>

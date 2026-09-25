@@ -31,8 +31,12 @@ function PromptsPageInner() {
   // that prompt's response drawer once rows exist — derived, not effectful,
   // and dismissible.
   const deepLinkPrompt = params.get("prompt");
+  // A deep link may carry any underlying record id; it resolves to the
+  // logical (possibly aggregated) prompt row that contains it.
   const deepLinkRow =
-    deepLinkPrompt && !deepLinkDismissed ? (vis.prompts.find((r) => r.id === deepLinkPrompt) ?? null) : null;
+    deepLinkPrompt && !deepLinkDismissed
+      ? (vis.prompts.find((r) => r.id === deepLinkPrompt || r.memberIds.includes(deepLinkPrompt)) ?? null)
+      : null;
   const open = manualOpen ?? deepLinkRow;
   const setOpen = (row: PromptPerformanceRow | null) => {
     if (row === null) setDeepLinkDismissed(true);

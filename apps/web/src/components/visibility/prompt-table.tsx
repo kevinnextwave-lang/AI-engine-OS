@@ -67,9 +67,14 @@ export function PromptTable({
                 }
               }}
             >
-              <TableCell className="truncate" title={r.prompt}>
-                {r.prompt}
-                <span className="text-muted-foreground ml-2 text-xs tabular-nums">n={r.sampleSize}</span>
+              <TableCell title={r.prompt}>
+                {/* Sample size is metadata, not part of the prompt: it gets
+                    its own quiet line under the text. */}
+                <p className="truncate">{r.prompt}</p>
+                <p className="text-muted-foreground mt-0.5 text-xs tabular-nums">
+                  {r.sampleSize} response{r.sampleSize === 1 ? "" : "s"}
+                  {r.recordCount > 1 && <span> · {r.recordCount} prompt records</span>}
+                </p>
               </TableCell>
               <TableCell className="hidden lg:table-cell">
                 <Badge variant="secondary">{r.categoryLabel}</Badge>

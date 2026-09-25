@@ -116,17 +116,26 @@ export function ResponseDrawer({
   const [version, setVersion] = React.useState(0);
 
   const promptId = prompt?.id ?? null;
+  // A logical prompt can aggregate several underlying records (duplicate
+  // texts); load runs for every member so no record's history is hidden.
+  const memberKey = prompt ? (prompt.memberIds.length ? prompt.memberIds : [prompt.id]).join(",") : null;
   React.useEffect(() => {
-    if (!promptId || !live) return;
+    if (!promptId || !memberKey || !live) return;
     let cancelled = false;
-    api.prompts
-      .runs(promptId)
-      .then((r) => !cancelled && setState({ promptId, runs: r.items, error: null }))
+    const ids = memberKey.split(",");
+    Promise.all(ids.map((id) => api.prompts.runs(id)))
+      .then((results) => {
+        if (cancelled) return;
+        const items = results
+          .flatMap((r) => r.items)
+          .sort((a, b) => (b.completed_at ? Date.parse(b.completed_at) : 0) - (a.completed_at ? Date.parse(a.completed_at) : 0));
+        setState({ promptId, runs: items, error: null });
+      })
       .catch((err: unknown) => !cancelled && setState({ promptId, runs: null, error: err instanceof Error ? err.message : "Request failed" }));
     return () => {
       cancelled = true;
     };
-  }, [promptId, live, version]);
+  }, [promptId, memberKey, live, version]);
 
   const runs = state?.promptId === promptId ? state.runs : null;
   const runsError = state?.promptId === promptId ? state.error : null;

@@ -47,16 +47,25 @@ export default function ContentPage() {
         </Card>
         <Card className="py-4">
           <CardContent className="grid gap-4 px-5 sm:grid-cols-2">
-            {cards.map((c) => (
-              <div key={c.key} className="flex flex-col gap-1.5">
-                <div className="flex items-baseline justify-between text-sm">
-                  <span className="font-medium">{c.label}</span>
-                  <span className="text-muted-foreground tabular-nums">{c.applicable && c.value != null ? `${c.value}/100` : "–"}</span>
+            {cards.map((c) => {
+              const measured = c.applicable && c.value != null;
+              return (
+                <div key={c.key} className="flex flex-col gap-1.5">
+                  <div className="flex items-baseline justify-between text-sm">
+                    <span className="font-medium">{c.label}</span>
+                    <span className="text-muted-foreground tabular-nums">{measured ? `${c.value}/100` : "–"}</span>
+                  </div>
+                  {/* No bar when unmeasured — an empty bar would read as a real 0. */}
+                  {measured && <Progress value={c.value ?? 0} aria-label={c.label} />}
+                  <p className="text-muted-foreground text-xs">{c.explanation}</p>
                 </div>
-                <Progress value={c.value ?? 0} aria-label={c.label} />
-                <p className="text-muted-foreground text-xs">{c.explanation}</p>
-              </div>
-            ))}
+              );
+            })}
+            {cards.some((c) => !(c.applicable && c.value != null)) && (
+              <p className="text-muted-foreground text-xs sm:col-span-2">
+                – means this audit didn&apos;t measure the signal; a 0 would be a real measured score.
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
