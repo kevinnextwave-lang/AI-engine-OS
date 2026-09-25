@@ -21,7 +21,13 @@ export function SourceChart({ items, loading, onSelect }: { items: TopSourceBar[
             ))}
           </div>
         ) : items.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No sources cited in this period.</p>
+          <div className="py-4 text-center">
+            <p className="text-sm font-medium">No sources cited in this period</p>
+            <p className="text-muted-foreground mt-1 text-sm">
+              This chart ranks the domains AI answers cite most. It fills in once parsed responses in the selected
+              period contain citations.
+            </p>
+          </div>
         ) : (
           <ol className="flex flex-col gap-2">
             {items.map((s) => {

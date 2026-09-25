@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyAction } from "@/components/empty-action";
 import { BracesIcon, LinkIcon } from "lucide-react";
 
 import { MockNotice } from "@/components/geo/data-source-badge";
@@ -104,7 +105,13 @@ export default function StructuredDataPage() {
       )}
 
       {!loading && sd.pagesCrawled === 0 ? (
-        <EmptyState icon={BracesIcon} title="No structured data analysis yet" description="Run a crawl and a GEO audit. Structured data is extracted from every crawled page and analyzed afterwards." />
+        <EmptyState
+          icon={BracesIcon}
+          title="No structured data analysis yet"
+          description="This page shows the Schema.org markup found on your pages, its validity, and the entities it declares. It's empty because no crawl has been analyzed for this project — run a crawl, then a GEO audit."
+        >
+          <EmptyAction href="/app/geo/website-audit">Run a crawl</EmptyAction>
+        </EmptyState>
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           <Card>

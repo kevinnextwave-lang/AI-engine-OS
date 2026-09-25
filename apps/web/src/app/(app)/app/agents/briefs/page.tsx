@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyAction } from "@/components/empty-action";
 import * as React from "react";
 
 import { DrawerSection, EvidenceList } from "@/components/section/evidence";
@@ -78,7 +79,16 @@ export default function ContentBriefsPage() {
       <DataTable
         head={["Brief", "Content type", "Confidence", "Status", "Updated"]}
         loading={res.loading}
-        empty={d && d.items.length === 0 ? "No briefs yet — run the Content Strategy agent once content gaps exist." : null}
+        empty={
+          d && d.items.length === 0
+            ? {
+                title: "No content briefs yet",
+                description:
+                  "The Content Strategy agent turns measured content gaps into ready-to-write briefs. None exist yet — it needs detected content gaps to work from, then a run of the agent.",
+                action: <EmptyAction href="/app/competitive/content-gaps">Check content gaps</EmptyAction>,
+              }
+            : null
+        }
       >
         {(d?.items ?? []).map((b) => (
           <TableRow key={b.id} className="cursor-pointer" onClick={() => setOpen(b)}>

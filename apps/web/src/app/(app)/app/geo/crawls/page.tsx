@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyAction } from "@/components/empty-action";
 import * as React from "react";
 
 import { DataTable, StatusBadge, label } from "@/components/section/primitives";
@@ -238,7 +239,16 @@ export default function CrawlsPage() {
       <DataTable
         head={["Root URL", "Type", "Status", "Crawled", "Failed", "Skipped", "Duration", "Started"]}
         loading={res.loading}
-        empty={d && d.items.length === 0 ? "No crawls yet — start one to build your website intelligence." : null}
+        empty={
+          d && d.items.length === 0
+            ? {
+                title: "No crawls yet",
+                description:
+                  "A crawl fetches your site's pages so the audits, structured-data analysis and AI-readiness views have something to measure. None has been run for this project — start one from the Website Audit page.",
+                action: <EmptyAction href="/app/geo/website-audit">Start a crawl</EmptyAction>,
+              }
+            : null
+        }
       >
         {(d?.items ?? []).map((j) => (
           <TableRow key={j.id} className="cursor-pointer" onClick={() => setOpen(j)}>

@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyAction } from "@/components/empty-action";
 import * as React from "react";
 
 import { DrawerSection, EvidenceList } from "@/components/section/evidence";
@@ -94,7 +95,16 @@ export default function CompetitorDiscoveryPage() {
       <DataTable
         head={["Candidate", "Domain", "Confidence", "Source", "Status", "Reason", ""]}
         loading={res.loading}
-        empty={d && d.items.length === 0 ? "No candidates yet. Run a scan once you have parsed AI responses." : null}
+        empty={
+          d && d.items.length === 0
+            ? {
+                title: "No competitor candidates yet",
+                description:
+                  "Discovery scans your parsed AI responses for brands mentioned alongside yours and suggests them as competitors. It's empty because no scan has found candidates — collect AI responses first, then run a scan from the toolbar above.",
+                action: <EmptyAction href="/app/ai-visibility/prompts">Collect AI responses</EmptyAction>,
+              }
+            : null
+        }
       >
         {(d?.items ?? []).map((c) => (
           <TableRow key={c.id} className="cursor-pointer" onClick={() => setOpen(c)}>

@@ -1,6 +1,8 @@
+import { CpuIcon } from "lucide-react";
 import * as React from "react";
 
 import { ConfidenceBadge } from "@/components/visibility/confidence";
+import { EmptyState } from "@/components/geo/empty-state";
 import { fmtValue } from "@/components/visibility/format";
 import type { EngineRow } from "@/lib/visibility/types";
 import { Progress, Skeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@ai-search-growth-os/ui";
@@ -33,7 +35,15 @@ export function EngineTable({
     );
   }
   if (rows.length === 0) {
-    return <p className="text-muted-foreground text-sm">No AI engine has returned parsed responses in this period.</p>;
+    return (
+      <EmptyState
+        icon={CpuIcon}
+        tone="neutral"
+        title="No engine results in this period"
+        description="This table breaks the AI Visibility Score down per engine, from parsed responses. No engine returned parsed responses in the selected period — run a prompt set or widen the date range."
+        className="py-10"
+      />
+    );
   }
   return (
     <div className="rounded-xl border">

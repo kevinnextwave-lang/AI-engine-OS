@@ -250,7 +250,15 @@ export default function AgentWorkflowsPage() {
       <DataTable
         head={["Workflow", "Objective", "Progress", "Status", "Created"]}
         loading={res.loading}
-        empty={d && d.items.length === 0 ? "No workflows yet — start the full optimization chain above." : null}
+        empty={
+          d && d.items.length === 0
+            ? {
+                title: "No workflows yet",
+                description:
+                  "A workflow chains the analysis agents into one run and pauses for your approval between steps. None has been started for this project — use the launcher above to run the first one.",
+              }
+            : null
+        }
       >
         {(d?.items ?? []).map((w) => (
           <TableRow key={w.id} className="cursor-pointer" onClick={() => setOpenId(w.id)}>

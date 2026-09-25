@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyAction } from "@/components/empty-action";
 import * as React from "react";
 
 import { DrawerSection, EvidenceList } from "@/components/section/evidence";
@@ -104,7 +105,16 @@ export default function CompetitiveInsightsPage() {
       <DataTable
         head={["Insight", "Type", "Impact", "Confidence", "Strength", "Analysed"]}
         loading={res.loading}
-        empty={d && d.items.length === 0 ? "No insights yet. Analysis needs enough parsed responses per competitor (10+)." : null}
+        empty={
+          d && d.items.length === 0
+            ? {
+                title: "No insights yet",
+                description:
+                  "Insights summarize measured differences between you and each competitor — where they lead, where you lead, and what the responses cite. The analysis needs at least 10 parsed responses per competitor before it reports anything.",
+                action: <EmptyAction href="/app/ai-visibility/prompts">Collect more responses</EmptyAction>,
+              }
+            : null
+        }
       >
         {(d?.items ?? []).map((i) => (
           <TableRow key={i.id} className="cursor-pointer" onClick={() => setOpen(i)}>

@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyAction } from "@/components/empty-action";
 import * as React from "react";
 
 import { DrawerSection, EvidenceList } from "@/components/section/evidence";
@@ -114,7 +115,16 @@ export default function CompetitiveOverviewPage() {
       <DataTable
         head={["Entity", "Score", "Change", "Mentions", "Recommended", "Avg. position", "Citations", "Sentiment", "Prompt coverage"]}
         loading={res.loading}
-        empty={d && d.entities.length === 0 ? "No competitors configured yet — add them in project settings or review discovery candidates." : null}
+        empty={
+          d && d.entities.filter((e) => !e.is_brand).length === 0
+            ? {
+                title: "No competitors configured yet",
+                description:
+                  "This table compares how often AI answers mention, recommend and cite your brand versus each competitor you track. It's empty because no competitors are configured for this project.",
+                action: <EmptyAction href="/app/competitive/discovery">Review discovery candidates</EmptyAction>,
+              }
+            : null
+        }
       >
         {(d?.entities ?? []).map((e) => (
           <TableRow key={e.name} className={e.is_brand ? "bg-primary/5 font-medium" : undefined}>

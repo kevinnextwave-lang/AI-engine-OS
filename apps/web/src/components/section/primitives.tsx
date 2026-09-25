@@ -87,6 +87,19 @@ export function TableSkeleton({ rows = 6, cols = 5 }: { rows?: number; cols?: nu
   );
 }
 
+/**
+ * Rich table empty state: the same four-part anatomy as EmptyState (state,
+ * what the section does + why it's empty + what to do next, primary CTA),
+ * rendered compactly inside the table so the layout stays stable.
+ */
+export interface TableEmptyState {
+  title: string;
+  /** What this section does, why it's empty, and what to do next. */
+  description: string;
+  /** Primary CTA (a Button or Link). */
+  action?: React.ReactNode;
+}
+
 /** Table with loading and empty handling; header cells from `head`. */
 export function DataTable({
   head,
@@ -96,7 +109,8 @@ export function DataTable({
 }: {
   head: string[];
   loading: boolean;
-  empty: string | null;
+  /** A TableEmptyState (preferred) or a plain one-line message. */
+  empty: TableEmptyState | string | null;
   children: React.ReactNode;
 }) {
   if (loading) return <TableSkeleton cols={head.length} />;
@@ -112,9 +126,17 @@ export function DataTable({
         </TableHeader>
         <TableBody>
           {empty ? (
-            <TableRow>
-              <TableCell colSpan={head.length} className="text-muted-foreground py-10 text-center text-sm">
-                {empty}
+            <TableRow className="hover:bg-transparent">
+              <TableCell colSpan={head.length} className="py-12">
+                {typeof empty === "string" ? (
+                  <p className="text-muted-foreground text-center text-sm">{empty}</p>
+                ) : (
+                  <div className="mx-auto flex max-w-md flex-col items-center gap-1 text-center">
+                    <p className="text-sm font-medium">{empty.title}</p>
+                    <p className="text-muted-foreground text-sm">{empty.description}</p>
+                    {empty.action && <div className="mt-3">{empty.action}</div>}
+                  </div>
+                )}
               </TableCell>
             </TableRow>
           ) : (

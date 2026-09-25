@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyAction } from "@/components/empty-action";
 import * as React from "react";
 
 import { DrawerSection, EvidenceList } from "@/components/section/evidence";
@@ -92,7 +93,16 @@ export default function EntityReviewsPage() {
       <DataTable
         head={["Review", "Entity type", "Findings", "Confidence", "Status", "Analysed"]}
         loading={res.loading}
-        empty={d && d.items.length === 0 ? "No entity reviews yet — run the Entity Optimization agent." : null}
+        empty={
+          d && d.items.length === 0
+            ? {
+                title: "No entity reviews yet",
+                description:
+                  "This queue holds the Entity Optimization agent's proposed improvements to how your organization is described in structured data, for you to approve or reject. It's empty because that agent hasn't produced proposals for this project yet.",
+                action: <EmptyAction href="/app/agents">Run the Entity Optimization agent</EmptyAction>,
+              }
+            : null
+        }
       >
         {(d?.items ?? []).map((r) => (
           <TableRow key={r.id} className="cursor-pointer" onClick={() => setOpen(r)}>

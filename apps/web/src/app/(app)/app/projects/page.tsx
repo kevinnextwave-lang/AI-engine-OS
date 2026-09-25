@@ -7,7 +7,7 @@ import { useOrganization } from "@/components/organization-provider";
 import { PageHeader } from "@/components/shell/page-header";
 import { api } from "@/lib/api";
 import type { Competitor, Project } from "@ai-search-growth-os/types";
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Input, Skeleton } from "@ai-search-growth-os/ui";
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle, EmptyState, Input, Skeleton } from "@ai-search-growth-os/ui";
 
 // Same key the section providers read, so "Use this project" selects it app-wide.
 const STORAGE_KEY = "asg:current-project";
@@ -266,17 +266,13 @@ export default function ProjectsPage() {
         </div>
       )}
       {projects && projects.length === 0 && !showForm && (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-16 text-center">
-          <FolderKanbanIcon className="text-muted-foreground mb-3 size-8" aria-hidden="true" />
-          <p className="font-medium">No projects yet</p>
-          <p className="text-muted-foreground mt-1 max-w-sm text-sm">
-            A project groups one brand&apos;s domains, competitors and tracked prompts. Create your
-            first one to unlock crawls, audits and AI visibility.
-          </p>
-          <Button className="mt-4" onClick={() => setShowForm(true)}>
-            New project
-          </Button>
-        </div>
+        <EmptyState
+          icon={FolderKanbanIcon}
+          title="No projects yet"
+          description="A project groups one brand's domains, competitors and tracked prompts — everything else in the product works on a project. Create your first one to unlock crawls, audits and AI visibility."
+        >
+          <Button onClick={() => setShowForm(true)}>New project</Button>
+        </EmptyState>
       )}
       <div className="flex flex-col gap-4">
         {/* Sections fall back to the first project when nothing (valid) is

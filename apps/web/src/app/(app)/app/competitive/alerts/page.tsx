@@ -137,7 +137,15 @@ export default function CompetitiveAlertsPage() {
       <DataTable
         head={["Alert", "Type", "Severity", "Status", "Detected", ""]}
         loading={res.loading}
-        empty={d && d.items.length === 0 ? "No alerts for the current filters. Run detection after new responses come in." : null}
+        empty={
+          d && d.items.length === 0
+            ? {
+                title: "No alerts",
+                description:
+                  "Alerts flag measured changes in competitive standing — a competitor overtaking your mention rate, new citation sources, sudden drops. Nothing matches the current filters; detection runs over newly parsed responses, so check back after the next analysis.",
+              }
+            : null
+        }
       >
         {(d?.items ?? []).map((a) => (
           <TableRow key={a.id} className={`cursor-pointer ${a.status === "new" ? "font-medium" : ""}`} onClick={() => setOpen(a)}>

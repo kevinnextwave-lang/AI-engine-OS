@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyAction } from "@/components/empty-action";
 import * as React from "react";
 
 import { DrawerSection, EvidenceList } from "@/components/section/evidence";
@@ -291,7 +292,16 @@ export default function AgentRunsPage() {
       <DataTable
         head={["Agent", "Objective", "Status", "Duration", "Created"]}
         loading={res.loading}
-        empty={d && d.items.length === 0 ? "No agent runs yet — start one from the Run Agents page." : null}
+        empty={
+          d && d.items.length === 0
+            ? {
+                title: "No agent runs yet",
+                description:
+                  "Every agent run lands here with its findings and proposed actions, pausing at “awaiting approval” whenever it wants to change something. It's empty because no agent has been run for this project.",
+                action: <EmptyAction href="/app/agents">Run an agent</EmptyAction>,
+              }
+            : null
+        }
       >
         {(d?.items ?? []).map((r) => (
           <TableRow key={r.id} className="cursor-pointer" onClick={() => setOpenId(r.id)}>

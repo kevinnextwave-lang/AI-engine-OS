@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyAction } from "@/components/empty-action";
 import * as React from "react";
 
 import { DrawerSection, EvidenceList } from "@/components/section/evidence";
@@ -232,7 +233,16 @@ export default function ContentReviewsPage() {
       <DataTable
         head={["Page", "Score", "Changes", "Pending", "Confidence", "Status", "Analysed"]}
         loading={res.loading}
-        empty={d && d.items.length === 0 ? "No content reviews yet — run the Content Optimization agent on crawled pages." : null}
+        empty={
+          d && d.items.length === 0
+            ? {
+                title: "No content reviews yet",
+                description:
+                  "This queue holds page-level rewrite proposals from the Content Optimization agent, for you to approve, edit or reject. It's empty because the agent hasn't been run on this project's crawled pages yet.",
+                action: <EmptyAction href="/app/agents">Run the Content Optimization agent</EmptyAction>,
+              }
+            : null
+        }
       >
         {(d?.items ?? []).map((r) => (
           <TableRow key={r.id} className="cursor-pointer" onClick={() => setOpenId(r.id)}>

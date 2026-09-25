@@ -118,7 +118,15 @@ export default function CompetitiveContentGapsPage() {
       <DataTable
         head={["Topic", "Gap type", "Score", "Confidence", "Status", "Analysed"]}
         loading={res.loading}
-        empty={d && d.items.length === 0 ? "No content gaps found for the current filters." : null}
+        empty={
+          d && d.items.length === 0
+            ? {
+                title: "No content gaps found",
+                description:
+                  "Content gaps are topics where AI answers draw on competitor content but not yours. Nothing matches the current filters — either the filters are narrow, or the analysis hasn't found gaps in the collected responses yet.",
+              }
+            : null
+        }
       >
         {(d?.items ?? []).map((g) => (
           <TableRow key={g.id} className="cursor-pointer" onClick={() => setOpen(g)}>

@@ -44,7 +44,12 @@ export default function ClaimsPage() {
           ))}
         </div>
       ) : rows.length === 0 ? (
-        <EmptyState icon={SearchXIcon} title="No repeated claims" description="Claims appear here once the same statement shows up in at least two AI responses." />
+        <EmptyState
+          icon={SearchXIcon}
+          tone="neutral"
+          title="No repeated claims yet"
+          description="This page tracks factual statements AI engines repeat about your brand and competitors, so you can verify what's being said. A claim appears once the same statement shows up in at least two parsed responses — collect more responses to populate it."
+        />
       ) : (
         <div className="rounded-xl border">
           <Table className="table-fixed">
