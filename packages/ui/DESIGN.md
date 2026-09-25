@@ -167,6 +167,17 @@ only from real series with ≥2 points), one-line meaning, context line
 optional — omit what the data doesn't support. `size="hero"` for a page's
 headline number. No bespoke KPI markup in pages.
 
+**AiInsight / AiActionList** — THE "AI Recommendation" pattern, used
+everywhere the product turns measured data into advice. Anatomy: sparkles
+eyebrow, headline (**what I found** — one plain statement of a measured
+fact), *Why this matters* (mechanism, cautious language — never an outcome
+claim like "will increase traffic by N%"), *Recommended action* (sentence
+or `AiActionList`), *Evidence* (the exact numbers behind the headline), and
+a footer with a provenance line ("From the technical SEO audit · 2 h ago")
+plus the CTA. App pages build content with the pure builders in
+`apps/web/src/lib/ai-insights.ts` and render via `AiInsightCard`; a surface
+whose data doesn't exist renders nothing rather than an invented insight.
+
 **Callout** — inline notices: `info | success | warning | error | sample`.
 `sample` is the standard "Sample data" notice (never call it "mock").
 

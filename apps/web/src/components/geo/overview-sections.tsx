@@ -6,7 +6,6 @@
  * lib/geo/overview.ts and contain only data the audits actually produced.
  */
 
-import { SparklesIcon } from "lucide-react";
 import * as React from "react";
 
 import { ScoreRing } from "@/components/geo/score-ring";
@@ -17,7 +16,6 @@ import {
   METRIC_HREF,
   METRIC_STATUS_LABEL,
   metricStatus,
-  type AiRecommendation,
   type MetricChange,
   type OverallScore,
   type PriorityOpportunity,
@@ -224,49 +222,6 @@ export function PriorityOpportunities({
         </Card>
       ))}
     </div>
-  );
-}
-
-// --- FIX: AI recommendations ----------------------------------------------
-
-export function AiRecommendations({
-  recommendations,
-  loading,
-  onOpen,
-}: {
-  recommendations: AiRecommendation[];
-  loading: boolean;
-  onOpen: (r: AiRecommendation) => void;
-}) {
-  if (loading || recommendations.length === 0) return null;
-  return (
-    <Card className="border-primary/20 bg-primary/[0.03] py-4">
-      <CardContent className="px-4">
-        <div className="flex items-center gap-2">
-          <SparklesIcon className="text-primary size-4" aria-hidden="true" />
-          <p className="text-sm font-medium">
-            {recommendations.length} change{recommendations.length === 1 ? "" : "s"} could improve this site&apos;s AI
-            discoverability
-          </p>
-        </div>
-        <p className="text-muted-foreground mt-1 text-xs">
-          Taken directly from the latest audit&apos;s observations — review each before applying.
-        </p>
-        <ul className="mt-3 flex flex-col gap-2">
-          {recommendations.map((r) => (
-            <li key={r.issue.id} className="bg-card flex items-start justify-between gap-3 rounded-lg border p-3">
-              <div className="min-w-0">
-                <p className="text-sm leading-snug">{r.action}</p>
-                <p className="text-muted-foreground mt-0.5 text-xs">From: {r.fromTitle}</p>
-              </div>
-              <Button variant="ghost" size="sm" className="shrink-0" onClick={() => onOpen(r)}>
-                View issue
-              </Button>
-            </li>
-          ))}
-        </ul>
-      </CardContent>
-    </Card>
   );
 }
 

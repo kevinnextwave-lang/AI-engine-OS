@@ -7,6 +7,8 @@ import { EmptyState } from "@/components/geo/empty-state";
 import { GeoPageTools } from "@/components/geo/page-tools";
 import { useProjectGeo } from "@/components/geo/use-project-geo";
 import { PageHeader } from "@/components/shell/page-header";
+import { AiInsightCard } from "@/components/ai-insight-card";
+import { structuredDataInsight } from "@/lib/ai-insights";
 import { relativeTime } from "@/lib/geo/mappers";
 import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, MetricCard, MetricCardSkeleton, Progress, Skeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, type MetricTone } from "@ai-search-growth-os/ui";
 
@@ -94,6 +96,12 @@ export default function StructuredDataPage() {
         />
         <Stat label="Last analysis" value={sd.analyzedAt ? relativeTime(sd.analyzedAt) : "–"} loading={loading} />
       </div>
+
+      {!loading && (
+        <div className="mb-4">
+          <AiInsightCard insight={structuredDataInsight(sd)} href="/app/geo/technical-seo" />
+        </div>
+      )}
 
       {!loading && sd.pagesCrawled === 0 ? (
         <EmptyState icon={BracesIcon} title="No structured data analysis yet" description="Run a crawl and a GEO audit. Structured data is extracted from every crawled page and analyzed afterwards." />

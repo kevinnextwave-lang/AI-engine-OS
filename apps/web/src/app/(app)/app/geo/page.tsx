@@ -7,16 +7,17 @@ import { MockNotice } from "@/components/geo/data-source-badge";
 import { IssueDrawer } from "@/components/geo/issue-drawer";
 import { IssueExplorer } from "@/components/geo/issue-explorer";
 import {
-  AiRecommendations,
   GeoHero,
   GeoTrendChart,
   PriorityOpportunities,
   ScoreTile,
   ScoreTileSkeleton,
 } from "@/components/geo/overview-sections";
+import { AiInsightCard } from "@/components/ai-insight-card";
 import { GeoPageTools } from "@/components/geo/page-tools";
 import { useProjectGeo } from "@/components/geo/use-project-geo";
 import { PageHeader } from "@/components/shell/page-header";
+import { geoActionPlanInsight } from "@/lib/ai-insights";
 import { aiRecommendations, geoTrends, metricChanges, overallScore, priorityOpportunities } from "@/lib/geo/overview";
 import { Button } from "@ai-search-growth-os/ui";
 
@@ -42,6 +43,19 @@ export default function GeoOverviewPage() {
   );
   const opportunities = React.useMemo(() => priorityOpportunities(geo.issues), [geo.issues]);
   const recommendations = React.useMemo(() => aiRecommendations(geo.issues), [geo.issues]);
+  const pagesAnalyzedForPlan =
+    geo.latestSeoAudit?.pages_analyzed ?? geo.raw.readiness?.pages_analyzed ?? geo.crawl.pagesCrawled;
+  const actionPlan = React.useMemo(
+    () =>
+      geoActionPlanInsight({
+        summary: geo.summary,
+        opportunities,
+        recommendations,
+        pagesAnalyzed: pagesAnalyzedForPlan,
+        auditTimestamp: geo.crawl.auditTimestamp,
+      }),
+    [geo.summary, opportunities, recommendations, pagesAnalyzedForPlan, geo.crawl.auditTimestamp],
+  );
   const trends = React.useMemo(
     () => geoTrends(geo.raw.seoAudits, geo.raw.readinessAudits),
     [geo.raw.seoAudits, geo.raw.readinessAudits],
@@ -109,13 +123,12 @@ export default function GeoOverviewPage() {
         />
       </section>
 
-      {/* FIX */}
-      {!loading && recommendations.length > 0 && (
-        <section aria-label="AI discoverability recommendations" className="mb-6">
-          <AiRecommendations
-            recommendations={recommendations}
-            loading={loading}
-            onOpen={(r) => setOpenIssueId(r.issue.id)}
+      {/* FIX — the shared AI Recommendation pattern, built from audit data */}
+      {!loading && (
+        <section aria-label="AI recommendation" className="mb-6">
+          <AiInsightCard
+            insight={actionPlan}
+            onCta={() => setOpenIssueId(opportunities[0]?.issues[0]?.id ?? null)}
           />
         </section>
       )}

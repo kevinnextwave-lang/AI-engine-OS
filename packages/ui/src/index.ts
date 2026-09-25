@@ -42,6 +42,7 @@ export {
   AlertDialogTrigger,
   ConfirmDialog,
 } from "./alert-dialog";
+export { AiActionList, AiInsight, type AiEvidenceFact } from "./ai-insight";
 export { Callout, calloutVariants } from "./callout";
 export { EmptyState } from "./empty-state";
 export { SegmentedControl } from "./segmented-control";

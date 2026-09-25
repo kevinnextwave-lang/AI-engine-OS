@@ -3,7 +3,9 @@
 import Link from "next/link";
 import * as React from "react";
 
+import { AiInsightCard } from "@/components/ai-insight-card";
 import { MetricAction } from "@/components/metric-action";
+import { competitorGapInsight } from "@/lib/ai-insights";
 import { CompetitorTable } from "@/components/visibility/competitor-table";
 import { EngineTable } from "@/components/visibility/engine-table";
 import { MetricTile, MetricTileSkeleton } from "@/components/visibility/metric-tile";
@@ -75,6 +77,20 @@ export default function AiVisibilityOverviewPage() {
               />
             ))}
       </section>
+
+      {!loading && (
+        <div className="mb-4">
+          <AiInsightCard
+            insight={competitorGapInsight({
+              brandName: vis.brandName,
+              competitors: vis.competitors,
+              competitorsAhead: vis.competitorsAhead,
+              sampleSize: vis.quality?.sampleSize ?? 0,
+            })}
+            href="/app/ai-visibility/competitors"
+          />
+        </div>
+      )}
 
       <div className="mb-6">
         <TrendChart series={vis.chart} mode={mode} onModeChange={setMode} loading={loading} />

@@ -1,6 +1,8 @@
 "use client";
 
+import { AiInsightCard } from "@/components/ai-insight-card";
 import { MockNotice } from "@/components/geo/data-source-badge";
+import { contentInsight } from "@/lib/ai-insights";
 import { IssueExplorer } from "@/components/geo/issue-explorer";
 import { GeoPageTools } from "@/components/geo/page-tools";
 import { ScoreRing } from "@/components/geo/score-ring";
@@ -58,6 +60,19 @@ export default function ContentPage() {
           </CardContent>
         </Card>
       </div>
+
+      {!loading && (
+        <div className="mb-4">
+          <AiInsightCard
+            insight={contentInsight({
+              issues,
+              contentScore: content?.applicable ? content.value : null,
+              auditTimestamp: geo.crawl.auditTimestamp,
+            })}
+            href="/app/agents/briefs"
+          />
+        </div>
+      )}
 
       <IssueExplorer
         issues={issues}

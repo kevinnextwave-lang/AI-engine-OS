@@ -2,7 +2,9 @@
 
 import * as React from "react";
 
+import { AiInsightCard } from "@/components/ai-insight-card";
 import { GapDrawer } from "@/components/intelligence/gap-drawer";
+import { citationGapInsight, topOpenGap } from "@/lib/ai-insights";
 import { GapTable } from "@/components/intelligence/gap-table";
 import { IntelligencePageFrame } from "@/components/intelligence/page-frame";
 import { useProjectIntelligence } from "@/components/intelligence/use-project-intelligence";
@@ -38,6 +40,15 @@ export default function CitationGapsPage() {
 
   return (
     <IntelligencePageFrame intel={intel} title="Citation Gaps" description="Sources that appear in relevant AI answers but rarely cite your brand. Scores are transparent opportunity indicators, not guarantees; every gap shows its evidence and a neutral recommendation.">
+      {!loading && (
+        <div className="mb-4">
+          <AiInsightCard
+            insight={citationGapInsight(intel.gaps)}
+            onCta={() => setOpen(topOpenGap(intel.gaps))}
+          />
+        </div>
+      )}
+
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <NativeSelect aria-label="Gap type" value={gapType} onChange={(e) => setGapType(e.target.value)} className="w-44">
           <option value="">All gap types</option>
