@@ -1,4 +1,7 @@
 @import "tailwindcss";
+/* Enter/exit animation utilities (animate-in, fade-in-0, slide-in-*…) used by
+   the shared sheet/dropdown/tooltip primitives. */
+@import "tw-animate-css";
 @import "@ai-search-growth-os/ui/styles.css";
 
 /* Scan the shared UI package for Tailwind classes. */

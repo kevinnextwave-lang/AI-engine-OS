@@ -6,20 +6,10 @@ import { MockNotice } from "@/components/geo/data-source-badge";
 import { EmptyState } from "@/components/geo/empty-state";
 import { GeoPageTools } from "@/components/geo/page-tools";
 import { useProjectGeo } from "@/components/geo/use-project-geo";
+import { StatusBadge } from "@/components/section/primitives";
 import { PageHeader } from "@/components/shell/page-header";
 import { formatDateTime, formatDuration, relativeTime } from "@/lib/geo/mappers";
-import type { CrawlStatus } from "@ai-search-growth-os/types";
 import { Badge, Button, Card, CardContent, Skeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@ai-search-growth-os/ui";
-
-const STATUS_VARIANT: Record<CrawlStatus | "never", "success" | "medium" | "high" | "muted" | "outline" | "low"> = {
-  completed: "success",
-  partially_completed: "medium",
-  failed: "high",
-  cancelled: "muted",
-  queued: "low",
-  running: "low",
-  never: "outline",
-};
 
 function Stat({ label, value, loading }: { label: string; value: React.ReactNode; loading: boolean }) {
   return (
@@ -52,7 +42,13 @@ export default function WebsiteAuditPage() {
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <p className="font-medium">Crawl status</p>
-              {loading ? <Skeleton className="h-5 w-20" /> : <Badge variant={STATUS_VARIANT[crawl.status]}>{crawl.status.replace("_", " ")}</Badge>}
+              {loading ? (
+                <Skeleton className="h-5 w-20" />
+              ) : crawl.status === "never" ? (
+                <Badge variant="outline">Never run</Badge>
+              ) : (
+                <StatusBadge value={crawl.status} />
+              )}
               {crawlActive && <RefreshCwIcon className="text-muted-foreground size-4 animate-spin" aria-label="Crawl in progress" />}
             </div>
             <div className="flex gap-2">
@@ -108,7 +104,7 @@ export default function WebsiteAuditPage() {
                 : geo.raw.crawlJobs.map((job) => (
                     <TableRow key={job.id}>
                       <TableCell>{formatDateTime(job.started_at ?? job.created_at)}</TableCell>
-                      <TableCell><Badge variant={STATUS_VARIANT[job.status]}>{job.status.replace("_", " ")}</Badge></TableCell>
+                      <TableCell><StatusBadge value={job.status} /></TableCell>
                       <TableCell className="capitalize">{job.crawl_type.replace("_", " ")}</TableCell>
                       <TableCell className="text-right tabular-nums">{job.pages_discovered}</TableCell>
                       <TableCell className="text-right tabular-nums">{job.pages_crawled}</TableCell>

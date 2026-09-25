@@ -38,7 +38,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen">
-      <aside className="bg-sidebar hidden w-60 shrink-0 flex-col border-r md:flex">
+      <aside className="bg-sidebar sticky top-0 hidden h-screen w-60 shrink-0 flex-col overflow-y-auto border-r md:flex">
         <div className="flex h-14 items-center px-4">
           <Brand />
         </div>
@@ -57,7 +57,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <MenuIcon />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-72 p-0">
+            <SheetContent side="left" className="w-72 overflow-y-auto p-0">
               <SheetHeader>
                 <SheetTitle asChild>
                   <div>

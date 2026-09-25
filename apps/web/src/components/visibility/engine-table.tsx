@@ -1,3 +1,5 @@
+import * as React from "react";
+
 import { ConfidenceBadge } from "@/components/visibility/confidence";
 import { fmtValue } from "@/components/visibility/format";
 import type { EngineRow } from "@/lib/visibility/types";
@@ -5,9 +7,10 @@ import { Progress, Skeleton, Table, TableBody, TableCell, TableHead, TableHeader
 
 function tone(value: number | null): string {
   if (value == null) return "bg-muted-foreground/40";
-  if (value >= 70) return "bg-emerald-600";
-  if (value >= 50) return "bg-amber-500";
-  return "bg-orange-600";
+  // Same thresholds as every other score tone in the app.
+  if (value >= 80) return "bg-success";
+  if (value >= 60) return "bg-caution";
+  return "bg-warning";
 }
 
 export function EngineTable({
@@ -48,8 +51,8 @@ export function EngineTable({
         </TableHeader>
         <TableBody>
           {rows.map((r) => (
-            <>
-              <TableRow key={r.provider}>
+            <React.Fragment key={r.provider}>
+              <TableRow>
                 <TableCell className="font-medium">{r.label}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
@@ -79,7 +82,7 @@ export function EngineTable({
                     </TableCell>
                   </TableRow>
                 ))}
-            </>
+            </React.Fragment>
           ))}
         </TableBody>
       </Table>

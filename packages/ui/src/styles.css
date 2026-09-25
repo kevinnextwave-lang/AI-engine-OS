@@ -1,4 +1,15 @@
-/* Theme tokens only — Tailwind itself is imported by the consuming app. */
+/* Theme tokens only — Tailwind itself is imported by the consuming app.
+ *
+ * This file is the single source of truth for the design system's tokens.
+ * The written reference (scales, usage rules, component conventions) lives in
+ * packages/ui/DESIGN.md. Rules of thumb:
+ *   - Never use raw Tailwind palette classes (text-red-500, bg-emerald-600…)
+ *     in app code; use the semantic tokens below.
+ *   - One accent (primary/indigo): primary actions, active nav, focus, links,
+ *     and the brand series in charts. Everything else stays neutral.
+ *   - Status hues: success / warning (orange) / caution (amber) / info (sky) /
+ *     destructive (red). Soft badges, not saturated chips.
+ */
 @custom-variant dark (&:is(.dark *));
 
 :root {
@@ -9,29 +20,50 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  /* Brand accent: deep indigo. Credible for enterprise + AI-native, and the
+     only saturated hue outside status colors. */
+  --primary: oklch(0.5 0.19 274);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  --muted-foreground: oklch(0.5323 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
+  --success: oklch(0.55 0.13 155);
+  --warning: oklch(0.6 0.15 55);
+  --caution: oklch(0.6 0.12 80);
+  --info: oklch(0.55 0.12 240);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --ring: oklch(0.6 0.13 274);
+  /* Sidebar zone: a step off the page background so navigation reads as its
+     own region; active items pick up a soft indigo tint. */
+  --sidebar: oklch(0.984 0.002 274);
+  --sidebar-foreground: oklch(0.3 0 0);
+  --sidebar-accent: oklch(0.945 0.02 274);
+  --sidebar-accent-foreground: oklch(0.42 0.17 274);
+  /* Charts: brand = you; competitors use a fixed, ordered palette so the same
+     entity keeps the same color across every chart. */
+  --chart-brand: var(--primary);
+  --chart-competitor-1: oklch(0.68 0.13 65);
+  --chart-competitor-2: oklch(0.6 0.12 235);
+  --chart-competitor-3: oklch(0.6 0.14 305);
+  --chart-competitor-4: oklch(0.63 0.11 180);
+  --chart-grid: oklch(0.94 0 0);
+  --chart-reference: oklch(0.7 0 0);
 }
 
 .dark {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
+  --card: oklch(0.185 0 0);
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
+  --primary: oklch(0.62 0.17 274);
+  --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
@@ -39,9 +71,24 @@
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
+  --success: oklch(0.72 0.14 158);
+  --warning: oklch(0.75 0.14 60);
+  --caution: oklch(0.78 0.13 85);
+  --info: oklch(0.7 0.12 235);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --ring: oklch(0.62 0.15 274);
+  --sidebar: oklch(0.17 0.004 274);
+  --sidebar-foreground: oklch(0.85 0 0);
+  --sidebar-accent: oklch(0.27 0.04 274);
+  --sidebar-accent-foreground: oklch(0.8 0.1 274);
+  --chart-brand: var(--primary);
+  --chart-competitor-1: oklch(0.75 0.13 65);
+  --chart-competitor-2: oklch(0.7 0.12 235);
+  --chart-competitor-3: oklch(0.7 0.13 305);
+  --chart-competitor-4: oklch(0.72 0.11 180);
+  --chart-grid: oklch(1 0 0 / 8%);
+  --chart-reference: oklch(0.6 0 0);
 }
 
 @theme inline {
@@ -64,10 +111,31 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-caution: var(--caution);
+  --color-info: var(--info);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-chart-brand: var(--chart-brand);
+  --color-chart-competitor-1: var(--chart-competitor-1);
+  --color-chart-competitor-2: var(--chart-competitor-2);
+  --color-chart-competitor-3: var(--chart-competitor-3);
+  --color-chart-competitor-4: var(--chart-competitor-4);
+  --color-chart-grid: var(--chart-grid);
+  --color-chart-reference: var(--chart-reference);
+  /* Enterprise shadows: one soft card shadow, one overlay shadow. Nothing else. */
+  --shadow-card: 0 1px 2px 0 oklch(0 0 0 / 0.05);
+  --shadow-overlay: 0 10px 30px -10px oklch(0 0 0 / 0.2);
+  /* Inter is loaded by the app via next/font (variable --font-inter); the
+     system stack is the fallback everywhere else. */
+  --font-sans: var(--font-inter, ui-sans-serif), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
@@ -77,5 +145,10 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+  /* Numbers line up in tables and metric tiles. */
+  [data-slot="table"],
+  [data-slot="stat-tile-value"] {
+    font-variant-numeric: tabular-nums;
   }
 }

@@ -20,7 +20,7 @@ function fmtShare(v: number | null): string {
 
 function Trend({ trend, change }: { trend: string; change: number | null }) {
   const Icon = trend === "up" ? TrendingUpIcon : trend === "down" ? TrendingDownIcon : MinusIcon;
-  const color = trend === "up" ? "text-emerald-600" : trend === "down" ? "text-red-600" : "text-muted-foreground";
+  const color = trend === "up" ? "text-success" : trend === "down" ? "text-destructive" : "text-muted-foreground";
   return (
     <span className={`inline-flex items-center gap-1 tabular-nums ${color}`}>
       <Icon className="size-3.5" aria-hidden="true" />
@@ -50,7 +50,7 @@ function AdvantageCard({ adv }: { adv: CompetitiveAdvantage }) {
           <span className="flex items-center gap-2">
             {adv.material && ahead && <Badge variant="high">material</Badge>}
             <span
-              className={`text-sm font-normal tabular-nums ${ahead ? "text-red-600" : "text-muted-foreground"}`}
+              className={`text-sm font-normal tabular-nums ${ahead ? "text-destructive" : "text-muted-foreground"}`}
             >
               {label}
             </span>

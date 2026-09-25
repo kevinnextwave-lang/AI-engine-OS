@@ -48,11 +48,11 @@ function ChangeCard({
         </span>
       </div>
       <div className="mt-2 grid gap-2">
-        <div className="rounded-md border border-red-500/30 bg-red-500/5 p-2">
+        <div className="rounded-md border-destructive/25 bg-destructive/5 border p-2">
           <p className="text-muted-foreground mb-0.5 text-xs">Current</p>
           <p className="whitespace-pre-wrap">{change.current_text}</p>
         </div>
-        <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-2">
+        <div className="rounded-md border-success/25 bg-success/5 border p-2">
           <p className="text-muted-foreground mb-0.5 text-xs">Proposed</p>
           <p className="whitespace-pre-wrap">{change.decided_text ?? change.proposed_text}</p>
         </div>

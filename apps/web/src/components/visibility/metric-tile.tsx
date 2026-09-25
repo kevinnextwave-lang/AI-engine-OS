@@ -19,7 +19,7 @@ function ChangeLine({ metric }: { metric: VisibilityMetric }) {
     <p
       className={cn(
         "flex items-center gap-1 text-xs tabular-nums",
-        flat ? "text-muted-foreground" : better ? "text-emerald-700 dark:text-emerald-400" : "text-orange-700 dark:text-orange-400",
+        flat ? "text-muted-foreground" : better ? "text-success" : "text-destructive",
       )}
     >
       <Icon className="size-3.5" aria-hidden="true" />

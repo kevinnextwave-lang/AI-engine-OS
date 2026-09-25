@@ -7,7 +7,15 @@ import type { ChartMode, ChartSeries } from "@/lib/visibility/types";
 import { Card, CardContent, CardHeader, CardTitle, Skeleton, cn } from "@ai-search-growth-os/ui";
 
 /** Distinct, theme-stable series colours (brand first, then competitors/providers). */
-const COLORS = ["var(--primary)", "#0ea5e9", "#f59e0b", "#8b5cf6", "#10b981", "#ef4444", "#64748b"];
+const COLORS = [
+  "var(--chart-brand)",
+  "var(--chart-competitor-1)",
+  "var(--chart-competitor-2)",
+  "var(--chart-competitor-3)",
+  "var(--chart-competitor-4)",
+  "var(--destructive)",
+  "var(--chart-reference)",
+];
 
 const MODES: { key: ChartMode; label: string; yLabel: string }[] = [
   { key: "overall", label: "Overall", yLabel: "AI Visibility Score" },

@@ -25,8 +25,8 @@ import {
 
 const MARK_CLASS: Record<HighlightKind, string> = {
   brand: "bg-primary/20 text-foreground rounded px-0.5 ring-1 ring-primary/40",
-  competitor: "bg-amber-500/20 rounded px-0.5 ring-1 ring-amber-500/40",
-  citation: "bg-sky-500/20 rounded px-0.5 ring-1 ring-sky-500/40",
+  competitor: "bg-chart-competitor-1/20 rounded px-0.5 ring-1 ring-chart-competitor-1/40",
+  citation: "bg-chart-competitor-2/20 rounded px-0.5 ring-1 ring-chart-competitor-2/40",
   claim: "underline decoration-dotted decoration-violet-500 underline-offset-4",
 };
 

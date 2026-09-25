@@ -23,16 +23,16 @@ const CX = W / 2;
 const CY = H / 2;
 
 const NODE_FILL: Record<string, string> = {
-  brand: "var(--primary)",
-  competitor: "#f59e0b",
-  prompt: "#8b5cf6",
-  source_domain: "#0ea5e9",
+  brand: "var(--chart-brand)",
+  competitor: "var(--chart-competitor-1)",
+  prompt: "var(--chart-competitor-3)",
+  source_domain: "var(--chart-competitor-2)",
 };
 const EDGE_STYLE: Record<string, { stroke: string; dash?: string; label: string }> = {
-  mentions: { stroke: "#8b5cf6", label: "Mentioned" },
-  cites: { stroke: "#0ea5e9", label: "Cited" },
-  associated_with: { stroke: "#f59e0b", dash: "4 3", label: "Associated" },
-  competes_with: { stroke: "#94a3b8", dash: "2 3", label: "Competes with" },
+  mentions: { stroke: "var(--chart-competitor-3)", label: "Mentioned" },
+  cites: { stroke: "var(--chart-competitor-2)", label: "Cited" },
+  associated_with: { stroke: "var(--chart-competitor-1)", dash: "4 3", label: "Associated" },
+  competes_with: { stroke: "var(--chart-reference)", dash: "2 3", label: "Competes with" },
 };
 const SHOWN_EDGES = new Set(Object.keys(EDGE_STYLE));
 const SHOWN_NODES = new Set(["brand", "competitor", "prompt", "source_domain"]);

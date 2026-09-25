@@ -175,7 +175,7 @@ export function GapDrawer({
                 <div className="flex flex-col gap-1.5">
                   {comps.length === 0 && <p className="text-muted-foreground text-sm">No configured competitor is cited from this source.</p>}
                   {comps.map(([name, n]) => (
-                    <Bar key={name} label={name} value={n} max={max} tone="bg-amber-500" />
+                    <Bar key={name} label={name} value={n} max={max} tone="bg-chart-competitor-1" />
                   ))}
                 </div>
               </Section>

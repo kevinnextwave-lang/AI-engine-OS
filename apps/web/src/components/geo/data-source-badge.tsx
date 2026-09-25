@@ -1,7 +1,7 @@
 import { DatabaseIcon, FlaskConicalIcon } from "lucide-react";
 
 import type { DataSource } from "@/lib/geo/types";
-import { Badge } from "@ai-search-growth-os/ui";
+import { Badge, Callout } from "@ai-search-growth-os/ui";
 
 /** Always visible next to GEO data so API data and sample data are never confused. */
 export function DataSourceBadge({ source, reason }: { source: DataSource; reason?: string | null }) {
@@ -16,7 +16,7 @@ export function DataSourceBadge({ source, reason }: { source: DataSource; reason
   return (
     <Badge variant="medium" title={reason ?? "Sample data"}>
       <FlaskConicalIcon className="size-3" aria-hidden="true" />
-      Mock data
+      Sample data
     </Badge>
   );
 }
@@ -24,12 +24,8 @@ export function DataSourceBadge({ source, reason }: { source: DataSource; reason
 export function MockNotice({ source, reason }: { source: DataSource; reason: string | null }) {
   if (source !== "mock") return null;
   return (
-    <div
-      role="status"
-      className="mb-4 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm"
-    >
-      <strong className="font-medium">Sample data.</strong> {reason ?? "Not connected to the API."}{" "}
-      Nothing shown here comes from your website.
-    </div>
+    <Callout variant="sample" title="Sample data" className="mb-4">
+      <p>{reason ?? "Not connected to the API."} Nothing shown here comes from your website.</p>
+    </Callout>
   );
 }

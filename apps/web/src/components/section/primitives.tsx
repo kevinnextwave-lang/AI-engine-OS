@@ -60,7 +60,9 @@ export function statusVariant(value: string): BadgeVariant {
 }
 
 export function label(value: string): string {
-  return value.replaceAll("_", " ");
+  const text = value.replaceAll("_", " ");
+  // One label convention app-wide: Sentence case ("Awaiting approval").
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 export function StatusBadge({ value, className }: { value: string; className?: string }) {

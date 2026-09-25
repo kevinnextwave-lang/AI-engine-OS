@@ -30,3 +30,20 @@ export { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 export { Progress } from "./progress";
 export { Skeleton } from "./skeleton";
 export { NativeSelect } from "./native-select";
+export {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+  ConfirmDialog,
+} from "./alert-dialog";
+export { Callout, calloutVariants } from "./callout";
+export { EmptyState } from "./empty-state";
+export { SegmentedControl } from "./segmented-control";
+export { StatTile, StatTileSkeleton } from "./stat-tile";
+export { SimpleTooltip, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./tooltip";

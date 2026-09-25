@@ -35,7 +35,7 @@ export function SourceChart({ items, loading, onSelect }: { items: TopSourceBar[
                   </button>
                   <div className="bg-muted flex h-4 overflow-hidden rounded" role="img" aria-label={`${s.domain}: ${s.citations} citations`}>
                     <span className="bg-primary h-full" style={{ width: `${brandPct}%` }} />
-                    <span className="h-full bg-amber-500" style={{ width: `${compPct}%` }} />
+                    <span className="h-full bg-chart-competitor-1" style={{ width: `${compPct}%` }} />
                     <span className="bg-muted-foreground/40 h-full" style={{ width: `${otherPct}%` }} />
                   </div>
                   <span className="text-right font-medium tabular-nums">{s.citations}</span>

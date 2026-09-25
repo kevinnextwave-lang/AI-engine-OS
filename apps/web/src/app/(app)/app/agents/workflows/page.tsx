@@ -32,8 +32,8 @@ import { CheckIcon, CircleIcon, Loader2Icon, XIcon } from "lucide-react";
 const ACTIVE = new Set(["queued", "running", "awaiting_approval", "paused"]);
 
 function StepIcon({ status }: { status: string }) {
-  if (status === "completed") return <CheckIcon className="size-4 text-emerald-600" aria-hidden="true" />;
-  if (status === "running") return <Loader2Icon className="size-4 animate-spin text-amber-600" aria-hidden="true" />;
+  if (status === "completed") return <CheckIcon className="size-4 text-success" aria-hidden="true" />;
+  if (status === "running") return <Loader2Icon className="size-4 animate-spin text-caution" aria-hidden="true" />;
   if (status === "failed" || status === "cancelled") return <XIcon className="text-destructive size-4" aria-hidden="true" />;
   return <CircleIcon className="text-muted-foreground size-4" aria-hidden="true" />;
 }
@@ -106,7 +106,7 @@ function WorkflowDrawerBody({ workflowId, onChanged }: { workflowId: string; onC
               {wf && (
                 <>
                   {wf.hold_reason && (
-                    <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+                    <p className="rounded-lg border-caution/30 bg-caution/8 border p-3 text-sm">
                       {wf.hold_reason}
                       {wf.status === "awaiting_approval" && (
                         <span className="text-muted-foreground block pt-1 text-xs">

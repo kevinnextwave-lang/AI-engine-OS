@@ -17,7 +17,7 @@ export function ScoreRing({
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const v = value == null ? 0 : Math.max(0, Math.min(100, value));
-  const tone = value == null ? "stroke-muted-foreground/40" : v >= 80 ? "stroke-emerald-600" : v >= 60 ? "stroke-amber-500" : "stroke-orange-600";
+  const tone = value == null ? "stroke-muted-foreground/40" : v >= 80 ? "stroke-success" : v >= 60 ? "stroke-caution" : "stroke-warning";
   return (
     <div className={cn("relative inline-flex shrink-0 items-center justify-center", className)} style={{ width: size, height: size }}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={label ? `${label}: ${value == null ? "not available" : Math.round(v)}` : undefined}>

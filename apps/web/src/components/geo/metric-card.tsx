@@ -3,9 +3,10 @@ import { Card, CardContent, Progress, Skeleton } from "@ai-search-growth-os/ui";
 
 function tone(value: number | null): string {
   if (value == null) return "bg-muted-foreground/40";
-  if (value >= 80) return "bg-emerald-600";
-  if (value >= 60) return "bg-amber-500";
-  return "bg-orange-600";
+  // Design-system score tones: >=80 healthy, >=60 needs attention, else at risk.
+  if (value >= 80) return "bg-success";
+  if (value >= 60) return "bg-caution";
+  return "bg-warning";
 }
 
 export function MetricCard({ metric }: { metric: GeoMetric }) {
