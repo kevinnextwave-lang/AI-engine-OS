@@ -146,7 +146,7 @@ export default function CompetitorDiscoveryPage() {
                         className="border-input bg-background h-8 w-44 rounded-md border px-2 text-sm"
                       />
                       <Button size="sm" type="submit" disabled={busy !== null}>
-                        {busy === c.id + ":a" ? "…" : "OK"}
+                        {busy === c.id + ":a" ? "Adding…" : "Add"}
                       </Button>
                       <Button size="sm" type="button" variant="ghost" onClick={() => setUrlFor(null)}>
                         Cancel
@@ -155,6 +155,7 @@ export default function CompetitorDiscoveryPage() {
                   ) : (
                   <Button
                     size="sm"
+                    variant="outline"
                     onClick={() => {
                       // Accepting requires a website; ask for it when discovery
                       // found no domain (the API rejects the call otherwise).
@@ -167,16 +168,16 @@ export default function CompetitorDiscoveryPage() {
                     }}
                     disabled={busy !== null}
                   >
-                    {busy === c.id + ":a" ? "…" : "Accept"}
+                    {busy === c.id + ":a" ? "Adding…" : "Add competitor"}
                   </Button>
                   )}
                   <Button
                     size="sm"
-                    variant="outline"
+                    variant="ghost"
                     onClick={() => void act(c.id + ":r", () => api.competitorCandidates.reject(c.id))}
                     disabled={busy !== null}
                   >
-                    {busy === c.id + ":r" ? "…" : "Reject"}
+                    {busy === c.id + ":r" ? "Rejecting…" : "Reject"}
                   </Button>
                 </div>
               )}

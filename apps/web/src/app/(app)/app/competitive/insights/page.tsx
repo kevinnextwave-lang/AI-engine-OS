@@ -56,7 +56,7 @@ export default function CompetitiveInsightsPage() {
     setNotice(null);
     try {
       const r = await api.competitiveInsights.analyze(res.projectId);
-      setNotice(`Analysed ${r.eligible_responses} responses across ${r.competitors_analyzed} competitors — ${r.insights_written} insights.`);
+      setNotice(`Analyzed ${r.eligible_responses} responses across ${r.competitors_analyzed} competitors — ${r.insights_written} insights.`);
       res.refresh();
     } catch (err) {
       setNotice(err instanceof Error ? err.message : "Analysis failed");
@@ -75,7 +75,7 @@ export default function CompetitiveInsightsPage() {
       onRetry={res.refresh}
       tools={
         <Button onClick={() => void analyze()} disabled={!res.projectId || busy}>
-          {busy ? "Analysing…" : "Re-analyse"}
+          {busy ? "Analyzing…" : "Analyze competitors"}
         </Button>
       }
     >
@@ -97,13 +97,13 @@ export default function CompetitiveInsightsPage() {
           ))}
         </NativeSelect>
         {d?.analyzed_at && (
-          <span className="text-muted-foreground ml-auto text-xs">Analysed {fmtDateTime(d.analyzed_at)}</span>
+          <span className="text-muted-foreground ml-auto text-xs">Analyzed {fmtDateTime(d.analyzed_at)}</span>
         )}
       </Toolbar>
       {notice && <p className="text-muted-foreground mb-3 text-sm">{notice}</p>}
       {d?.note && <p className="text-muted-foreground mb-3 text-xs italic">{d.note}</p>}
       <DataTable
-        head={["Insight", "Type", "Impact", "Confidence", "Strength", "Analysed"]}
+        head={["Insight", "Type", "Impact", "Confidence", "Strength", "Analyzed"]}
         loading={res.loading}
         empty={
           d && d.items.length === 0

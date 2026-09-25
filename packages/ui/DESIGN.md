@@ -145,9 +145,19 @@ scroll. Skeletons pulse — that's the loading affordance, not decoration.
 Everything below is exported from `packages/ui/src/index.ts`. App code
 composes these; it does not re-create them per page.
 
-**Button** — variants: `default` (indigo, max one per view), `secondary`,
-`outline`, `ghost`, `destructive`, `link`. Sizes `sm`/`default`/`lg`/`icon`.
-Destructive actions confirm via `ConfirmDialog`, never `window.confirm`.
+**Button** — the action hierarchy, applied per view:
+*Primary* = `default` (indigo) — the one most important action on the page,
+max one visually competing instance; *Secondary* = `outline`; *Tertiary* =
+`ghost`; *Destructive* = `variant="destructive"` for the destructive
+primary in a confirm flow, or `outline`/`ghost` + `text-destructive` for
+inline destructive/cancel actions (Delete, Cancel run). Sizes
+`sm`/`default`/`lg`/`icon`. Destructive actions confirm via
+`ConfirmDialog`, never `window.confirm`.
+Labels are contextual verbs, never bare "View"/"Run"/"Submit": "Run GEO
+audit", "Add competitor", "Review pages", "Create content brief". While an
+action runs, the label becomes its present participle with an ellipsis
+("Analyzing…", "Adding…", "Starting…") and the button is disabled — that
+is the standard button loading state. American spelling throughout.
 
 **Card** — `Card/CardHeader/CardTitle/CardDescription/CardContent/CardFooter`.
 `rounded-xl border bg-card shadow-card`. Don't nest cards.

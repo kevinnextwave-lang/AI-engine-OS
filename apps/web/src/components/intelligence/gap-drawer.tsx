@@ -69,7 +69,7 @@ function StatusForm({
         <Button type="submit" size="sm" disabled={!live || busy || unchanged}>
           {busy ? "Saving…" : "Update status"}
         </Button>
-        <span className="text-muted-foreground text-xs">Analysed {fmtDateTime(gap.analyzed_at)}</span>
+        <span className="text-muted-foreground text-xs">Analyzed {fmtDateTime(gap.analyzed_at)}</span>
       </div>
     </form>
   );

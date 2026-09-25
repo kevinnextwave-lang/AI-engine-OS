@@ -84,9 +84,9 @@ export default function CitationGapsPage() {
         </NativeSelect>
         <Input aria-label="Minimum score" type="number" min={0} max={100} placeholder="Min score" value={minScore} onChange={(e) => setMinScore(e.target.value)} className="w-32" />
         <div className="ml-auto flex items-center gap-2">
-          {intel.gapSummary?.analyzed_at && <span className="text-muted-foreground text-xs">Analysed {fmtDateTime(intel.gapSummary.analyzed_at)}</span>}
+          {intel.gapSummary?.analyzed_at && <span className="text-muted-foreground text-xs">Analyzed {fmtDateTime(intel.gapSummary.analyzed_at)}</span>}
           <Button size="sm" variant="outline" onClick={() => void intel.actions.analyzeGaps()} disabled={intel.source !== "api" || intel.busy === "analyze"}>
-            {intel.busy === "analyze" ? "Analysing…" : "Re-analyse"}
+            {intel.busy === "analyze" ? "Analyzing…" : "Re-analyze gaps"}
           </Button>
         </div>
       </div>

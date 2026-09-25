@@ -198,7 +198,7 @@ function RunDrawerBody({ runId, onChanged }: { runId: string; onChanged: () => v
                     {run.estimated_cost != null && ` · est. $${run.estimated_cost}`}
                   </p>
                   {ACTIVE.has(run.status) && (
-                    <Button size="sm" variant="outline" onClick={() => void cancel()} disabled={busy} className="self-start">
+                    <Button size="sm" variant="outline" onClick={() => void cancel()} disabled={busy} className="text-destructive hover:text-destructive self-start">
                       Cancel run
                     </Button>
                   )}

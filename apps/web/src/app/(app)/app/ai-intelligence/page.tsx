@@ -68,7 +68,7 @@ export default function AiIntelligenceOverviewPage() {
               <p>{intel.gapSummary?.data.note ?? "No citation gaps identified yet."}</p>
               {intel.source === "api" && (
                 <Button size="sm" variant="outline" onClick={() => void intel.actions.analyzeGaps()} disabled={intel.busy === "analyze"}>
-                  {intel.busy === "analyze" ? "Analysing…" : "Analyse citation gaps"}
+                  {intel.busy === "analyze" ? "Analyzing…" : "Analyze citation gaps"}
                 </Button>
               )}
             </div>

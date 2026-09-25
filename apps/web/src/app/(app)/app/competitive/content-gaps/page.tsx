@@ -58,7 +58,7 @@ export default function CompetitiveContentGapsPage() {
     setNotice(null);
     try {
       const r = await api.contentGaps.analyze(res.projectId);
-      setNotice(`Analysed ${r.topics_analyzed} topics against ${r.pages_considered} pages — ${r.gaps_written} gaps.`);
+      setNotice(`Analyzed ${r.topics_analyzed} topics against ${r.pages_considered} pages — ${r.gaps_written} gaps.`);
       res.refresh();
     } catch (err) {
       setNotice(err instanceof Error ? err.message : "Analysis failed");
@@ -89,7 +89,7 @@ export default function CompetitiveContentGapsPage() {
       onRetry={res.refresh}
       tools={
         <Button onClick={() => void analyze()} disabled={!res.projectId || busy !== null}>
-          {busy === "analyze" ? "Analysing…" : "Re-analyse"}
+          {busy === "analyze" ? "Analyzing…" : "Analyze content gaps"}
         </Button>
       }
     >
@@ -111,12 +111,12 @@ export default function CompetitiveContentGapsPage() {
           ))}
         </NativeSelect>
         {d?.analyzed_at && (
-          <span className="text-muted-foreground ml-auto text-xs">Analysed {fmtDateTime(d.analyzed_at)}</span>
+          <span className="text-muted-foreground ml-auto text-xs">Analyzed {fmtDateTime(d.analyzed_at)}</span>
         )}
       </Toolbar>
       {notice && <p className="text-muted-foreground mb-3 text-sm">{notice}</p>}
       <DataTable
-        head={["Topic", "Gap type", "Score", "Confidence", "Status", "Analysed"]}
+        head={["Topic", "Gap type", "Score", "Confidence", "Status", "Analyzed"]}
         loading={res.loading}
         empty={
           d && d.items.length === 0

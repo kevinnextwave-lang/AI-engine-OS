@@ -109,7 +109,7 @@ function CrawlDrawerBody({ initial, onChanged }: { initial: CrawlJob; onChanged:
         {error && <p className="text-destructive text-sm">{error}</p>}
         {job.error_message && <p className="text-destructive text-sm">{job.error_message}</p>}
         {ACTIVE.has(job.status) && (
-          <Button size="sm" variant="outline" onClick={() => void cancel()} disabled={busy} className="self-start">
+          <Button size="sm" variant="outline" onClick={() => void cancel()} disabled={busy} className="text-destructive hover:text-destructive self-start">
             Cancel crawl
           </Button>
         )}

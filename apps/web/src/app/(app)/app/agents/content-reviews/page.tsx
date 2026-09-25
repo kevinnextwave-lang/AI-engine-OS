@@ -75,7 +75,7 @@ function ChangeCard({
           <Button size="sm" variant="outline" onClick={() => setEditing(true)} disabled={busy}>
             Edit
           </Button>
-          <Button size="sm" variant="ghost" onClick={() => void onDecide(change.change_id, "reject")} disabled={busy}>
+          <Button size="sm" variant="outline" onClick={() => void onDecide(change.change_id, "reject")} disabled={busy}>
             Reject
           </Button>
         </div>
@@ -231,7 +231,7 @@ export default function ContentReviewsPage() {
         </NativeSelect>
       </Toolbar>
       <DataTable
-        head={["Page", "Score", "Changes", "Pending", "Confidence", "Status", "Analysed"]}
+        head={["Page", "Score", "Changes", "Pending", "Confidence", "Status", "Analyzed"]}
         loading={res.loading}
         empty={
           d && d.items.length === 0

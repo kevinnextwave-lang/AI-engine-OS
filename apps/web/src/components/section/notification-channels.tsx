@@ -161,7 +161,7 @@ export function NotificationChannelsSheet({
                 >
                   {c.enabled ? "Disable" : "Enable"}
                 </Button>
-                <Button size="sm" variant="ghost" disabled={busy} onClick={() => void act(() => api.notificationChannels.remove(c.id))}>
+                <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" disabled={busy} onClick={() => void act(() => api.notificationChannels.remove(c.id))}>
                   Delete
                 </Button>
               </div>

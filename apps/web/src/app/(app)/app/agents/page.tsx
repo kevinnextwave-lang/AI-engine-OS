@@ -15,7 +15,7 @@ const AGENT_INFO: Record<string, { title: string; description: string }> = {
   research: {
     title: "Research Agent",
     description:
-      "Analyses your measured data — competitive advantages, citation and content gaps, entity signals, technical SEO, repeated competitor claims — and produces prioritised findings with evidence. Deterministic: it only reports what was measured.",
+      "Analyzes your measured data — competitive advantages, citation and content gaps, entity signals, technical SEO, repeated competitor claims — and produces prioritized findings with evidence. Deterministic: it only reports what was measured.",
   },
   "content-strategy": {
     title: "Content Strategy Agent",

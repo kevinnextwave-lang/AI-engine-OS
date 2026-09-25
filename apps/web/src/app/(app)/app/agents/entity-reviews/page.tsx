@@ -91,7 +91,7 @@ export default function EntityReviewsPage() {
       </Toolbar>
       {notice && <p className="text-destructive mb-3 text-sm">{notice}</p>}
       <DataTable
-        head={["Review", "Entity type", "Findings", "Confidence", "Status", "Analysed"]}
+        head={["Review", "Entity type", "Findings", "Confidence", "Status", "Analyzed"]}
         loading={res.loading}
         empty={
           d && d.items.length === 0

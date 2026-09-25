@@ -130,7 +130,7 @@ function WorkflowDrawerBody({ workflowId, onChanged }: { workflowId: string; onC
                       </Button>
                     )}
                     {ACTIVE.has(wf.status) && (
-                      <Button size="sm" variant="ghost" onClick={() => void act(() => api.agentWorkflows.cancel(wf.id))} disabled={busy}>
+                      <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => void act(() => api.agentWorkflows.cancel(wf.id))} disabled={busy}>
                         Cancel
                       </Button>
                     )}
@@ -228,7 +228,7 @@ export default function AgentWorkflowsPage() {
   return (
     <SectionFrame
       title="Agent Workflows"
-      description="The full optimization chain — research → content strategy → content optimization → entity optimization — run as one workflow. It pauses for your approval whenever a step proposes changes and ends with one consolidated, prioritised action plan."
+      description="The full optimization chain — research → content strategy → content optimization → entity optimization — run as one workflow. It pauses for your approval whenever a step proposes changes and ends with one consolidated, prioritized action plan."
       projectId={res.projectId}
       projectLoading={res.projectLoading}
       error={res.error}
