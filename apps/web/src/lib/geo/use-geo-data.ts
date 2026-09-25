@@ -14,6 +14,7 @@ import * as React from "react";
 
 import { ApiError, api } from "@/lib/api";
 import type {
+  AiReadinessAudit,
   AiReadinessAuditDetail,
   CrawlJob,
   EntityConsistencyResponse,
@@ -60,6 +61,8 @@ interface RawData {
   entities: EntityListResponse | null;
   consistency: EntityConsistencyResponse | null;
   readiness: AiReadinessAuditDetail | null;
+  /** Full readiness audit history (same endpoint the latest detail comes from). */
+  readinessAudits: AiReadinessAudit[];
 }
 
 export interface GeoData {
@@ -96,6 +99,7 @@ const MOCK_RAW: RawData = {
   entities: MOCK_ENTITIES,
   consistency: MOCK_CONSISTENCY,
   readiness: MOCK_READINESS,
+  readinessAudits: [MOCK_READINESS],
 };
 
 const EMPTY_RAW: RawData = {
@@ -106,6 +110,7 @@ const EMPTY_RAW: RawData = {
   entities: null,
   consistency: null,
   readiness: null,
+  readinessAudits: [],
 };
 
 const POLL_MS = 5000;
@@ -135,6 +140,7 @@ async function loadFromApi(projectId: string): Promise<RawData> {
     entities,
     consistency,
     readiness,
+    readinessAudits: readinessList.items,
   };
 }
 

@@ -5,6 +5,7 @@ import * as React from "react";
 
 import { EmptyState } from "@/components/geo/empty-state";
 import { SeverityBadge, StatusBadge } from "@/components/geo/severity-badge";
+import { displayPath } from "@/lib/geo/overview";
 import type { GeoIssue, SortDirection, SortKey } from "@/lib/geo/types";
 import {
   Button,
@@ -22,7 +23,7 @@ const COLUMNS: Array<{ key: SortKey | "recommendation" | "action"; label: string
   { key: "severity", label: "Severity", sortable: true, className: "w-[5.5rem]" },
   { key: "title", label: "Issue", sortable: true },
   { key: "category", label: "Category", sortable: true, className: "hidden w-36 lg:table-cell" },
-  { key: "affected", label: "Affected pages", sortable: true, className: "hidden w-36 text-right xl:table-cell" },
+  { key: "affected", label: "Affected pages", sortable: true, className: "hidden w-36 text-right md:table-cell" },
   { key: "recommendation", label: "Recommendation", sortable: false, className: "hidden 2xl:table-cell 2xl:w-[28%]" },
   { key: "status", label: "Status", sortable: true, className: "w-24" },
   { key: "action", label: "Action", sortable: false, className: "w-16" },
@@ -100,15 +101,18 @@ export function IssueTable({
                     <p className="truncate font-medium" title={issue.title}>
                       {issue.title}
                     </p>
+                    {/* Path only — the full URL lives in the detail drawer. */}
                     {issue.url && (
                       <p className="text-muted-foreground truncate font-mono text-xs" title={issue.url}>
-                        {issue.url}
+                        {displayPath(issue.url)}
                       </p>
                     )}
                   </TableCell>
                   <TableCell className="hidden truncate lg:table-cell">{issue.category}</TableCell>
-                  <TableCell className="hidden text-right tabular-nums xl:table-cell">
-                    {issue.affectedCount} {issue.affectedCount === 1 ? "page" : "pages"}
+                  <TableCell className="hidden text-right tabular-nums md:table-cell">
+                    {issue.affectedCount === 0
+                      ? "Site-wide"
+                      : `${issue.affectedCount} ${issue.affectedCount === 1 ? "page" : "pages"}`}
                   </TableCell>
                   <TableCell className="text-muted-foreground hidden 2xl:table-cell">
                     <p className="truncate" title={issue.recommendation}>
