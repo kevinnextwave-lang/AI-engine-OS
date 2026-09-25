@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { ChainStrip } from "@/components/intelligence/chain-strip";
 import { IntelligencePageFrame } from "@/components/intelligence/page-frame";
 import { useProjectIntelligence } from "@/components/intelligence/use-project-intelligence";
 import { PromptTable } from "@/components/visibility/prompt-table";
@@ -22,6 +23,7 @@ export default function AiResponsesPage() {
   }, [vis.prompts, query]);
   return (
     <IntelligencePageFrame intel={intel} hasOwnContent={vis.prompts.length > 0} title="AI Responses" description="Every prompt with stored AI answers. Open one to read the responses with brand, competitor, citation and claim highlights.">
+      <ChainStrip current="response" />
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <Input aria-label="Search prompts" placeholder="Search prompts…" value={query} onChange={(e) => setQuery(e.target.value)} className="w-64" />
         {!vis.loading && <p className="text-muted-foreground text-xs">{rows.length} prompts with parsed responses in the visibility window</p>}

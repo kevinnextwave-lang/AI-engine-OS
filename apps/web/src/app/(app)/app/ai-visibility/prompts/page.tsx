@@ -18,7 +18,8 @@ function PromptsPageInner() {
   const vis = useProjectVisibility();
   const loading = vis.loading || vis.projectLoading;
   const params = useSearchParams();
-  const [open, setOpen] = React.useState<PromptPerformanceRow | null>(null);
+  const [manualOpen, setManualOpen] = React.useState<PromptPerformanceRow | null>(null);
+  const [deepLinkDismissed, setDeepLinkDismissed] = React.useState(false);
   const [query, setQuery] = React.useState("");
   const [category, setCategory] = React.useState<PromptCategory | "">("");
   // The overview's funnel links here pre-filtered (?filter=mentioned|missing).
@@ -26,6 +27,17 @@ function PromptsPageInner() {
   const [mention, setMention] = React.useState<MentionFilter>(
     initial === "mentioned" || initial === "missing" ? initial : "all",
   );
+  // Deep link from a citation ("read the full answer"): ?prompt=<id> opens
+  // that prompt's response drawer once rows exist — derived, not effectful,
+  // and dismissible.
+  const deepLinkPrompt = params.get("prompt");
+  const deepLinkRow =
+    deepLinkPrompt && !deepLinkDismissed ? (vis.prompts.find((r) => r.id === deepLinkPrompt) ?? null) : null;
+  const open = manualOpen ?? deepLinkRow;
+  const setOpen = (row: PromptPerformanceRow | null) => {
+    if (row === null) setDeepLinkDismissed(true);
+    setManualOpen(row);
+  };
 
   const rows = React.useMemo(() => {
     const q = query.trim().toLowerCase();

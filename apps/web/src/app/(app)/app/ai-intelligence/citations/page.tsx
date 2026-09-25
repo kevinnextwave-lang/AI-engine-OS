@@ -4,6 +4,8 @@ import { ExternalLinkIcon, SearchXIcon } from "lucide-react";
 import * as React from "react";
 
 import { EmptyState } from "@/components/geo/empty-state";
+import { ChainStrip } from "@/components/intelligence/chain-strip";
+import { CitationDrawer } from "@/components/intelligence/citation-drawer";
 import { CitationsChart } from "@/components/intelligence/citations-chart";
 import { IntelligencePageFrame } from "@/components/intelligence/page-frame";
 import { SourceDrawer } from "@/components/intelligence/source-drawer";
@@ -12,7 +14,7 @@ import { useProject } from "@/components/project-provider";
 import { fmtDateTime } from "@/components/visibility/format";
 import { SOURCE_TYPE_LABEL } from "@/lib/intelligence/labels";
 import { citationRows } from "@/lib/intelligence/mappers";
-import type { SourceRow } from "@/lib/intelligence/types";
+import type { CitationRow as CitationRowType, SourceRow } from "@/lib/intelligence/types";
 import { providerLabel } from "@/lib/visibility/labels";
 import { Badge, Input, NativeSelect, Skeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@ai-search-growth-os/ui";
 
@@ -24,6 +26,7 @@ export default function CitationsPage() {
   const [provider, setProvider] = React.useState("");
   const [relationship, setRelationship] = React.useState("");
   const [openSource, setOpenSource] = React.useState<SourceRow | null>(null);
+  const [openCitation, setOpenCitation] = React.useState<CitationRowType | null>(null);
   const rows = React.useMemo(() => {
     const all = citationRows(intel.raw?.citations ?? []);
     const q = query.trim().toLowerCase();
@@ -37,6 +40,7 @@ export default function CitationsPage() {
 
   return (
     <IntelligencePageFrame intel={intel} title="Citations" description="Each citation an AI engine made while answering your prompts: the URL, the prompt, the engine, and whether it relates to your brand or a competitor.">
+      <ChainStrip current="citation" />
       <CitationsChart
         citations={intel.raw?.citations ?? []}
         total={intel.raw?.citationsTotal ?? 0}
@@ -88,27 +92,22 @@ export default function CitationsPage() {
             </TableHeader>
             <TableBody>
               {rows.map((c) => (
-                <TableRow key={c.id}>
+                <TableRow key={c.id} className="cursor-pointer" onClick={() => setOpenCitation(c)}>
                   <TableCell className="truncate">
                     {c.url ? (
-                      <a href={c.url} target="_blank" rel="noreferrer" className="text-primary inline-flex max-w-full items-center gap-1 underline-offset-4 hover:underline" title={c.url}>
+                      <a
+                        href={c.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-primary inline-flex max-w-full items-center gap-1 underline-offset-4 hover:underline"
+                        title={c.url}
+                      >
                         <span className="truncate">{c.url}</span>
                         <ExternalLinkIcon className="size-3 shrink-0" aria-hidden="true" />
                       </a>
                     ) : (
                       <span>{c.domain ?? "–"}</span>
-                    )}
-                    {c.sourceDomainId && (
-                      <button
-                        type="button"
-                        className="text-muted-foreground ml-2 text-xs underline-offset-4 hover:underline"
-                        onClick={() => {
-                          const row = intel.sources.find((s) => s.sourceDomainId === c.sourceDomainId);
-                          if (row) setOpenSource(row);
-                        }}
-                      >
-                        {c.domain}
-                      </button>
                     )}
                   </TableCell>
                   <TableCell className="hidden md:table-cell">{c.sourceType ? <Badge variant="secondary">{SOURCE_TYPE_LABEL[c.sourceType]}</Badge> : "–"}</TableCell>
@@ -135,6 +134,18 @@ export default function CitationsPage() {
           </Table>
         </div>
       )}
+      <CitationDrawer
+        citation={openCitation}
+        projectWebsiteUrl={current?.primary_domain?.url ?? null}
+        onClose={() => setOpenCitation(null)}
+        onOpenSource={(sourceDomainId) => {
+          const row = intel.sources.find((s) => s.sourceDomainId === sourceDomainId);
+          if (row) {
+            setOpenCitation(null);
+            setOpenSource(row);
+          }
+        }}
+      />
       <SourceDrawer row={openSource} projectId={current?.id ?? null} range={intel.windowRange} live={intel.source === "api"} mockCitations={intel.raw?.citations ?? []} onClose={() => setOpenSource(null)} />
     </IntelligencePageFrame>
   );

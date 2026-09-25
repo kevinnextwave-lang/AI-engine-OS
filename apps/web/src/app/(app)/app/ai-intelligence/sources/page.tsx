@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { ChainStrip } from "@/components/intelligence/chain-strip";
 import { IntelligencePageFrame } from "@/components/intelligence/page-frame";
 import { SourceDrawer } from "@/components/intelligence/source-drawer";
 import { SourceTable } from "@/components/intelligence/source-table";
@@ -36,6 +37,7 @@ export default function SourcesPage() {
 
   return (
     <IntelligencePageFrame intel={intel} title="Sources" description="Every source domain cited in this period, with how many citations relate to your brand and to competitors, and the citation-gap opportunity score where one exists. The date range is set in the header.">
+      <ChainStrip current="source" />
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <NativeSelect aria-label="Source type" value={sourceType} onChange={(e) => setSourceType(e.target.value)} className="w-40">
           <option value="">All source types</option>
