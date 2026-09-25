@@ -1,6 +1,7 @@
 "use client";
 
 import { EmptyAction } from "@/components/empty-action";
+import { rowButtonProps } from "@/lib/a11y";
 import * as React from "react";
 
 import { DataTable, StatusBadge, label } from "@/components/section/primitives";
@@ -251,7 +252,7 @@ export default function CrawlsPage() {
         }
       >
         {(d?.items ?? []).map((j) => (
-          <TableRow key={j.id} className="cursor-pointer" onClick={() => setOpen(j)}>
+          <TableRow key={j.id} className="cursor-pointer" {...rowButtonProps(() => setOpen(j))}>
             <TableCell className="max-w-sm truncate font-medium" title={j.root_url}>
               {j.root_url}
             </TableCell>

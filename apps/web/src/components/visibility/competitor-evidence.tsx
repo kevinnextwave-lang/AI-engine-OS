@@ -16,6 +16,7 @@
 import Link from "next/link";
 import * as React from "react";
 
+import { rowButtonProps } from "@/lib/a11y";
 import { SOURCE_TYPE_LABEL } from "@/lib/intelligence/labels";
 import type { CitationRow, SourceRow } from "@/lib/intelligence/types";
 import {
@@ -89,7 +90,11 @@ export function CitationOverlap({
         </TableHeader>
         <TableBody>
           {rows.map((s) => (
-            <TableRow key={s.sourceDomainId} className="cursor-pointer" onClick={() => onOpenSource(s)}>
+            <TableRow
+              key={s.sourceDomainId}
+              className="cursor-pointer"
+              {...rowButtonProps(() => onOpenSource(s), `Open source profile for ${s.domain}`)}
+            >
               <TableCell className="truncate font-medium" title={s.domain}>
                 {s.displayName || s.domain}
               </TableCell>
@@ -190,7 +195,9 @@ export function CompetitorPrompts({
             <TableHead>Prompt</TableHead>
             <TableHead className="hidden w-56 lg:table-cell">Competitors cited</TableHead>
             <TableHead className="w-24 text-right">Citations</TableHead>
-            <TableHead className="w-32" />
+            <TableHead className="w-32">
+              <span className="sr-only">Actions</span>
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

@@ -15,7 +15,7 @@ const badgeVariants = cva(
         // saturated chips, and every hue comes from the semantic tokens.
         critical: "border-destructive/20 bg-destructive/10 text-destructive",
         high: "border-warning/25 bg-warning/10 text-warning",
-        medium: "border-caution/30 bg-caution/15 text-caution",
+        medium: "border-caution/30 bg-caution/10 text-caution",
         low: "border-info/25 bg-info/10 text-info",
         info: "border-info/25 bg-info/10 text-info",
         success: "border-success/25 bg-success/10 text-success",

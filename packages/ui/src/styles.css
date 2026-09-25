@@ -33,11 +33,13 @@
   --muted-foreground: oklch(0.5323 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --success: oklch(0.55 0.13 155);
-  --warning: oklch(0.6 0.15 55);
-  --caution: oklch(0.6 0.12 80);
-  --info: oklch(0.55 0.12 240);
+  /* Status hues are darkened so 12px text passes WCAG AA (≥4.5:1) both on
+     white and on their own /10–/15 badge tints (verified with axe-core). */
+  --destructive: oklch(0.52 0.225 27.325);
+  --success: oklch(0.49 0.125 155);
+  --warning: oklch(0.53 0.14 55);
+  --caution: oklch(0.5 0.105 80);
+  --info: oklch(0.515 0.115 240);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.6 0.13 274);

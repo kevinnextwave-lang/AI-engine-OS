@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { rowButtonProps } from "@/lib/a11y";
 
 import { DrawerSection, EvidenceList } from "@/components/section/evidence";
 import { DataTable, StatusBadge, label } from "@/components/section/primitives";
@@ -129,7 +130,7 @@ export default function CompetitiveContentGapsPage() {
         }
       >
         {(d?.items ?? []).map((g) => (
-          <TableRow key={g.id} className="cursor-pointer" onClick={() => setOpen(g)}>
+          <TableRow key={g.id} className="cursor-pointer" {...rowButtonProps(() => setOpen(g))}>
             <TableCell className="max-w-md font-medium">{g.topic}</TableCell>
             <TableCell className="text-sm">{label(g.gap_type)}</TableCell>
             <TableCell className="tabular-nums">{g.opportunity_score}</TableCell>

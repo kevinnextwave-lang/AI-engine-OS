@@ -1,6 +1,7 @@
 "use client";
 
 import { SearchXIcon } from "lucide-react";
+import { rowButtonProps } from "@/lib/a11y";
 import * as React from "react";
 
 import { EmptyState } from "@/components/geo/empty-state";
@@ -69,7 +70,7 @@ export default function ClaimsPage() {
             </TableHeader>
             <TableBody>
               {rows.map((c) => (
-                <TableRow key={c.key} className="cursor-pointer" onClick={() => setOpen(c)}>
+                <TableRow key={c.key} className="cursor-pointer" {...rowButtonProps(() => setOpen(c))}>
                   <TableCell className="truncate" title={c.example ?? undefined}>
                     <span className="font-medium capitalize">{c.subject}</span> {c.predicate} {c.object}
                   </TableCell>

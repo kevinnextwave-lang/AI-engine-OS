@@ -1,4 +1,5 @@
 import { fmtValue } from "@/components/visibility/format";
+import { rowButtonProps } from "@/lib/a11y";
 import type { CompetitorShareRow } from "@/lib/visibility/types";
 import { Badge, Progress, Skeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, cn } from "@ai-search-growth-os/ui";
 
@@ -58,8 +59,14 @@ export function CompetitorTable({
                 onSelect && !r.isBrand && "cursor-pointer",
                 selected === r.name && "bg-sidebar-accent/60",
               )}
-              aria-selected={selected === r.name || undefined}
-              onClick={onSelect && !r.isBrand ? () => onSelect(selected === r.name ? null : r.name) : undefined}
+              // Selectable rows act as toggle buttons (keyboard included);
+              // aria-pressed carries the selection state.
+              {...(onSelect && !r.isBrand
+                ? {
+                    ...rowButtonProps(() => onSelect(selected === r.name ? null : r.name), `Focus evidence on ${r.name}`),
+                    "aria-pressed": selected === r.name,
+                  }
+                : {})}
             >
               <TableCell className="font-medium">
                 <span className="flex items-center gap-2">

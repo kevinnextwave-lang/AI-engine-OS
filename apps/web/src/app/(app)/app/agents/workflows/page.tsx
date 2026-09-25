@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { rowButtonProps } from "@/lib/a11y";
 
 import { DrawerSection, EvidenceList } from "@/components/section/evidence";
 import { DataTable, StatusBadge, label } from "@/components/section/primitives";
@@ -261,7 +262,7 @@ export default function AgentWorkflowsPage() {
         }
       >
         {(d?.items ?? []).map((w) => (
-          <TableRow key={w.id} className="cursor-pointer" onClick={() => setOpenId(w.id)}>
+          <TableRow key={w.id} className="cursor-pointer" {...rowButtonProps(() => setOpenId(w.id))}>
             <TableCell className="font-medium">{label(w.workflow_type)}</TableCell>
             <TableCell className="text-muted-foreground max-w-md truncate" title={w.objective}>
               {w.objective}

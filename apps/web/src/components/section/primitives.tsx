@@ -119,8 +119,11 @@ export function DataTable({
       <Table>
         <TableHeader>
           <TableRow>
-            {head.map((h) => (
-              <TableHead key={h}>{h}</TableHead>
+            {head.map((h, i) => (
+              <TableHead key={h || `col-${i}`}>
+                {/* An empty string marks an actions column; give it an sr-only name. */}
+                {h || <span className="sr-only">Actions</span>}
+              </TableHead>
             ))}
           </TableRow>
         </TableHeader>

@@ -61,8 +61,18 @@ function subscribeCollapsed(cb: () => void): () => void {
 export function NavLink({ item, active, onNavigate }: { item: NavItem; active: boolean; onNavigate?: () => void }) {
   const ref = React.useRef<HTMLAnchorElement>(null);
   // Keep the current page's item visible when landing deep in a long nav.
+  // Scrolled manually (not scrollIntoView) so the browser's sequential-focus
+  // starting point stays at the top of the page — otherwise the first Tab
+  // would skip the "Skip to main content" link and start mid-sidebar.
   React.useEffect(() => {
-    if (active) ref.current?.scrollIntoView({ block: "nearest" });
+    const el = ref.current;
+    if (!active || !el) return;
+    const scroller = el.closest<HTMLElement>(".overflow-y-auto");
+    if (!scroller) return;
+    const er = el.getBoundingClientRect();
+    const sr = scroller.getBoundingClientRect();
+    if (er.top < sr.top) scroller.scrollTop += er.top - sr.top;
+    else if (er.bottom > sr.bottom) scroller.scrollTop += er.bottom - sr.bottom;
   }, [active]);
   return (
     <Link
@@ -118,7 +128,8 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
                 aria-expanded={open}
                 className={cn(
                   "group/section mb-1 flex h-6 w-full items-center justify-between rounded px-2.5 text-[11px] font-medium tracking-wider uppercase transition-colors",
-                  "text-sidebar-foreground/50 hover:text-sidebar-foreground/80",
+                  // ≥4.5:1 on the sidebar background (11px text needs AA small-text contrast)
+                  "text-sidebar-foreground/70 hover:text-sidebar-foreground/90",
                 )}
               >
                 {section.label}

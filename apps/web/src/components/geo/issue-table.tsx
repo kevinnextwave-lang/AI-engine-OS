@@ -103,6 +103,9 @@ export function IssueTable({
                         <ArrowUpDownIcon className="size-3 opacity-50" />
                       )}
                     </button>
+                  ) : col.key === "action" ? (
+                    // Header must not be empty for screen readers.
+                    <span className="sr-only">Actions</span>
                   ) : (
                     col.label
                   )}

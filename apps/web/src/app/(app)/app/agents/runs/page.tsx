@@ -1,6 +1,7 @@
 "use client";
 
 import { EmptyAction } from "@/components/empty-action";
+import { rowButtonProps } from "@/lib/a11y";
 import * as React from "react";
 
 import { DrawerSection, EvidenceList } from "@/components/section/evidence";
@@ -304,7 +305,7 @@ export default function AgentRunsPage() {
         }
       >
         {(d?.items ?? []).map((r) => (
-          <TableRow key={r.id} className="cursor-pointer" onClick={() => setOpenId(r.id)}>
+          <TableRow key={r.id} className="cursor-pointer" {...rowButtonProps(() => setOpenId(r.id))}>
             <TableCell className="font-medium">{label(r.agent_name)}</TableCell>
             <TableCell className="text-muted-foreground max-w-md truncate" title={r.objective}>
               {r.objective}

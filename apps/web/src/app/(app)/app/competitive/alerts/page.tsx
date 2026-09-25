@@ -148,7 +148,7 @@ export default function CompetitiveAlertsPage() {
         }
       >
         {(d?.items ?? []).map((a) => (
-          <TableRow key={a.id} className={`cursor-pointer ${a.status === "new" ? "font-medium" : ""}`} onClick={() => setOpen(a)}>
+<TableRow key={a.id} className={`cursor-pointer ${a.status === "new" ? "font-medium" : ""}`} onClick={() => setOpen(a)}>
             <TableCell className="max-w-lg">
               <p>{a.title}</p>
               <p className="text-muted-foreground truncate text-sm font-normal" title={a.description}>
@@ -175,6 +175,9 @@ export default function CompetitiveAlertsPage() {
                     Dismiss
                   </Button>
                 )}
+                <Button size="sm" variant="ghost" onClick={() => setOpen(a)}>
+                  Details
+                </Button>
               </div>
             </TableCell>
           </TableRow>

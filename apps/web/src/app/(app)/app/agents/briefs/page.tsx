@@ -1,6 +1,7 @@
 "use client";
 
 import { EmptyAction } from "@/components/empty-action";
+import { rowButtonProps } from "@/lib/a11y";
 import * as React from "react";
 
 import { DrawerSection, EvidenceList } from "@/components/section/evidence";
@@ -91,7 +92,7 @@ export default function ContentBriefsPage() {
         }
       >
         {(d?.items ?? []).map((b) => (
-          <TableRow key={b.id} className="cursor-pointer" onClick={() => setOpen(b)}>
+          <TableRow key={b.id} className="cursor-pointer" {...rowButtonProps(() => setOpen(b))}>
             <TableCell className="max-w-lg">
               <p className="font-medium">{b.title}</p>
               <p className="text-muted-foreground truncate text-sm" title={b.objective}>

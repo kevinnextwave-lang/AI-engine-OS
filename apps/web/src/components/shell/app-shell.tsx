@@ -61,6 +61,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen">
+      {/* Keyboard users can jump past the sidebar/header; visible only on focus. */}
+      <a
+        href="#main-content"
+        className="bg-primary text-primary-foreground sr-only z-50 rounded-md px-3 py-2 text-sm font-medium focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
+      >
+        Skip to main content
+      </a>
       <aside className="bg-sidebar sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r md:flex">
         <div className="flex h-14 shrink-0 items-center border-b px-4">
           <Brand />
@@ -98,7 +105,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="flex-1 p-4 md:p-6">{children}</main>
+        <main id="main-content" tabIndex={-1} className="flex-1 p-4 outline-none md:p-6">{children}</main>
       </div>
     </div>
   );

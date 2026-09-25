@@ -1,6 +1,7 @@
 "use client";
 
 import { EmptyAction } from "@/components/empty-action";
+import { rowButtonProps } from "@/lib/a11y";
 import * as React from "react";
 
 import { DrawerSection, EvidenceList } from "@/components/section/evidence";
@@ -117,7 +118,7 @@ export default function CompetitiveInsightsPage() {
         }
       >
         {(d?.items ?? []).map((i) => (
-          <TableRow key={i.id} className="cursor-pointer" onClick={() => setOpen(i)}>
+          <TableRow key={i.id} className="cursor-pointer" {...rowButtonProps(() => setOpen(i))}>
             <TableCell className="max-w-lg">
               <p className="font-medium">{i.title}</p>
               <p className="text-muted-foreground truncate text-sm" title={i.description}>

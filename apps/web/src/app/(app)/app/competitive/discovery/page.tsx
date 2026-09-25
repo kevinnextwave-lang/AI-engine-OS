@@ -107,7 +107,7 @@ export default function CompetitorDiscoveryPage() {
         }
       >
         {(d?.items ?? []).map((c) => (
-          <TableRow key={c.id} className="cursor-pointer" onClick={() => setOpen(c)}>
+<TableRow key={c.id} className="cursor-pointer" onClick={() => setOpen(c)}>
             <TableCell className="font-medium">{c.name}</TableCell>
             <TableCell className="text-muted-foreground">{c.domain ?? "—"}</TableCell>
             <TableCell>
@@ -181,6 +181,9 @@ export default function CompetitorDiscoveryPage() {
                   </Button>
                 </div>
               )}
+              <Button size="sm" variant="ghost" className="mt-1" onClick={() => setOpen(c)}>
+                Details
+              </Button>
             </TableCell>
           </TableRow>
         ))}

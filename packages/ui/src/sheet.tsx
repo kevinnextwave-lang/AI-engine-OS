@@ -46,14 +46,33 @@ function SheetContent({
   className,
   children,
   side = "right",
+  onOpenAutoFocus,
+  onCloseAutoFocus,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & VariantProps<typeof sheetVariants>) {
+  // Most sheets here are opened programmatically (a clicked table row), not
+  // via a Radix Trigger, so Radix has no trigger to restore focus to on
+  // close. onOpenAutoFocus fires before Radix moves focus into the sheet;
+  // capture the opener there and put focus back on it when the sheet closes,
+  // keeping keyboard users where they left off.
+  const returnTo = React.useRef<HTMLElement | null>(null);
   return (
     <SheetPortal>
       <SheetOverlay />
       <SheetPrimitive.Content
         data-slot="sheet-content"
         className={cn(sheetVariants({ side }), className)}
+        onOpenAutoFocus={(e) => {
+          returnTo.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+          onOpenAutoFocus?.(e);
+        }}
+        onCloseAutoFocus={(e) => {
+          onCloseAutoFocus?.(e);
+          if (!e.defaultPrevented && returnTo.current?.isConnected) {
+            e.preventDefault();
+            returnTo.current.focus();
+          }
+        }}
         {...props}
       >
         {children}

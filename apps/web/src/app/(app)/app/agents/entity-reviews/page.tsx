@@ -1,6 +1,7 @@
 "use client";
 
 import { EmptyAction } from "@/components/empty-action";
+import { rowButtonProps } from "@/lib/a11y";
 import * as React from "react";
 
 import { DrawerSection, EvidenceList } from "@/components/section/evidence";
@@ -105,7 +106,7 @@ export default function EntityReviewsPage() {
         }
       >
         {(d?.items ?? []).map((r) => (
-          <TableRow key={r.id} className="cursor-pointer" onClick={() => setOpen(r)}>
+          <TableRow key={r.id} className="cursor-pointer" {...rowButtonProps(() => setOpen(r))}>
             <TableCell className="font-medium">{label(r.review_key.replaceAll(":", " · "))}</TableCell>
             <TableCell className="text-sm">{label(r.entity_type)}</TableCell>
             <TableCell className="tabular-nums">{r.findings.length}</TableCell>

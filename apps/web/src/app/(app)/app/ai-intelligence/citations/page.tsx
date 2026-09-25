@@ -16,7 +16,7 @@ import { SOURCE_TYPE_LABEL } from "@/lib/intelligence/labels";
 import { citationRows } from "@/lib/intelligence/mappers";
 import type { CitationRow as CitationRowType, SourceRow } from "@/lib/intelligence/types";
 import { providerLabel } from "@/lib/visibility/labels";
-import { Badge, Input, NativeSelect, Skeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@ai-search-growth-os/ui";
+import { Badge, Button, Input, NativeSelect, Skeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@ai-search-growth-os/ui";
 
 export default function CitationsPage() {
   const intel = useProjectIntelligence();
@@ -88,11 +88,14 @@ export default function CitationsPage() {
                 <TableHead className="w-28">Engine</TableHead>
                 <TableHead className="hidden w-40 xl:table-cell">Relates to</TableHead>
                 <TableHead className="hidden w-40 md:table-cell">When</TableHead>
+                <TableHead className="w-20">
+                  <span className="sr-only">Actions</span>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.map((c) => (
-                <TableRow key={c.id} className="cursor-pointer" onClick={() => setOpenCitation(c)}>
+<TableRow key={c.id} className="cursor-pointer" onClick={() => setOpenCitation(c)}>
                   <TableCell className="truncate">
                     {c.url ? (
                       <a
@@ -128,6 +131,11 @@ export default function CitationsPage() {
                     </span>
                   </TableCell>
                   <TableCell className="text-muted-foreground hidden text-xs md:table-cell">{fmtDateTime(c.citedAt)}</TableCell>
+                  <TableCell className="text-right">
+                    <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setOpenCitation(c); }}>
+                      Trail
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
