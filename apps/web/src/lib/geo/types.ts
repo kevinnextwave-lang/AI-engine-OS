@@ -130,6 +130,8 @@ export interface IssueFilters {
   category: string | "all";
   status: ObservationStatus | "all";
   origin: IssueOrigin | "all";
+  /** Free-text search over title, code, category and page URL. */
+  query: string;
 }
 
 export type SourceObservation =

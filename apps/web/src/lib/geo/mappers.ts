@@ -134,12 +134,18 @@ export function summarize(issues: GeoIssue[]): AuditSummary {
 }
 
 export function applyFilters(issues: GeoIssue[], f: IssueFilters): GeoIssue[] {
+  const q = f.query.trim().toLowerCase();
   return issues.filter(
     (i) =>
       (f.severity === "all" || i.severity === f.severity) &&
       (f.category === "all" || i.categoryKey === f.category) &&
       (f.status === "all" || i.status === f.status) &&
-      (f.origin === "all" || i.origin === f.origin),
+      (f.origin === "all" || i.origin === f.origin) &&
+      (q === "" ||
+        i.title.toLowerCase().includes(q) ||
+        i.code.toLowerCase().includes(q) ||
+        i.category.toLowerCase().includes(q) ||
+        (i.url?.toLowerCase().includes(q) ?? false)),
   );
 }
 

@@ -1,10 +1,11 @@
 "use client";
 
-import { BotIcon, ExternalLinkIcon } from "lucide-react";
+import { BotIcon, ChevronRightIcon, ExternalLinkIcon } from "lucide-react";
 import * as React from "react";
 
 import { SeverityBadge, StatusBadge } from "@/components/geo/severity-badge";
-import { STATUS_LABEL } from "@/lib/geo/labels";
+import { SEVERITY_LABEL, STATUS_LABEL } from "@/lib/geo/labels";
+import { displayPath } from "@/lib/geo/overview";
 import type { GeoIssue } from "@/lib/geo/types";
 import type { ObservationStatus } from "@ai-search-growth-os/types";
 import {
@@ -60,6 +61,25 @@ function EvidenceList({ evidence }: { evidence: Record<string, unknown> }) {
       ))}
     </dl>
   );
+}
+
+/**
+ * Potential impact, stated only from what the audit measured: severity,
+ * reach and the origin's mechanism. No traffic, ranking or revenue numbers
+ * are estimated — the product does not fabricate impact metrics.
+ */
+function impactStatement(issue: GeoIssue): string {
+  const reach =
+    issue.affectedCount === 0
+      ? "It applies site-wide rather than to specific pages."
+      : issue.affectedCount === 1
+        ? "One page is affected."
+        : `${issue.affectedCount} pages are affected.`;
+  const mechanism =
+    issue.origin === "technical_seo"
+      ? "Until fixed, the affected pages are harder for crawlers and AI systems to fetch and interpret correctly."
+      : "Until addressed, the affected content is harder for AI systems to understand, attribute and cite.";
+  return `${SEVERITY_LABEL[issue.severity]}-severity finding in ${issue.category}. ${reach} ${mechanism} No traffic or ranking impact is estimated.`;
 }
 
 function StatusForm({
@@ -124,65 +144,91 @@ export function IssueDrawer({
                 <StatusBadge status={issue.status} />
               </div>
               <SheetTitle className="text-lg leading-snug">{issue.title}</SheetTitle>
-              <SheetDescription className="font-mono text-xs">{issue.code}</SheetDescription>
+              <SheetDescription className="sr-only">Issue detail</SheetDescription>
             </SheetHeader>
             <div className="flex flex-col gap-5 px-4 pb-6">
               <Section title="Problem">
                 <p className="text-sm leading-relaxed">{issue.description}</p>
               </Section>
-              <Section title="Evidence">
-                {issue.url && (
-                  <a
-                    href={issue.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-primary inline-flex items-center gap-1 font-mono text-xs break-all underline-offset-4 hover:underline"
-                  >
-                    {issue.url}
-                    <ExternalLinkIcon className="size-3 shrink-0" aria-hidden="true" />
-                  </a>
-                )}
-                <EvidenceList evidence={issue.evidence} />
-              </Section>
+
               <Section title="Why it matters">
                 <p className="text-muted-foreground text-sm leading-relaxed">{WHY_IT_MATTERS[issue.origin]}</p>
               </Section>
-              <Section title="Recommendation">
-                <p className="text-sm leading-relaxed">{issue.recommendation}</p>
-              </Section>
-              <Section title={`Affected pages (${issue.affectedCount})`}>
+
+              <Section title={`Affected pages${issue.affectedCount > 0 ? ` (${issue.affectedCount})` : ""}`}>
                 {issue.affectedPages.length === 0 ? (
                   <p className="text-muted-foreground text-sm">Site-wide; no individual pages listed.</p>
                 ) : (
-                  <ul className="flex max-h-56 flex-col gap-1 overflow-auto text-xs">
+                  <ul className="flex max-h-56 flex-col gap-1 overflow-auto text-sm">
                     {issue.affectedPages.map((url) => (
                       <li key={url}>
-                        <a href={url} target="_blank" rel="noreferrer" className="font-mono break-all underline-offset-4 hover:underline">
-                          {url}
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noreferrer"
+                          title={url}
+                          className="text-foreground inline-flex max-w-full items-center gap-1 underline-offset-4 hover:underline"
+                        >
+                          <span className="truncate">{displayPath(url)}</span>
+                          <ExternalLinkIcon className="text-muted-foreground size-3 shrink-0" aria-hidden="true" />
                         </a>
                       </li>
                     ))}
                     {issue.affectedCount > issue.affectedPages.length && (
-                      <li className="text-muted-foreground">
+                      <li className="text-muted-foreground text-xs">
                         …and {issue.affectedCount - issue.affectedPages.length} more
                       </li>
                     )}
                   </ul>
                 )}
               </Section>
+
+              <Section title="Recommended solution">
+                <p className="text-sm leading-relaxed">{issue.recommendation}</p>
+              </Section>
+
+              <Section title="Potential impact">
+                <p className="text-muted-foreground text-sm leading-relaxed">{impactStatement(issue)}</p>
+              </Section>
+
+              {/* Progressive disclosure: raw audit data for technical users. */}
+              <details className="group rounded-lg border">
+                <summary className="text-muted-foreground hover:text-foreground flex cursor-pointer items-center gap-1.5 px-3 py-2 text-xs font-semibold tracking-wide uppercase select-none">
+                  <ChevronRightIcon className="size-3.5 transition-transform group-open:rotate-90" aria-hidden="true" />
+                  Technical details
+                </summary>
+                <div className="flex flex-col gap-3 border-t px-3 py-3">
+                  <div className="grid grid-cols-[8rem_1fr] gap-2 text-sm">
+                    <span className="text-muted-foreground font-mono text-xs leading-5">code</span>
+                    <span className="font-mono text-xs">{issue.code}</span>
+                  </div>
+                  {issue.url && (
+                    <div className="grid grid-cols-[8rem_1fr] gap-2 text-sm">
+                      <span className="text-muted-foreground font-mono text-xs leading-5">url</span>
+                      <a href={issue.url} target="_blank" rel="noreferrer" className="text-primary font-mono text-xs break-all underline-offset-4 hover:underline">
+                        {issue.url}
+                      </a>
+                    </div>
+                  )}
+                  <EvidenceList evidence={issue.evidence} />
+                </div>
+              </details>
+
               <Separator />
-              <Section title="Status">
+              <Section title="Action">
                 {issue.canUpdateStatus ? (
-                  <StatusForm key={`${issue.id}:${issue.status}:${issue.statusNote ?? ""}`} issue={issue} onUpdateStatus={onUpdateStatus} busy={busy} />
+                  <StatusForm
+                    key={`${issue.id}:${issue.status}:${issue.statusNote ?? ""}`}
+                    issue={issue}
+                    onUpdateStatus={onUpdateStatus}
+                    busy={busy}
+                  />
                 ) : (
                   <p className="text-muted-foreground text-sm">
                     AI readiness observations are regenerated on every audit and cannot be triaged yet.
                   </p>
                 )}
-              </Section>
-              <Separator />
-              <Section title="Future">
-                <Button variant="outline" disabled title="Connected in a future milestone" className="w-fit">
+                <Button variant="outline" disabled title="Connected in a future milestone" className="mt-1 w-fit">
                   <BotIcon aria-hidden="true" />
                   Fix with AI Agent
                 </Button>
