@@ -140,6 +140,13 @@ export default function GeoOverviewPage() {
             insight={actionPlan}
             onCta={() => setOpenIssueId(opportunities[0]?.issues[0]?.id ?? null)}
           />
+          {/* Entry point to the canonical cross-domain PRIORITIZE surface. */}
+          <p className="text-muted-foreground mt-2 text-sm">
+            Wondering what to fix next across the whole product?{" "}
+            <Link href="/app/priorities" className="text-primary font-medium hover:underline">
+              View priorities
+            </Link>
+          </p>
         </section>
       )}
 

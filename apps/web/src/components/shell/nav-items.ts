@@ -19,6 +19,7 @@ import {
   LineChartIcon,
   LinkIcon,
   ListChecksIcon,
+  ListTodoIcon,
   MessageSquareTextIcon,
   NetworkIcon,
   PuzzleIcon,
@@ -63,6 +64,7 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     items: [
       { href: "/app", label: "Overview", icon: LayoutDashboardIcon, exact: true },
+      { href: "/app/priorities", label: "Priorities", icon: ListTodoIcon },
       { href: "/app/projects", label: "Projects", icon: FolderKanbanIcon },
     ],
   },

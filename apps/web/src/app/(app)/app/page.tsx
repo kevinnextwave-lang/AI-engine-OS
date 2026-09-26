@@ -2,11 +2,14 @@
 
 import { ArrowRightIcon, CheckIcon, FolderKanbanIcon } from "lucide-react";
 import Link from "next/link";
+import * as React from "react";
 
 import { useAuth } from "@/components/auth-provider";
 import { useOrganization } from "@/components/organization-provider";
 import { useProject } from "@/components/project-provider";
 import { PageHeader } from "@/components/shell/page-header";
+import { api } from "@/lib/api";
+import { latestResearchRun, priorityFindings, type PriorityFinding } from "@/lib/priorities";
 import {
   Badge,
   Button,
@@ -29,6 +32,28 @@ export default function OverviewPage() {
   const { current: org, organizations, loading: orgLoading, error: orgError } = useOrganization();
   const { projects, current, loading: projectsLoading, select } = useProject();
   const loading = orgLoading || projectsLoading;
+
+  // Compact "top priorities": the same source the Priorities page uses (the
+  // latest research run's stored ranking) — one request, no re-ranking.
+  // Quietly absent when the project has no findings yet.
+  const [topPriorities, setTopPriorities] = React.useState<{ projectId: string; items: PriorityFinding[] } | null>(null);
+  const projectId = current?.id ?? null;
+  React.useEffect(() => {
+    if (!projectId) return;
+    let cancelled = false;
+    api.agents
+      .runs(projectId, { agent_name: "research", limit: 10 })
+      .then((res) => {
+        if (cancelled) return;
+        const run = latestResearchRun(res.items);
+        setTopPriorities({ projectId, items: run ? priorityFindings(run).slice(0, 3) : [] });
+      })
+      .catch(() => !cancelled && setTopPriorities({ projectId, items: [] }));
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
+  const priorities = topPriorities?.projectId === projectId ? topPriorities.items : [];
 
   return (
     <>
@@ -143,6 +168,36 @@ export default function OverviewPage() {
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* Same data the Priorities page ranks with — just the top three. */}
+      {!loading && priorities.length > 0 && (
+        <Card className="mt-4 py-5">
+          <CardContent className="px-5">
+            <div className="flex items-baseline justify-between gap-2">
+              <p className="text-muted-foreground text-[11px] font-medium tracking-wider uppercase">Top priorities</p>
+              <Link href="/app/priorities" className="text-primary text-xs font-medium hover:underline">
+                View all priorities
+              </Link>
+            </div>
+            <ol className="mt-2 flex flex-col">
+              {priorities.map((p, i) => (
+                <li key={`${p.runId}:${p.index}`}>
+                  <Link
+                    href="/app/priorities"
+                    className="hover:bg-accent flex items-baseline gap-2.5 rounded-md px-2 py-1.5 text-sm transition-colors"
+                  >
+                    <span aria-hidden="true" className="text-muted-foreground shrink-0 text-xs font-semibold tabular-nums">
+                      {i + 1}
+                    </span>
+                    <span className="min-w-0 truncate">{p.title}</span>
+                    {p.impact && <span className="text-muted-foreground ml-auto shrink-0 text-xs capitalize">{p.impact}</span>}
+                  </Link>
+                </li>
+              ))}
+            </ol>
+          </CardContent>
+        </Card>
       )}
 
       {/* Organization context: present, quiet. */}
