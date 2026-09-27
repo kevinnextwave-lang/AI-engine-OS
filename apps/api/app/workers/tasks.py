@@ -523,3 +523,33 @@ def reap_stale_jobs_task(self) -> str:  # type: ignore[no-untyped-def]
             await dispose_engine()
 
     return asyncio.run(_main())
+
+
+@celery_app.task(
+    name="app.workers.tasks.monitoring.prune_expired_data",
+    bind=True,
+    acks_late=True,
+    autoretry_for=(Exception,),
+    max_retries=2,
+    retry_backoff=60,
+    retry_jitter=True,
+    soft_time_limit=60 * 10,
+    time_limit=60 * 10 + 30,
+)
+def prune_expired_data_task(self) -> str:  # type: ignore[no-untyped-def]
+    """Daily retention sweep: history and security bookkeeping past their
+    settings-driven windows. Idempotent — re-running deletes nothing new."""
+    configure_logging()
+
+    async def _main() -> str:
+        from app.db.session import dispose_engine, get_session_factory
+        from app.monitoring.retention import prune_expired_data
+
+        try:
+            async with get_session_factory()() as session:
+                result = await prune_expired_data(session)
+                return f"pruned={result.total}"
+        finally:
+            await dispose_engine()
+
+    return asyncio.run(_main())

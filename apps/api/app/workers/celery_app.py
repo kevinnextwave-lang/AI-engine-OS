@@ -73,6 +73,12 @@ celery_app.conf.update(
             "task": "app.workers.tasks.monitoring.reap_stale_jobs",
             "schedule": crontab(minute=17),
         },
+        # History past its retention window (settings-driven; see
+        # app/monitoring/retention.py). Quiet hour, off the reaper's minute.
+        "daily-retention-prune": {
+            "task": "app.workers.tasks.monitoring.prune_expired_data",
+            "schedule": crontab(minute=41, hour=4),
+        },
         **(
             {
                 "daily-competitive-monitoring": {

@@ -68,6 +68,16 @@ class Settings(BaseSettings):
     sentry_dsn: str | None = None
     sentry_traces_sample_rate: float = 0.0
 
+    # Data retention (days; 0 disables that pruner). Applied by the daily
+    # retention task on celery beat. Current-state tables (website_pages,
+    # ai_responses, observations) are never pruned — these cover history
+    # and security bookkeeping that otherwise grow without bound.
+    retention_crawl_urls_days: int = 90
+    retention_page_versions_days: int = 180  # newest version per page always kept
+    retention_auth_audit_days: int = 365
+    retention_refresh_tokens_days: int = 60  # revoked/expired ones only
+    retention_account_tokens_days: int = 30  # used/expired ones only
+
     # Email delivery (password reset, email verification).
     # console: log the email instead of sending (development default).
     # smtp:    any SMTP relay (stdlib smtplib, STARTTLS by default).
