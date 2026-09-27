@@ -22,8 +22,12 @@ class RateLimiter(Protocol):
 
 
 class RedisRateLimiter:
-    def __init__(self, redis: Redis) -> None:
+    def __init__(self, redis: Redis, fallback: "InMemoryRateLimiter | None" = None) -> None:
         self._redis = redis
+        # A Redis blip must not fail OPEN (that's exactly when an attack is
+        # cheapest) and must not fail the API CLOSED either: degrade to the
+        # per-process store, which still bounds abuse per replica.
+        self._fallback = fallback or InMemoryRateLimiter()
 
     async def hit(self, key: str, limit: int, window_seconds: int) -> bool:
         window = int(time.time() // window_seconds)
@@ -34,8 +38,8 @@ class RedisRateLimiter:
             pipe.expire(redis_key, window_seconds)
             count, _ = await pipe.execute()
         except Exception as exc:  # noqa: BLE001 — limiter must never take the API down
-            log.warning("rate_limiter_redis_unavailable", error=type(exc).__name__)
-            return True
+            log.warning("rate_limiter_redis_degraded_to_memory", error=type(exc).__name__)
+            return await self._fallback.hit(key, limit, window_seconds)
         return int(count) <= limit
 
 

@@ -299,3 +299,28 @@ async def test_security_headers_present(client: AsyncClient) -> None:
     assert resp.headers.get("x-content-type-options") == "nosniff"
     assert resp.headers.get("x-frame-options") == "DENY"
     assert resp.headers.get("referrer-policy") == "no-referrer"
+
+
+async def test_readiness_probe_reports_dependencies(client: AsyncClient) -> None:
+    resp = await client.get("/health/ready")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["status"] == "ready" and body["database"] == "ok"
+    assert body["redis"] in ("ok", "unconfigured")
+
+
+async def test_login_throttled_per_account_across_ips(client: AsyncClient) -> None:
+    """Rotating spoofed client IPs must not buy more guesses at ONE account.
+    (X-Forwarded-For is honoured for the test transport peer, so each request
+    looks like a different IP to the per-IP limiter.)"""
+    email = unique_email()
+    statuses = []
+    for i in range(12):
+        r = await client.post(
+            "/api/v1/auth/login",
+            json={"email": email, "password": "wrong-password-1"},
+            headers={"X-Forwarded-For": f"203.0.113.{i}"},
+        )
+        statuses.append(r.status_code)
+    assert 429 in statuses, statuses
+    assert statuses.index(429) <= 10

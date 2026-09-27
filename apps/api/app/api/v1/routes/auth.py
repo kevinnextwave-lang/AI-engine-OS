@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, Request, Response, status
 
 from app.api.deps import (
@@ -6,11 +8,14 @@ from app.api.deps import (
     SettingsDep,
     client_ip,
     enforce_browser_origin,
+    get_rate_limiter,
     rate_limit,
     user_rate_limit,
 )
 from app.core.config import Settings
+from app.core.errors import RateLimitedError
 from app.core.logging import get_logger
+from app.core.rate_limit import RateLimiter
 from app.schemas.auth import (
     DeleteAccountRequest,
     ForgotPasswordRequest,
@@ -115,7 +120,13 @@ async def login(
     response: Response,
     session: DBSession,
     settings: SettingsDep,
+    limiter: Annotated[RateLimiter, Depends(get_rate_limiter)],
 ) -> TokenResponse:
+    # Second brake, keyed by ACCOUNT: the IP limit alone doesn't slow an
+    # attacker rotating IPs against one email. 10 attempts per 5 minutes
+    # per account, successful or not.
+    if not await limiter.hit(f"auth:login:acct:{body.email}", 10, 300):
+        raise RateLimitedError()
     result = await AuthService(session).login(
         email=body.email, password=body.password, client=_client(request)
     )

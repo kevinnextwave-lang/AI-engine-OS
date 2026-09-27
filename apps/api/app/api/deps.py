@@ -7,6 +7,7 @@ member sees 404, so other tenants' existence is not leaked (IDOR protection).
 """
 
 import ipaddress
+import time
 import uuid
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
@@ -26,6 +27,7 @@ from app.core.errors import (
     PermissionDeniedError,
     RateLimitedError,
 )
+from app.core.logging import get_logger
 from app.core.permissions import Permission, role_has
 from app.core.rate_limit import InMemoryRateLimiter, RateLimiter, RedisRateLimiter
 from app.core.security import decode_access_token
@@ -38,6 +40,8 @@ from app.repositories.organizations import MembershipRepository
 from app.repositories.projects import ProjectRepository
 from app.repositories.users import UserRepository
 
+log = get_logger("api.deps")
+
 _bearer = HTTPBearer(auto_error=False)
 
 DBSession = Annotated[AsyncSession, Depends(get_db_session)]
@@ -49,15 +53,35 @@ SettingsDep = Annotated[Settings, Depends(get_settings)]
 _memory_limiter = InMemoryRateLimiter()
 
 
-def get_redis(request: Request) -> Redis | None:
-    redis: Redis | None = getattr(request.app.state, "redis", None)
-    return redis
+async def get_redis(request: Request, settings: SettingsDep) -> Redis | None:
+    """The app's Redis handle, with lazy reconnection: a Redis outage at
+    startup (or later) is retried at most every 30s instead of downgrading
+    the process to the in-memory limiter forever."""
+    app = request.app
+    redis: Redis | None = getattr(app.state, "redis", None)
+    if redis is not None:
+        return redis
+    now = time.monotonic()
+    if now < getattr(app.state, "redis_retry_after", 0.0):
+        return None
+    app.state.redis_retry_after = now + 30.0
+    try:
+        candidate: Redis = Redis.from_url(settings.redis_url, socket_connect_timeout=2)
+        await candidate.ping()
+    except Exception as exc:  # noqa: BLE001 - stay degraded, retry later
+        log.warning("redis_reconnect_failed", error=type(exc).__name__)
+        return None
+    app.state.redis = candidate
+    log.info("redis_reconnected")
+    return candidate
 
 
 def get_rate_limiter(redis: Annotated[Redis | None, Depends(get_redis)]) -> RateLimiter:
     if redis is None:
         return _memory_limiter
-    return RedisRateLimiter(redis)
+    # Shared fallback: even when Redis errors mid-request, limits keep
+    # applying per process rather than failing open.
+    return RedisRateLimiter(redis, fallback=_memory_limiter)
 
 
 def client_ip(request: Request) -> str:
