@@ -14,4 +14,10 @@ COPY apps/api/pyproject.toml ./
 COPY apps/api/app ./app
 RUN pip install --upgrade pip && pip install .
 
-CMD ["celery", "-A", "app.workers.celery_app:celery_app", "worker", "--loglevel=INFO", "-Q", "default,crawler,ai_search,agents,analytics"]
+# -B embeds celery beat in this worker, so the periodic schedule (hourly
+# stale-job reaper, daily monitoring) actually runs in a default single-worker
+# deployment. IMPORTANT: -B must run in exactly ONE process — when scaling to
+# multiple worker replicas, remove -B here and run a dedicated
+# `celery -A app.workers.celery_app:celery_app beat` process instead,
+# otherwise every replica fires every scheduled task.
+CMD ["celery", "-A", "app.workers.celery_app:celery_app", "worker", "-B", "--loglevel=INFO", "-Q", "default,crawler,ai_search,agents,analytics"]

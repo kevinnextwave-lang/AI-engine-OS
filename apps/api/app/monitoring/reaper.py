@@ -9,6 +9,14 @@ from ever crawling again).
 
 Thresholds are each job type's hard time limit plus a generous margin, so a
 legitimately running job is never reaped.
+
+Rows can also be stranded in QUEUED: the broker loses the message, or the
+task fails before the engine ever claims the row (dispatch succeeded but the
+worker crashed pre-claim and retries were exhausted). A QUEUED crawl is the
+worst case — ACTIVE_CRAWL_STATUSES includes QUEUED, so the project 409s on
+every new crawl forever — and a QUEUED prompt run keeps its batch from ever
+finalizing. The QUEUED sweep uses created_at (queued rows have no
+started_at) with thresholds far above any legitimate queue wait.
 """
 
 import uuid
@@ -35,6 +43,15 @@ CRAWL_MAX_AGE = timedelta(hours=7)
 AUDIT_MAX_AGE = timedelta(hours=1)
 PROMPT_RUN_MAX_AGE = timedelta(hours=1)
 AGENT_RUN_MAX_AGE = timedelta(hours=1)
+
+# QUEUED ceilings. Crawls/audits/agent runs are dispatched immediately, so
+# hours in QUEUED means the message is gone. Prompt runs legitimately wait in
+# QUEUED through throttle deferrals during large backlogs, so their ceiling
+# is much higher — the point is "eventually finalize the batch", not speed.
+QUEUED_MAX_AGE = timedelta(hours=2)
+PROMPT_QUEUED_MAX_AGE = timedelta(hours=12)
+
+_QUEUED_MESSAGE = "Marked as failed by the stale-job reaper: never picked up by a worker."
 
 
 @dataclass
@@ -138,6 +155,72 @@ async def reap_stale_jobs(session: AsyncSession, *, now: datetime | None = None)
     for arun in agent_runs:
         arun.status = AgentRunStatus.FAILED.value
         arun.error_message = _REAPED_MESSAGE
+        arun.completed_at = now
+        result.agent_runs += 1
+        result.reaped_ids.append(arun.id)
+
+    # --- QUEUED sweeps: rows whose message never reached a worker. ---
+
+    stale_queued_crawls = (
+        await session.scalars(
+            select(CrawlJob).where(
+                CrawlJob.status == CrawlStatus.QUEUED,
+                CrawlJob.created_at < now - QUEUED_MAX_AGE,
+            )
+        )
+    ).all()
+    for job in stale_queued_crawls:
+        job.status = CrawlStatus.FAILED
+        job.error_message = _QUEUED_MESSAGE
+        job.completed_at = now
+        result.crawls += 1
+        result.reaped_ids.append(job.id)
+
+    for model, counter in ((SeoAudit, "seo_audits"), (AiReadinessAudit, "readiness_audits")):
+        stale_queued_audits = (
+            await session.scalars(
+                select(model).where(
+                    model.status == AuditStatus.QUEUED,
+                    model.created_at < now - QUEUED_MAX_AGE,
+                )
+            )
+        ).all()
+        for audit in stale_queued_audits:
+            audit.status = AuditStatus.FAILED
+            audit.error_message = _QUEUED_MESSAGE
+            audit.completed_at = now
+            setattr(result, counter, getattr(result, counter) + 1)
+            result.reaped_ids.append(audit.id)
+
+    stale_queued_runs = (
+        await session.scalars(
+            select(PromptRun).where(
+                PromptRun.status == PromptRunStatus.QUEUED,
+                PromptRun.created_at < now - PROMPT_QUEUED_MAX_AGE,
+            )
+        )
+    ).all()
+    for run in stale_queued_runs:
+        run.status = PromptRunStatus.FAILED
+        run.error_code = "never_started"
+        run.error_message = _QUEUED_MESSAGE
+        run.completed_at = now
+        result.prompt_runs += 1
+        result.reaped_ids.append(run.id)
+        if run.batch_id is not None:
+            await batches.record_outcome(run.batch_id, PromptRunStatus.FAILED)
+
+    stale_queued_agents = (
+        await session.scalars(
+            select(AgentRun).where(
+                AgentRun.status == AgentRunStatus.QUEUED.value,
+                AgentRun.created_at < now - QUEUED_MAX_AGE,
+            )
+        )
+    ).all()
+    for arun in stale_queued_agents:
+        arun.status = AgentRunStatus.FAILED.value
+        arun.error_message = _QUEUED_MESSAGE
         arun.completed_at = now
         result.agent_runs += 1
         result.reaped_ids.append(arun.id)

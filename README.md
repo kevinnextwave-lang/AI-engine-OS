@@ -61,7 +61,7 @@ npm run dev:web
 
 App sections: `/app` (overview) · `/app/geo` (audits + crawls) · `/app/ai-visibility` · `/app/ai-intelligence` (citations, claims, gaps) · `/app/competitive` (discovery, insights, content gaps, alerts) · `/app/agents` (runs & approvals, workflows, briefs, reviews) · `/app/projects` · `/app/settings`.
 
-Crawls, prompt runs, and agents require the worker: `cd apps/api && celery -A app.workers.celery_app:celery_app worker -Q default,crawler,analytics,ai_search,agents --loglevel=INFO`.
+Crawls, prompt runs, and agents require the worker: `cd apps/api && celery -A app.workers.celery_app:celery_app worker -B -Q default,crawler,analytics,ai_search,agents --loglevel=INFO`. The `-B` flag embeds celery beat (hourly stale-job reaper + daily monitoring) — required in exactly one worker process; without it, jobs orphaned by a worker crash are never cleaned up.
 
 ## Quality gates
 
@@ -85,6 +85,6 @@ Review the generated file (Postgres enum types need explicit drops on downgrade)
 
 - **Web → Vercel.** Root directory `apps/web` (monorepo: Vercel detects npm workspaces). Set `NEXT_PUBLIC_API_URL`.
 - **API → Railway.** Root `apps/api` (`railway.toml`). Env: `APP_ENV=production`, `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `CORS_ORIGINS`, `COOKIE_SECURE=true` (+ `COOKIE_SAMESITE=none` if web and API are on different registrable domains).
-- **Worker → Railway.** Same codebase, `workers/Dockerfile` or start command `celery -A app.workers.celery_app:celery_app worker`.
+- **Worker → Railway.** Same codebase, `workers/Dockerfile` (its default command embeds beat via `-B`). If you scale to multiple worker replicas, remove `-B` and run one dedicated `celery -A app.workers.celery_app:celery_app beat` service so scheduled tasks fire exactly once.
 
 Never commit `.env` files. All secrets come from environment variables.
