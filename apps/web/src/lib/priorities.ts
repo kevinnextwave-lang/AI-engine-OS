@@ -42,7 +42,9 @@ export const ALERT_DESTINATION: Partial<Record<CompetitiveAlertType, { href: str
 };
 
 export interface PriorityFinding {
-  /** Canonical identity: the run it came from + its index in that run. */
+  /** Stable identity: the backend's finding key when stored (newer runs),
+   * else run id + index. */
+  id: string;
   runId: string;
   index: number;
   title: string;
@@ -62,6 +64,7 @@ export interface PriorityFinding {
 }
 
 interface RawFinding {
+  key?: string;
   title?: string;
   impact?: string;
   confidence?: string;
@@ -118,6 +121,7 @@ export function priorityFindings(run: AgentRun): PriorityFinding[] {
           ? (AREA_DESTINATION[area] ?? null)
           : null;
     return {
+      id: typeof f.key === "string" && f.key ? f.key : `${run.id}:${i}`,
       runId: run.id,
       index: i,
       title: f.title ?? "Finding",
@@ -138,6 +142,17 @@ export function priorityFindings(run: AgentRun): PriorityFinding[] {
 
 /** Canonical content-gap ids already covered by the given findings
  * (research stores the gap's id in the finding's evidence). */
+/** The content_gap_id an alert's evidence points at, when stored
+ * (evidence.current_measurement.content_gap_id on gap alerts). */
+export function alertGapId(evidence: Record<string, unknown>): string | null {
+  const cur = evidence["current_measurement"];
+  if (cur && typeof cur === "object") {
+    const id = (cur as Record<string, unknown>)["content_gap_id"];
+    if (typeof id === "string") return id;
+  }
+  return null;
+}
+
 export function coveredGapIds(findings: PriorityFinding[]): Set<string> {
   const ids = new Set<string>();
   for (const f of findings) {

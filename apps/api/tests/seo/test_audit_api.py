@@ -389,3 +389,55 @@ async def test_viewer_can_read_but_not_start_or_triage(
         )
     ).status_code == 200
     assert (await client.get("/api/v1/seo-audits/" + audit["id"])).status_code == 401
+
+
+# --- status carry-over across audits (VERIFY support) ------------------------
+
+
+async def test_ignored_carries_forward_resolved_reopens(
+    client: AsyncClient, dispatched: list[uuid.UUID], db_session: AsyncSession
+) -> None:
+    """A new audit re-detecting the same issue (code+url) starts it IGNORED
+    when the user ignored it on the previous audit — but a RESOLVED issue
+    that is detected again must come back OPEN (the verification lifecycle
+    then reports it as still detected)."""
+    h, _, pid = await _setup(client)
+    await seed_crawl(db_session, pid)
+
+    first = (await client.post(f"/api/v1/projects/{pid}/seo-audits", json={}, headers=h)).json()
+    await _run(db_session, first["id"])
+    obs1 = (
+        await client.get(
+            f"/api/v1/seo-audits/{first['id']}/observations", params={"limit": 500}, headers=h
+        )
+    ).json()["items"]
+    assert all(o["status"] == "open" for o in obs1)  # first audit: nothing carried
+
+    ignored_src = obs1[0]
+    resolved_src = next(o for o in obs1 if (o["code"], o["url"]) != (ignored_src["code"], ignored_src["url"]))
+    for oid, status, note in (
+        (ignored_src["id"], "ignored", "known false positive"),
+        (resolved_src["id"], "resolved", None),
+    ):
+        r = await client.patch(
+            f"/api/v1/seo-observations/{oid}",
+            json={"status": status, "note": note},
+            headers=h,
+        )
+        assert r.status_code == 200, r.text
+
+    second = (await client.post(f"/api/v1/projects/{pid}/seo-audits", json={}, headers=h)).json()
+    await _run(db_session, second["id"])
+    obs2 = (
+        await client.get(
+            f"/api/v1/seo-audits/{second['id']}/observations", params={"limit": 500}, headers=h
+        )
+    ).json()["items"]
+    by_key = {(o["code"], o["url"]): o for o in obs2}
+
+    carried = by_key[(ignored_src["code"], ignored_src["url"])]
+    assert carried["status"] == "ignored"
+    assert carried["status_note"] == "known false positive"
+
+    reopened = by_key[(resolved_src["code"], resolved_src["url"])]
+    assert reopened["status"] == "open"  # resolved never carries — reappearance must be visible

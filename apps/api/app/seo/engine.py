@@ -8,7 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import safe_error_message
 from app.core.logging import get_logger
 from app.models.crawl import CrawlJob
-from app.models.seo import AuditStatus, SeoAudit, SeoObservation
+from sqlalchemy import select
+
+from app.models.seo import AuditStatus, ObservationStatus, SeoAudit, SeoObservation
 from app.seo.checks.canonical import check_canonical
 from app.seo.checks.headings import check_headings
 from app.seo.checks.http import check_http, check_indexability
@@ -40,6 +42,35 @@ def run_checks(ctx: AuditContext) -> list[Finding]:
     return findings
 
 
+async def _previously_ignored(session: AsyncSession, audit: SeoAudit) -> dict[tuple[str, str | None], str | None]:
+    """(code, url) -> status_note for observations the user IGNORED on the
+    most recent completed audit before this one. Chronology matters: only
+    the immediately previous completed audit is consulted."""
+    prev_id = (
+        await session.execute(
+            select(SeoAudit.id)
+            .where(
+                SeoAudit.project_id == audit.project_id,
+                SeoAudit.status == AuditStatus.COMPLETED,
+                SeoAudit.id != audit.id,
+            )
+            .order_by(SeoAudit.completed_at.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if prev_id is None:
+        return {}
+    rows = (
+        await session.execute(
+            select(SeoObservation.code, SeoObservation.url, SeoObservation.status_note).where(
+                SeoObservation.audit_id == prev_id,
+                SeoObservation.status == ObservationStatus.IGNORED,
+            )
+        )
+    ).all()
+    return {(code, url): note for code, url, note in rows}
+
+
 async def run_audit(session: AsyncSession, audit: SeoAudit) -> SeoAudit:
     audit.status = AuditStatus.RUNNING
     audit.started_at = datetime.now(UTC)
@@ -51,6 +82,13 @@ async def run_audit(session: AsyncSession, audit: SeoAudit) -> SeoAudit:
         ctx = await build_context(session, job)
         findings = run_checks(ctx)
         score = compute_score(findings, len(ctx.html_pages))
+        # Carry IGNORED forward: when the previous completed audit had the
+        # same issue (code + url) marked ignored, the new observation starts
+        # ignored too — "don't tell me about this again" survives re-audits.
+        # RESOLVED is deliberately NOT carried: a resolved issue that is
+        # detected again must come back OPEN, which is exactly what the
+        # verification lifecycle surfaces as "still detected".
+        ignored = await _previously_ignored(session, audit)
         session.add_all(
             SeoObservation(
                 audit_id=audit.id,
@@ -64,6 +102,12 @@ async def run_audit(session: AsyncSession, audit: SeoAudit) -> SeoAudit:
                 description=f.description,
                 evidence=f.evidence,
                 recommendation=f.recommendation,
+                status=(
+                    ObservationStatus.IGNORED
+                    if (f.code, f.url) in ignored
+                    else ObservationStatus.OPEN
+                ),
+                status_note=ignored.get((f.code, f.url)),
             )
             for f in findings
         )

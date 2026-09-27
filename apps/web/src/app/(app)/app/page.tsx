@@ -182,7 +182,7 @@ export default function OverviewPage() {
             </div>
             <ol className="mt-2 flex flex-col">
               {priorities.map((p, i) => (
-                <li key={`${p.runId}:${p.index}`}>
+                <li key={p.id}>
                   <Link
                     href="/app/priorities"
                     className="hover:bg-accent flex items-baseline gap-2.5 rounded-md px-2 py-1.5 text-sm transition-colors"

@@ -14,6 +14,7 @@ import { relativeTime } from "@/lib/format";
 import { api } from "@/lib/api";
 import {
   ALERT_DESTINATION,
+  alertGapId,
   ALERT_SEVERITY_ORDER,
   coveredGapIds,
   latestResearchRun,
@@ -77,13 +78,19 @@ export default function PrioritiesPage() {
       .sort((a, b) => b.opportunity_score - a.opportunity_score)
       .slice(0, 3);
   }, [gaps.data, findings]);
-  const topAlerts = React.useMemo(
-    () =>
-      [...(alerts.data?.items ?? [])]
-        .sort((a, b) => (ALERT_SEVERITY_ORDER[a.severity] ?? 9) - (ALERT_SEVERITY_ORDER[b.severity] ?? 9))
-        .slice(0, 3),
-    [alerts.data],
-  );
+  // Alerts about a gap already shown above (finding or gap queue) are
+  // dropped by canonical id — the alert evidence stores content_gap_id.
+  const topAlerts = React.useMemo(() => {
+    const covered = coveredGapIds(findings);
+    for (const g of gaps.data?.items ?? []) covered.add(g.id);
+    return [...(alerts.data?.items ?? [])]
+      .filter((a) => {
+        const gapId = alertGapId(a.evidence);
+        return gapId === null || !covered.has(gapId);
+      })
+      .sort((a, b) => (ALERT_SEVERITY_ORDER[a.severity] ?? 9) - (ALERT_SEVERITY_ORDER[b.severity] ?? 9))
+      .slice(0, 3);
+  }, [alerts.data, findings, gaps.data]);
 
   const loading = runs.data === null && runs.error === null;
   const allEmpty = !loading && findings.length === 0 && topGaps.length === 0 && topAlerts.length === 0 && gaps.data !== null && alerts.data !== null;
@@ -143,7 +150,7 @@ export default function PrioritiesPage() {
             ) : (
               <ol className="flex flex-col gap-2">
                 {shown.map((f, i) => (
-                  <PriorityRow key={`${f.runId}:${f.index}`} rank={i + 1} finding={f} briefDrafted={typeof f.evidence.content_gap_id === 'string' && briefedGapIds.has(f.evidence.content_gap_id as string)} />
+                  <PriorityRow key={f.id} rank={i + 1} finding={f} briefDrafted={typeof f.evidence.content_gap_id === 'string' && briefedGapIds.has(f.evidence.content_gap_id as string)} />
                 ))}
               </ol>
             )}

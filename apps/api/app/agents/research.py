@@ -151,6 +151,9 @@ class ResearchAgent(Agent):
 
         findings = [
             {
+                # Stable identity across runs: generators build it from the
+                # underlying object (e.g. "content:<topic>:<gap_type>").
+                "key": c.key,
                 "title": c.title,
                 "problem": c.problem,
                 "evidence": c.evidence,
@@ -168,6 +171,7 @@ class ResearchAgent(Agent):
         ]
         opportunities = [
             {
+                "key": c.key,
                 "title": c.title,
                 "why_now": c.why_now,
                 "recommended_action": c.recommended_action,
