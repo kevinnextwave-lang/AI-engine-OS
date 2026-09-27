@@ -113,6 +113,7 @@ function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
   return (
+    <div className="w-full max-w-sm">
     <Card>
       <CardHeader>
         <CardTitle>Choose a new password</CardTitle>
@@ -125,5 +126,6 @@ export default function ResetPasswordPage() {
         </React.Suspense>
       </CardContent>
     </Card>
+    </div>
   );
 }

@@ -65,6 +65,12 @@ class VerifyEmailRequest(APIModel):
     token: str = Field(min_length=16, max_length=256)
 
 
+class DeleteAccountRequest(APIModel):
+    # Confirming with the password means a leaked access token alone cannot
+    # destroy the account.
+    password: str = Field(min_length=1, max_length=MAX_LENGTH)
+
+
 class UserResponse(APIModel):
     id: uuid.UUID
     email: EmailStr

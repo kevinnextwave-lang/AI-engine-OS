@@ -23,10 +23,13 @@ from app.core.email import EmailMessage, EmailSender, get_email_sender
 from app.core.errors import ValidationAppError
 from app.core.logging import get_logger
 from app.core.passwords import validate_password
-from app.core.security import hash_password, hash_token, utcnow
+from app.core.security import hash_password, hash_token, utcnow, verify_password
 from app.models.account_token import AccountToken, AccountTokenPurpose
 from app.models.auth_audit_log import AuthEvent
+from app.models.membership import MembershipRole
+from app.models.organization import OrganizationStatus
 from app.models.user import User
+from app.repositories.organizations import MembershipRepository
 from app.repositories.refresh_tokens import RefreshTokenRepository
 from app.repositories.users import UserRepository
 from app.services.audit import AuthAuditService
@@ -135,6 +138,45 @@ class AccountService:
             ip_address=client.ip_address,
             user_agent=client.user_agent,
         )
+
+    # -- account deletion ----------------------------------------------------
+
+    async def delete_account(self, *, user: User, password: str, client: ClientInfo) -> None:
+        """Self-serve deletion. The password confirms intent (a stolen access
+        token alone must not be able to destroy the account).
+
+        Organizations: one where this user is the only member is soft-deleted
+        with the account. One with OTHER members where this user is the only
+        owner blocks deletion — ownership must be transferred (or the org
+        deleted) first, otherwise the org would be orphaned. Orgs with another
+        owner simply lose this membership (FK cascade).
+        """
+        if not await asyncio.to_thread(verify_password, password, user.password_hash):
+            raise ValidationAppError("Password is incorrect.")
+
+        memberships_repo = MembershipRepository(self._session)
+        for membership in await memberships_repo.list_for_user(user.id):
+            org = membership.organization
+            if org.deleted_at is not None or org.status == OrganizationStatus.DELETED:
+                continue
+            members = await memberships_repo.list_for_organization(org.id)
+            others = [m for m in members if m.user_id != user.id]
+            if not others:
+                org.status = OrganizationStatus.DELETED
+                org.deleted_at = utcnow()
+                continue
+            if membership.role == MembershipRole.OWNER and not any(
+                m.role == MembershipRole.OWNER for m in others
+            ):
+                raise ValidationAppError(
+                    f"You are the only owner of '{org.name}', which still has other members. "
+                    "Transfer ownership or remove the members first."
+                )
+        log.info("account_deleted", user_id=str(user.id), email=user.email)
+        # Hard delete: memberships, refresh tokens and account tokens cascade;
+        # authorship columns are SET NULL; the auth audit trail keeps its rows
+        # with user_id nulled (events remain for investigation).
+        await self._session.delete(user)
 
     # -- email verification --------------------------------------------------
 

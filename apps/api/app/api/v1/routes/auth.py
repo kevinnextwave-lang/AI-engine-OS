@@ -4,6 +4,7 @@ from app.api.deps import CurrentUser, DBSession, SettingsDep, client_ip, rate_li
 from app.core.config import Settings
 from app.core.logging import get_logger
 from app.schemas.auth import (
+    DeleteAccountRequest,
     ForgotPasswordRequest,
     LoginRequest,
     ResetPasswordRequest,
@@ -212,3 +213,22 @@ async def verify_email(
 async def resend_verification(user: CurrentUser, session: DBSession) -> MessageResponse:
     await AccountService(session).send_verification(user)
     return MessageResponse(message="Verification email sent (if not already verified).")
+
+
+@router.delete("/me", response_model=MessageResponse)
+async def delete_account(
+    body: DeleteAccountRequest,
+    user: CurrentUser,
+    request: Request,
+    response: Response,
+    session: DBSession,
+    settings: SettingsDep,
+) -> MessageResponse:
+    """Self-serve account deletion, confirmed with the password. Solo
+    organizations are deleted with the account; an organization with other
+    members and no other owner blocks deletion until ownership moves."""
+    await AccountService(session).delete_account(
+        user=user, password=body.password, client=_client(request)
+    )
+    _clear_refresh_cookie(response, settings)
+    return MessageResponse(message="Your account has been deleted.")

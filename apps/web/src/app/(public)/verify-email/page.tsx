@@ -92,6 +92,7 @@ function VerifyEmailBody() {
 
 export default function VerifyEmailPage() {
   return (
+    <div className="w-full max-w-sm">
     <Card>
       <CardHeader>
         <CardTitle>Email verification</CardTitle>
@@ -104,5 +105,6 @@ export default function VerifyEmailPage() {
         </React.Suspense>
       </CardContent>
     </Card>
+    </div>
   );
 }

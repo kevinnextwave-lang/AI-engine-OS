@@ -273,6 +273,11 @@ export const api = {
       ),
     resendVerification: () =>
       request<{ message: string }>("/auth/resend-verification", { method: "POST" }),
+    deleteAccount: (password: string) =>
+      request<{ message: string }>("/auth/me", {
+        method: "DELETE",
+        body: JSON.stringify({ password }),
+      }),
   },
   organizations: {
     list: () => request<Organization[]>("/organizations"),

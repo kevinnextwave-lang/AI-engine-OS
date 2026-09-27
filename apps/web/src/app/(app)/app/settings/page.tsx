@@ -1,9 +1,14 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import * as React from "react";
+
 import { useAuth } from "@/components/auth-provider";
 import { useOrganization } from "@/components/organization-provider";
 import { PageHeader } from "@/components/shell/page-header";
+import { ApiError, api } from "@/lib/api";
 import {
+  Button,
   Card,
   CardContent,
   CardDescription,
@@ -16,7 +21,40 @@ import {
 export default function SettingsPage() {
   const { user } = useAuth();
   const { current, loading: orgLoading, error: orgError } = useOrganization();
+  const router = useRouter();
   const orgPlaceholder = orgLoading ? "Loading…" : "—";
+
+  const [resendState, setResendState] = React.useState<"idle" | "sending" | "sent">("idle");
+  const [confirming, setConfirming] = React.useState(false);
+  const [deletePassword, setDeletePassword] = React.useState("");
+  const [deleting, setDeleting] = React.useState(false);
+  const [deleteError, setDeleteError] = React.useState<string | null>(null);
+
+  async function resendVerification() {
+    setResendState("sending");
+    try {
+      await api.auth.resendVerification();
+      setResendState("sent");
+    } catch {
+      setResendState("idle");
+    }
+  }
+
+  async function onDeleteAccount(e: React.FormEvent) {
+    e.preventDefault();
+    setDeleteError(null);
+    setDeleting(true);
+    try {
+      await api.auth.deleteAccount(deletePassword);
+      // The account (and its sessions) no longer exist; leave client state behind.
+      router.replace("/login");
+    } catch (err) {
+      setDeleteError(
+        err instanceof ApiError ? err.message : "Something went wrong. Please try again.",
+      );
+      setDeleting(false);
+    }
+  }
 
   return (
     <>
@@ -46,6 +84,22 @@ export default function SettingsPage() {
             <div className="grid gap-2">
               <Label htmlFor="profile-email">Email</Label>
               <Input id="profile-email" readOnly value={user?.email ?? ""} />
+              {user && !user.email_verified && (
+                <p className="text-muted-foreground text-xs">
+                  Not verified yet.{" "}
+                  <button
+                    type="button"
+                    onClick={resendVerification}
+                    disabled={resendState === "sending"}
+                    className="text-foreground underline underline-offset-4 disabled:opacity-60"
+                  >
+                    {resendState === "sent" ? "Sent — check your inbox" : "Resend verification email"}
+                  </button>
+                </p>
+              )}
+              {user?.email_verified && (
+                <p className="text-muted-foreground text-xs">Verified.</p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -70,6 +124,58 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="border-destructive/40 mt-4">
+        <CardHeader>
+          <CardTitle>Danger zone</CardTitle>
+          <CardDescription>
+            Deleting your account is permanent. Organizations where you are the only member are
+            deleted with it; one with other members needs another owner first.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!confirming ? (
+            <Button variant="outline" className="text-destructive" onClick={() => setConfirming(true)}>
+              Delete account…
+            </Button>
+          ) : (
+            <form onSubmit={onDeleteAccount} className="flex max-w-sm flex-col gap-3">
+              <div className="grid gap-2">
+                <Label htmlFor="delete-password">Confirm with your password</Label>
+                <Input
+                  id="delete-password"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                />
+              </div>
+              {deleteError && (
+                <p role="alert" className="text-destructive text-sm">
+                  {deleteError}
+                </p>
+              )}
+              <div className="flex gap-2">
+                <Button type="submit" variant="destructive" disabled={deleting}>
+                  {deleting ? "Deleting…" : "Permanently delete my account"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setConfirming(false);
+                    setDeletePassword("");
+                    setDeleteError(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          )}
+        </CardContent>
+      </Card>
     </>
   );
 }

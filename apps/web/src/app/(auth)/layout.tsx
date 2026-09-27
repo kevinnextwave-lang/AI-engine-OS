@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 
@@ -21,6 +22,15 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <p className="text-muted-foreground text-sm">Visibility across AI search engines</p>
       </div>
       <div className="w-full max-w-sm">{children}</div>
+      <p className="text-muted-foreground mt-6 text-xs">
+        <Link href="/terms" className="hover:text-foreground underline underline-offset-4">
+          Terms
+        </Link>{" "}
+        ·{" "}
+        <Link href="/privacy" className="hover:text-foreground underline underline-offset-4">
+          Privacy
+        </Link>
+      </p>
     </main>
   );
 }
