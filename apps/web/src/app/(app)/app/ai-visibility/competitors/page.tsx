@@ -130,7 +130,7 @@ export default function CompetitorsPage() {
               hasSignal: overlapOnly > 0,
               label:
                 overlapOnly > 0
-                  ? `Review citation gaps — ${overlapOnly} source${overlapOnly === 1 ? "" : "s"} cite only competitors`
+                  ? `Review citation gaps — ${overlapOnly} source${overlapOnly === 1 ? " cites" : "s cite"} only competitors`
                   : "Citation gaps",
             },
             {
@@ -158,7 +158,15 @@ export default function CompetitorsPage() {
           return (
             <div className="flex flex-wrap gap-2">
               {actions.map((a, i) => (
-                <Button key={a.href} asChild size="sm" variant={i === 0 && a.hasSignal ? "default" : "outline"}>
+                <Button
+                  key={a.href}
+                  asChild
+                  size="sm"
+                  variant={i === 0 && a.hasSignal ? "default" : "outline"}
+                  // Signal labels are long; let them wrap instead of
+                  // overflowing narrow screens.
+                  className="h-auto min-h-8 max-w-full whitespace-normal text-left"
+                >
                   <Link href={a.href}>{a.label}</Link>
                 </Button>
               ))}
