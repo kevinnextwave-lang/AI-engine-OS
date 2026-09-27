@@ -271,6 +271,7 @@ async def test_successful_execution_persists_response_usage_and_finishes_batch(
     assert row["response"]["total_tokens"] == 16 and row["response"]["raw_metadata"].keys() <= {
         "finish_reason",
         "system_fingerprint",
+        "grounded",
     }
     usage = (
         await db_session.scalars(
@@ -747,3 +748,39 @@ def test_retry_after_header_is_parsed_and_clamped() -> None:
     assert err_for({"retry-after": "100000"}).error.retry_after_seconds == 600.0  # clamped
     assert err_for({}).error.retry_after_seconds is None
     assert err_for({"retry-after": "not-a-number"}).error.retry_after_seconds is None
+
+
+async def test_per_org_throttle_defers_before_global(
+    client: AsyncClient, dispatched: Recorder, registry: ProviderRegistry, db_session: AsyncSession
+) -> None:
+    """One tenant's batch must not monopolize the provider window: with an
+    org share of 1/min, the second run of the SAME org defers with 'org
+    throttle' even though the global provider window has room."""
+    from app.ai.execution import execute_prompt_run
+
+    h, _, pid, set_id = await _setup(client, prompts=2)
+    batch = (
+        await client.post(
+            f"/api/v1/prompt-sets/{set_id}/run", json={"providers": ["openai"]}, headers=h
+        )
+    ).json()
+    run_ids = list(
+        (
+            await db_session.scalars(
+                select(PromptRun.id).where(PromptRun.batch_id == uuid.UUID(batch["id"]))
+            )
+        ).all()
+    )
+    assert len(run_ids) == 2
+    reg = registry_with({"openai": lambda r: json_response(200, OPENAI_OK)})
+    throttle = InMemoryProviderThrottle()
+    cfg = settings(ai_rate_limit_org_per_minute=1, ai_rate_limit_openai_per_minute=0)
+
+    first = await execute_prompt_run(db_session, run_ids[0], reg, throttle, cfg)
+    assert first.status == PromptRunStatus.COMPLETED
+
+    second = await execute_prompt_run(db_session, run_ids[1], reg, throttle, cfg)
+    assert second.should_retry and second.reason == "org throttle"
+    run = await db_session.get(PromptRun, run_ids[1])
+    # Deferral never consumes an attempt.
+    assert run is not None and run.status == PromptRunStatus.QUEUED and run.attempts == 0

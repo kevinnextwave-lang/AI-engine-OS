@@ -16,6 +16,7 @@ import { API_UNREACHABLE_MESSAGE, MOCK_FALLBACK_ALLOWED } from "@/lib/mock-fallb
 
 import { ApiError, api } from "@/lib/api";
 import type {
+  PromptRunBatch,
   PromptRow,
   PromptSet,
   ProviderStatus,
@@ -66,6 +67,8 @@ interface RawData {
   byPrompt: VisibilityByPrompt;
   competitors: VisibilityCompetitors;
   promptSets: PromptSet[];
+  /** Newest batch of the runnable set — honesty about partial collections. */
+  lastBatch: PromptRunBatch | null;
   prompts: PromptRow[];
   providers: ProviderStatus[];
 }
@@ -94,6 +97,8 @@ export interface VisibilityData {
   configuredProviders: string[];
   /** First prompt set with active prompts, if any — target of "Run Prompt Set". */
   runnableSet: PromptSet | null;
+  /** Newest collection batch, for surfacing partial/failed outcomes. */
+  lastBatch: PromptRunBatch | null;
   actions: {
     refresh: () => void;
     runPromptSet: () => Promise<void>;
@@ -121,6 +126,7 @@ const MOCK_RAW: RawData = {
   byPrompt: MOCK_BY_PROMPT,
   competitors: MOCK_COMPETITORS,
   promptSets: [],
+  lastBatch: null,
   prompts: MOCK_PROMPT_ROWS,
   providers: [],
 };
@@ -137,7 +143,24 @@ async function loadFromApi(projectId: string, window: VisibilityWindow): Promise
   ]);
   const active = sets.items.filter((s) => s.status !== "archived");
   const prompts = (await Promise.all(active.map((s) => api.prompts.list(s.id)))).flatMap((r) => r.items);
-  return { overview, trends, byEngine, byPrompt, competitors, promptSets: active, prompts, providers: providers.items };
+  const runnable = active.find((s) => s.active_prompt_count > 0) ?? null;
+  const lastBatch = runnable
+    ? await api.prompts
+        .batches(runnable.id, 1)
+        .then((r) => r.items[0] ?? null)
+        .catch(() => null)
+    : null;
+  return {
+    overview,
+    trends,
+    byEngine,
+    byPrompt,
+    competitors,
+    promptSets: active,
+    prompts,
+    providers: providers.items,
+    lastBatch,
+  };
 }
 
 function isNetworkFailure(err: unknown): boolean {
@@ -318,6 +341,7 @@ export function useVisibilityData(projectId: string | null, brandName: string | 
       raw,
       configuredProviders,
       runnableSet,
+      lastBatch: raw?.lastBatch ?? null,
       actions: { refresh, runPromptSet, generatePrompts },
       busy,
       runNotice,

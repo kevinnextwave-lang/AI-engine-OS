@@ -518,7 +518,23 @@ def reap_stale_jobs_task(self) -> str:  # type: ignore[no-untyped-def]
         try:
             async with get_session_factory()() as session:
                 result = await reap_stale_jobs(session)
-                return f"reaped={result.total}"
+            if result.total:
+                # The reaper firing means workers died unobserved — the
+                # operator's early-warning signal. Best-effort delivery.
+                from app.monitoring.ops import notify_ops
+
+                await notify_ops(
+                    "stale_jobs_reaped",
+                    {
+                        "total": result.total,
+                        "crawls": result.crawls,
+                        "seo_audits": result.seo_audits,
+                        "readiness_audits": result.readiness_audits,
+                        "prompt_runs": result.prompt_runs,
+                        "agent_runs": result.agent_runs,
+                    },
+                )
+            return f"reaped={result.total}"
         finally:
             await dispose_engine()
 

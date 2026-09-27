@@ -83,6 +83,7 @@ import type {
   PromptGenerateResponse,
   PromptListResponse,
   PromptRunBatch,
+  PromptRunBatchListResponse,
   PromptRunListResponse,
   PromptSet,
   PromptSetCreateRequest,
@@ -684,6 +685,8 @@ export const api = {
       }),
     runs: (promptId: string, limit = 50) =>
       request<PromptRunListResponse>(`/prompts/${promptId}/runs?limit=${limit}`),
+    batches: (promptSetId: string, limit = 1) =>
+      request<PromptRunBatchListResponse>(`/prompt-sets/${promptSetId}/batches?limit=${limit}`),
   },
   intelligence: {
     forRun: (runId: string) => request<ResponseIntelligence>(`/prompt-runs/${runId}/intelligence`),

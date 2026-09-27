@@ -57,6 +57,17 @@ export function VisibilityPageFrame({
         ) : null
       }
     >
+      {!loading && vis.source === "api" && vis.lastBatch?.status === "partial" && (
+        <p
+          role="status"
+          className="border-caution/40 bg-caution/10 text-foreground mb-4 rounded-md border px-3 py-2 text-sm"
+        >
+          The latest collection finished <span className="font-medium">partially</span>:{" "}
+          {vis.lastBatch.failed_runs} of {vis.lastBatch.total_runs} runs failed. The numbers
+          below are built from the {vis.lastBatch.completed_runs} runs that completed — a
+          re-run will fill the gap.
+        </p>
+      )}
       {!loading && vis.quality && (
         <div className="mb-4">
           <DataBasis quality={vis.quality} brandName={vis.brandName} />

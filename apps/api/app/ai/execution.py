@@ -84,8 +84,22 @@ async def execute_prompt_run(
             await session.commit()
             return Outcome(run_id, PromptRunStatus.CANCELLED, reason="batch cancelled")
 
-    # Provider throttle: defer without occupying the worker.
+    # Provider throttle: defer without occupying the worker. Two windows:
+    # a per-ORGANIZATION share first (one tenant's big batch must not delay
+    # everyone else's runs), then the global provider ceiling. Checking the
+    # org window first means a global rejection can strand one org-window
+    # slot for that minute — accepted; the alternative leaks global slots.
     provider_key = run.provider_key or ""
+    org_limit = settings.ai_rate_limit_org_per_minute
+    if org_limit > 0:
+        org_id = await session.scalar(
+            select(Project.organization_id).where(Project.id == run.project_id)
+        )
+        if org_id is not None:
+            wait = await throttle.acquire(f"{provider_key}:org:{org_id}", org_limit)
+            if wait > 0:
+                await session.commit()
+                return Outcome(run_id, PromptRunStatus.QUEUED, retry_in=wait, reason="org throttle")
     wait = await throttle.acquire(provider_key, settings.ai_rate_limit_for(provider_key))
     if wait > 0:
         await session.commit()

@@ -1345,6 +1345,11 @@ export interface PromptRunBatch {
   created_at: string;
 }
 
+export interface PromptRunBatchListResponse {
+  items: PromptRunBatch[];
+  total: number;
+}
+
 export interface AiResponseView {
   response_text: string;
   finish_reason: string | null;

@@ -70,6 +70,8 @@ class Settings(BaseSettings):
     # API and the worker; unset means zero overhead.
     sentry_dsn: str | None = None
     sentry_traces_sample_rate: float = 0.0
+    # Optional operator webhook for platform events (reaper firings, etc.).
+    ops_webhook_url: str | None = None
 
     # Data retention (days; 0 disables that pruner). Applied by the daily
     # retention task on celery beat. Current-state tables (website_pages,
@@ -161,6 +163,10 @@ class Settings(BaseSettings):
     ai_rate_limit_openai_per_minute: int = 60
     ai_rate_limit_anthropic_per_minute: int = 50
     ai_rate_limit_google_per_minute: int = 60
+    ai_rate_limit_perplexity_per_minute: int = 50
+    # Per-organization share of each provider window (0 disables): one
+    # tenant's batch must not monopolize the global provider budget.
+    ai_rate_limit_org_per_minute: int = 20
     # Response intelligence Stage 2 (LLM-assisted interpretation); off by default.
     ai_parser_llm_enabled: bool = False
     # Citation Intelligence (4B): optional JSON overriding/extending app/sources/registry.json.
