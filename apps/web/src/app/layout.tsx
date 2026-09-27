@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { AuthProvider } from "@/components/auth-provider";
+import { THEME_BOOTSTRAP } from "@/lib/theme";
 import { TooltipProvider } from "@ai-search-growth-os/ui";
 
 import "./globals.css";
@@ -24,7 +25,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={inter.variable}>
+    // suppressHydrationWarning: the theme bootstrap toggles the `dark` class
+    // before hydration, so the server-rendered class list may differ.
+    <html lang="en" className={inter.variable} suppressHydrationWarning>
+      <head>
+        {/* Applies the stored theme before first paint — no flash. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
+      </head>
       <body className="font-sans antialiased">
         <TooltipProvider>
           <AuthProvider>{children}</AuthProvider>

@@ -1,10 +1,11 @@
 "use client";
 
-import { LogOutIcon, SettingsIcon } from "lucide-react";
+import { CheckIcon, LogOutIcon, MonitorIcon, MoonIcon, SettingsIcon, SunIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/components/auth-provider";
+import { useTheme, type ThemePreference } from "@/lib/theme";
 import {
   Avatar,
   Button,
@@ -16,8 +17,15 @@ import {
   DropdownMenuTrigger,
 } from "@ai-search-growth-os/ui";
 
+const THEME_OPTIONS: { value: ThemePreference; label: string; icon: typeof SunIcon }[] = [
+  { value: "system", label: "System theme", icon: MonitorIcon },
+  { value: "light", label: "Light", icon: SunIcon },
+  { value: "dark", label: "Dark", icon: MoonIcon },
+];
+
 export function UserMenu() {
   const { user, logout } = useAuth();
+  const { theme, setTheme } = useTheme();
   const router = useRouter();
   if (!user) return null;
 
@@ -42,6 +50,14 @@ export function UserMenu() {
             Settings
           </Link>
         </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        {THEME_OPTIONS.map((o) => (
+          <DropdownMenuItem key={o.value} onSelect={() => setTheme(o.value)} aria-checked={theme === o.value} role="menuitemradio">
+            <o.icon />
+            {o.label}
+            {theme === o.value && <CheckIcon className="ml-auto size-4" aria-hidden="true" />}
+          </DropdownMenuItem>
+        ))}
         <DropdownMenuSeparator />
         <DropdownMenuItem
           variant="destructive"
