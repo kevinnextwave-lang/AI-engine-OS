@@ -6,6 +6,7 @@ import * as React from "react";
 
 import { useAuth } from "@/components/auth-provider";
 import { useOrganization } from "@/components/organization-provider";
+import { GettingStarted } from "@/components/home/getting-started";
 import { useProject } from "@/components/project-provider";
 import { PageHeader } from "@/components/shell/page-header";
 import { api } from "@/lib/api";
@@ -169,6 +170,8 @@ export default function OverviewPage() {
           </Card>
         </div>
       )}
+
+      {!loading && projects.length > 0 && <GettingStarted />}
 
       {/* Same data the Priorities page ranks with — just the top three. */}
       {!loading && priorities.length > 0 && (

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as React from "react";
 
+import { CommandPalette } from "@/components/shell/command-palette";
 import { isActive, SETTINGS_ITEM } from "@/components/shell/nav-items";
 import { OrganizationSwitcher } from "@/components/shell/organization-switcher";
 import { NavLink, SidebarNav } from "@/components/shell/sidebar-nav";
@@ -101,6 +102,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="ml-auto flex items-center gap-2">
+            <CommandPalette />
             <UserMenu />
           </div>
         </header>
