@@ -5,6 +5,7 @@ import * as React from "react";
 
 import { SeverityBadge, StatusBadge } from "@/components/geo/severity-badge";
 import { SEVERITY_LABEL, STATUS_LABEL } from "@/lib/geo/labels";
+import { fmtDateTime } from "@/lib/format";
 import { displayPath } from "@/lib/geo/overview";
 import type { GeoIssue } from "@/lib/geo/types";
 import type { ObservationStatus } from "@ai-search-growth-os/types";
@@ -121,16 +122,57 @@ function StatusForm({
   );
 }
 
+/** VERIFY context for this issue: what the timeline can honestly say. */
+function VerificationSection({ issue, latestAuditCompletedAt }: { issue: GeoIssue; latestAuditCompletedAt?: string | null }) {
+  if (issue.verification === "awaiting") {
+    return (
+      <Section title="Verification">
+        <ol className="flex flex-col gap-1 text-sm">
+          <li>
+            <span className="text-muted-foreground">Detected:</span> {issue.detectedAt ? fmtDateTime(issue.detectedAt) : "–"}
+          </li>
+          <li>
+            <span className="text-muted-foreground">Marked resolved:</span>{" "}
+            {issue.statusChangedAt ? fmtDateTime(issue.statusChangedAt) : "–"}
+          </li>
+          <li>
+            <span className="text-muted-foreground">Next measurement:</span> not yet run
+          </li>
+        </ol>
+        <p className="text-muted-foreground mt-1.5 text-sm">
+          Awaiting verification — marking an issue resolved records your action; only the next completed audit can
+          confirm it is no longer detected.
+        </p>
+      </Section>
+    );
+  }
+  if (issue.verification === "reappeared") {
+    return (
+      <Section title="Verification">
+        <p className="text-sm">
+          Still detected. This issue was marked resolved against an earlier audit, but the latest audit
+          {latestAuditCompletedAt ? ` (${fmtDateTime(latestAuditCompletedAt)})` : ""} detects it again — it is not
+          verified.
+        </p>
+      </Section>
+    );
+  }
+  return null;
+}
+
 export function IssueDrawer({
   issue,
   onClose,
   onUpdateStatus,
   busy,
+  latestAuditCompletedAt,
 }: {
   issue: GeoIssue | null;
   onClose: () => void;
   onUpdateStatus: (issue: GeoIssue, status: ObservationStatus, note?: string) => Promise<void>;
   busy: boolean;
+  /** When the latest completed audit ran — context for verification copy. */
+  latestAuditCompletedAt?: string | null;
 }) {
   return (
     <Sheet open={issue !== null} onOpenChange={(open) => !open && onClose()}>
@@ -190,6 +232,8 @@ export function IssueDrawer({
               <Section title="Potential impact">
                 <p className="text-muted-foreground text-sm leading-relaxed">{impactStatement(issue)}</p>
               </Section>
+
+              <VerificationSection issue={issue} latestAuditCompletedAt={latestAuditCompletedAt} />
 
               {/* Progressive disclosure: raw audit data for technical users. */}
               <details className="group rounded-lg border">

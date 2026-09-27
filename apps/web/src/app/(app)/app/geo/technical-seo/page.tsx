@@ -3,6 +3,7 @@
 import { CategoryBreakdown } from "@/components/geo/category-breakdown";
 import { MockNotice } from "@/components/geo/data-source-badge";
 import { IssueExplorer } from "@/components/geo/issue-explorer";
+import { VerifyStrip } from "@/components/geo/verify-strip";
 import { GeoPageTools } from "@/components/geo/page-tools";
 import { ScoreRing } from "@/components/geo/score-ring";
 import { useProjectGeo } from "@/components/geo/use-project-geo";
@@ -50,7 +51,24 @@ export default function TechnicalSeoPage() {
       <CategoryBreakdown issues={issues} loading={loading} />
       </div>
 
-      <IssueExplorer issues={issues} loading={loading} busy={geo.busy === "status"} onUpdateStatus={geo.actions.updateIssueStatus} showOrigin={false} />
+      {!loading && geo.verification && (
+        <div className="mb-4">
+          <VerifyStrip
+            verification={geo.verification}
+            canRunAudit={geo.source === "api" && geo.busy === null && geo.crawl.pagesCrawled > 0}
+            auditRunning={geo.busy === "audit" || geo.crawl.auditRunning}
+            onRunAudit={() => void geo.actions.runGeoAudit()}
+          />
+        </div>
+      )}
+      <IssueExplorer
+        issues={issues}
+        loading={loading}
+        busy={geo.busy === "status"}
+        onUpdateStatus={geo.actions.updateIssueStatus}
+        showOrigin={false}
+        latestAuditCompletedAt={geo.verification?.latestAudit.completed_at ?? null}
+      />
     </>
   );
 }

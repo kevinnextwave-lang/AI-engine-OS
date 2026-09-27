@@ -9,7 +9,9 @@
 import * as React from "react";
 import { fmtDate } from "@/lib/format";
 
+import { ChartEventChips } from "@/components/chart-events";
 import { ScoreRing } from "@/components/geo/score-ring";
+import type { ChartEvent } from "@/lib/verify";
 import { SeverityBadge } from "@/components/geo/severity-badge";
 import { MetricAction } from "@/components/metric-action";
 import { relativeTime } from "@/lib/geo/mappers";
@@ -241,10 +243,14 @@ const W = 720;
 const H = 180;
 const PAD = { top: 10, right: 12, bottom: 24, left: 30 };
 
-export function GeoTrendChart({ series }: { series: TrendSeriesView[] }) {
+export function GeoTrendChart({ series, events = [] }: { series: TrendSeriesView[]; events?: ChartEvent[] }) {
   const times = series.flatMap((s) => s.points.map((p) => new Date(p.at).getTime()));
   const min = Math.min(...times);
-  const max = Math.max(...times);
+  // The domain stretches to cover events AFTER the last audit, so an action
+  // that hasn't been measured yet visibly sits to the right of the last
+  // point — recorded, awaiting the next measurement.
+  const max = Math.max(...times, ...events.map((e) => e.ts));
+  const visibleEvents = events.filter((e) => e.ts >= min && e.ts <= max);
   const x = (t: number) => PAD.left + (max === min ? 0 : ((t - min) * (W - PAD.left - PAD.right)) / (max - min));
   const y = (v: number) => PAD.top + ((100 - v) * (H - PAD.top - PAD.bottom)) / 100;
   const fmt = fmtDate;
@@ -292,7 +298,23 @@ export function GeoTrendChart({ series }: { series: TrendSeriesView[] }) {
           <text x={W - PAD.right} y={H - 6} textAnchor="end" fontSize="10" fill="var(--muted-foreground)">
             {fmt(max)}
           </text>
+          {/* Event markers: real timestamped actions. Decorative here — the
+              accessible representation is the chips row below the chart. */}
+          {visibleEvents.map((e) => (
+            <line
+              key={e.ts}
+              x1={x(e.ts)}
+              x2={x(e.ts)}
+              y1={PAD.top}
+              y2={H - PAD.bottom}
+              stroke="var(--chart-reference)"
+              strokeWidth="1"
+              strokeDasharray="3 3"
+              aria-hidden="true"
+            />
+          ))}
         </svg>
+        <ChartEventChips events={visibleEvents} className="mt-1.5" />
         <p className="text-muted-foreground mt-1 text-xs">
           One point per completed audit. Run audits regularly to build history.
         </p>

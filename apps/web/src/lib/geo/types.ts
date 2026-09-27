@@ -42,6 +42,13 @@ export interface GeoIssue {
   affectedPages: string[];
   affectedCount: number;
   status: ObservationStatus;
+  /** VERIFY state: resolved-but-unmeasured ("awaiting"), or detected again
+   * by the latest audit after an earlier resolution ("reappeared"). */
+  verification?: "awaiting" | "reappeared" | null;
+  /** When this observation was recorded (its audit run). */
+  detectedAt?: string | null;
+  /** When the status last changed (resolution time for resolved issues). */
+  statusChangedAt?: string | null;
   statusNote: string | null;
   /** Readiness observations have no triage endpoint yet. */
   canUpdateStatus: boolean;

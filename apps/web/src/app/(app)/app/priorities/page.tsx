@@ -20,7 +20,7 @@ import {
   priorityFindings,
   type PriorityFinding,
 } from "@/lib/priorities";
-import type { AgentRunListResponse, CompetitiveAlertListResponse, ContentGapListResponse } from "@ai-search-growth-os/types";
+import type { AgentRunListResponse, CompetitiveAlertListResponse, ContentBriefListResponse, ContentGapListResponse } from "@ai-search-growth-os/types";
 import { Badge, Button, Skeleton } from "@ai-search-growth-os/ui";
 
 const TOP_COUNT = 5;
@@ -47,6 +47,20 @@ export default function PrioritiesPage() {
   const alerts = useProjectResource<CompetitiveAlertListResponse>(
     React.useCallback((pid) => api.competitiveAlerts.list(pid, { status: "new", limit: 10 }), []),
   );
+  // VERIFY context: which gaps already have a drafted brief (the brief's
+  // source_key is the canonical link). A drafted brief is an ACTION STARTED
+  // — it is never presented as resolved or verified.
+  const briefs = useProjectResource<ContentBriefListResponse>(
+    React.useCallback((pid) => api.contentBriefs.list(pid, { limit: 20 }), []),
+  );
+  const briefedGapIds = React.useMemo(() => {
+    const ids = new Set<string>();
+    for (const b of briefs.data?.items ?? []) {
+      const m = /^content_gap:(.+)$/.exec(b.source_key);
+      if (m) ids.add(m[1]!);
+    }
+    return ids;
+  }, [briefs.data]);
 
   const [showAll, setShowAll] = React.useState(false);
   const run = runs.data ? latestResearchRun(runs.data.items) : null;
@@ -129,7 +143,7 @@ export default function PrioritiesPage() {
             ) : (
               <ol className="flex flex-col gap-2">
                 {shown.map((f, i) => (
-                  <PriorityRow key={`${f.runId}:${f.index}`} rank={i + 1} finding={f} />
+                  <PriorityRow key={`${f.runId}:${f.index}`} rank={i + 1} finding={f} briefDrafted={typeof f.evidence.content_gap_id === 'string' && briefedGapIds.has(f.evidence.content_gap_id as string)} />
                 ))}
               </ol>
             )}
@@ -158,15 +172,24 @@ export default function PrioritiesPage() {
                         {relativeTime(g.analyzed_at, "–")}
                       </p>
                     </div>
-                    <Button asChild size="sm" variant="outline">
-                      <Link
-                        href={`/app/agents?agent=content-strategy&objective=${encodeURIComponent(
-                          `Draft a content brief for “${g.topic}” — opportunity score ${Math.round(g.opportunity_score)}/100 (${g.confidence} confidence).`,
-                        )}`}
-                      >
-                        Draft a brief
-                      </Link>
-                    </Button>
+                    {briefedGapIds.has(g.id) ? (
+                      <div className="flex flex-col items-end gap-1">
+                        <Button asChild size="sm" variant="outline">
+                          <Link href="/app/agents/briefs">View briefs</Link>
+                        </Button>
+                        <span className="text-muted-foreground text-xs">Brief drafted — awaiting content &amp; next measurement</span>
+                      </div>
+                    ) : (
+                      <Button asChild size="sm" variant="outline">
+                        <Link
+                          href={`/app/agents?agent=content-strategy&objective=${encodeURIComponent(
+                            `Draft a content brief for “${g.topic}” — opportunity score ${Math.round(g.opportunity_score)}/100 (${g.confidence} confidence).`,
+                          )}`}
+                        >
+                          Draft a brief
+                        </Link>
+                      </Button>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -209,7 +232,7 @@ export default function PrioritiesPage() {
 }
 
 /** One compact, scannable priority: what → why → evidence → act. */
-function PriorityRow({ rank, finding: f }: { rank: number; finding: PriorityFinding }) {
+function PriorityRow({ rank, finding: f, briefDrafted = false }: { rank: number; finding: PriorityFinding; briefDrafted?: boolean }) {
   return (
     <li className="rounded-xl border p-4">
       <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
@@ -238,13 +261,22 @@ function PriorityRow({ rank, finding: f }: { rank: number; finding: PriorityFind
             </details>
           )}
         </div>
-        {f.action && (
-          <Button asChild size="sm" className="shrink-0">
-            <Link href={f.action.href}>
-              {f.action.label}
-              <ArrowRightIcon aria-hidden="true" />
-            </Link>
-          </Button>
+        {briefDrafted ? (
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            <Button asChild size="sm" variant="outline">
+              <Link href="/app/agents/briefs">View briefs</Link>
+            </Button>
+            <span className="text-muted-foreground text-xs">Brief drafted — awaiting content &amp; next measurement</span>
+          </div>
+        ) : (
+          f.action && (
+            <Button asChild size="sm" className="shrink-0">
+              <Link href={f.action.href}>
+                {f.action.label}
+                <ArrowRightIcon aria-hidden="true" />
+              </Link>
+            </Button>
+          )
         )}
       </div>
     </li>

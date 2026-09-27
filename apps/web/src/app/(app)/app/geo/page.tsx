@@ -14,6 +14,9 @@ import {
   ScoreTileSkeleton,
 } from "@/components/geo/overview-sections";
 import { AiInsightCard } from "@/components/ai-insight-card";
+import { VerifyStrip } from "@/components/geo/verify-strip";
+import { useActionEvents } from "@/lib/use-action-events";
+import { groupEventsByDay, type ChartEvent } from "@/lib/verify";
 import { SectionHeader } from "@/components/shell/section-header";
 import { GeoPageTools } from "@/components/geo/page-tools";
 import { useProjectGeo } from "@/components/geo/use-project-geo";
@@ -34,6 +37,15 @@ import { Button } from "@ai-search-growth-os/ui";
  */
 export default function GeoOverviewPage() {
   const geo = useProjectGeo();
+  // Chart-event markers: agent runs plus recorded issue resolutions —
+  // grouped per day so the score history stays readable.
+  const agentEvents = useActionEvents();
+  const chartEvents = React.useMemo(() => {
+    const resolutions: ChartEvent[] = [...geo.raw.seoObservations, ...geo.raw.prevSeoObservations]
+      .filter((o) => o.status === "resolved")
+      .map((o) => ({ ts: Date.parse(o.updated_at), label: "Issue marked resolved", detail: o.title }));
+    return groupEventsByDay([...agentEvents, ...resolutions].filter((e) => Number.isFinite(e.ts)));
+  }, [agentEvents, geo.raw.seoObservations, geo.raw.prevSeoObservations]);
   const loading = geo.loading || geo.projectLoading;
   const [openIssueId, setOpenIssueId] = React.useState<string | null>(null);
   const openIssue = geo.issues.find((i) => i.id === openIssueId) ?? null;
@@ -150,10 +162,22 @@ export default function GeoOverviewPage() {
         </section>
       )}
 
+      {/* VERIFY — resolutions related to the next measurement (real audits only) */}
+      {!loading && geo.verification && (
+        <section aria-label="Since your last fixes" className="mb-6">
+          <VerifyStrip
+            verification={geo.verification}
+            canRunAudit={geo.source === "api" && geo.busy === null && geo.crawl.pagesCrawled > 0}
+            auditRunning={geo.busy === "audit" || geo.crawl.auditRunning}
+            onRunAudit={() => void geo.actions.runGeoAudit()}
+          />
+        </section>
+      )}
+
       {/* MEASURE AGAIN — only with real audit history */}
       {!loading && trends && (
         <section aria-label="Score history" className="mb-6">
-          <GeoTrendChart series={trends} />
+          <GeoTrendChart series={trends} events={chartEvents} />
         </section>
       )}
 

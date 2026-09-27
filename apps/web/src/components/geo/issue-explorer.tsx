@@ -31,6 +31,7 @@ export function IssueExplorer({
   limit,
   emptyTitle,
   emptyDescription,
+  latestAuditCompletedAt,
 }: {
   issues: GeoIssue[];
   loading: boolean;
@@ -43,6 +44,8 @@ export function IssueExplorer({
   limit?: number;
   emptyTitle?: string;
   emptyDescription?: string;
+  /** When the latest completed audit ran (verification copy in the drawer). */
+  latestAuditCompletedAt?: string | null;
 }) {
   const [filters, setFilters] = React.useState<IssueFilters>({ ...DEFAULT_FILTERS, ...initialFilters });
   const [sortKey, setSortKey] = React.useState<SortKey>("severity");
@@ -277,7 +280,7 @@ export function IssueExplorer({
         </div>
       )}
 
-      <IssueDrawer issue={open} onClose={() => setOpenId(null)} onUpdateStatus={onUpdateStatus} busy={busy} />
+      <IssueDrawer issue={open} onClose={() => setOpenId(null)} onUpdateStatus={onUpdateStatus} busy={busy} latestAuditCompletedAt={latestAuditCompletedAt} />
     </div>
   );
 }

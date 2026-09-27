@@ -2,7 +2,9 @@
 
 import * as React from "react";
 
+import { ChartEventChips } from "@/components/chart-events";
 import { fmtDate } from "@/components/visibility/format";
+import type { ChartEvent } from "@/lib/verify";
 import type { ChartMode, ChartSeries } from "@/lib/visibility/types";
 import { Card, CardContent, CardHeader, CardTitle, Skeleton, cn } from "@ai-search-growth-os/ui";
 
@@ -56,18 +58,35 @@ export function TrendChart({
   onModeChange,
   loading,
   modes = MODES.map((m) => m.key),
+  events = [],
 }: {
   series: Record<ChartMode, ChartSeries[]>;
   mode: ChartMode;
   onModeChange: (m: ChartMode) => void;
   loading?: boolean;
   modes?: ChartMode[];
+  /** Real timestamped actions to mark on the chart (VERIFY context). */
+  events?: ChartEvent[];
 }) {
   const [hover, setHover] = React.useState<number | null>(null);
   const active = series[mode];
   const n = active[0]?.points.length ?? 0;
   const meta = MODES.find((m) => m.key === mode) ?? MODES[0]!;
   const hasAny = active.some((s) => s.points.some((p) => p.value != null));
+  // Map each event to the weekly bucket it falls in; events outside the
+  // window are dropped (this chart's window always ends now).
+  const bucketStarts = (active[0]?.points ?? []).map((p) => Date.parse(p.date));
+  const eventMarks = events
+    .map((e) => {
+      let idx = -1;
+      for (let i = 0; i < bucketStarts.length; i++) {
+        const start = bucketStarts[i]!;
+        const end = i + 1 < bucketStarts.length ? bucketStarts[i + 1]! : start + 7 * 86_400_000;
+        if (e.ts >= start && e.ts < end) idx = i;
+      }
+      return idx >= 0 ? { ...e, idx } : null;
+    })
+    .filter((e): e is ChartEvent & { idx: number } => e !== null);
 
   return (
     <Card className="gap-3 py-5">
@@ -136,6 +155,19 @@ export function TrendChart({
                   )}
                 </g>
               ))}
+              {eventMarks.map((e) => (
+                <line
+                  key={`ev-${e.ts}`}
+                  x1={x(e.idx, n)}
+                  x2={x(e.idx, n)}
+                  y1={PAD.top}
+                  y2={H - PAD.bottom}
+                  stroke="var(--chart-reference)"
+                  strokeWidth={1}
+                  strokeDasharray="3 3"
+                  aria-hidden="true"
+                />
+              ))}
               {hover != null && (
                 <line x1={x(hover, n)} x2={x(hover, n)} y1={PAD.top} y2={H - PAD.bottom} className="stroke-muted-foreground/50" strokeDasharray="3 3" />
               )}
@@ -151,6 +183,7 @@ export function TrendChart({
                 />
               ))}
             </svg>
+            <ChartEventChips events={eventMarks} className="mt-2" />
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
               {active.map((s, si) => {
                 const p = hover == null ? null : s.points[hover];

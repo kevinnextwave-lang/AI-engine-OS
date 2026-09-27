@@ -7,6 +7,8 @@ import { fmtChange, fmtValue } from "@/components/visibility/format";
 import { VisibilityPageFrame } from "@/components/visibility/page-frame";
 import { TrendChart } from "@/components/visibility/trend-chart";
 import { useProjectVisibility } from "@/components/visibility/use-project-visibility";
+import { useActionEvents } from "@/lib/use-action-events";
+import { groupEventsByDay } from "@/lib/verify";
 import type { ChartMode } from "@/lib/visibility/types";
 import { MetricCard, MetricCardSkeleton, type MetricTone } from "@ai-search-growth-os/ui";
 
@@ -19,6 +21,8 @@ const TREND_META: Record<string, { label: string; tone: MetricTone }> = {
 
 export default function TrendsPage() {
   const vis = useProjectVisibility();
+  const actionEvents = useActionEvents({ briefs: true });
+  const chartEvents = React.useMemo(() => groupEventsByDay(actionEvents), [actionEvents]);
   const loading = vis.loading || vis.projectLoading;
   const [mode, setMode] = React.useState<ChartMode>("overall");
   return (
@@ -78,7 +82,7 @@ export default function TrendsPage() {
               );
             })}
       </section>
-      <TrendChart series={vis.chart} mode={mode} onModeChange={setMode} loading={loading} />
+      <TrendChart series={vis.chart} mode={mode} onModeChange={setMode} loading={loading} events={chartEvents} />
     </VisibilityPageFrame>
   );
 }

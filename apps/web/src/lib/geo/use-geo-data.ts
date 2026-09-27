@@ -13,6 +13,7 @@
 import * as React from "react";
 
 import { ApiError, api } from "@/lib/api";
+import { issueVerification, previouslyResolvedKeys, verificationSummary, type VerificationSummary } from "@/lib/verify";
 import type {
   AiReadinessAudit,
   AiReadinessAuditDetail,
@@ -57,6 +58,9 @@ interface RawData {
   crawlJobs: CrawlJob[];
   seoAudits: SeoAudit[];
   seoObservations: SeoObservation[];
+  /** The completed audit before the latest one, for verification. */
+  prevSeoAudit: SeoAudit | null;
+  prevSeoObservations: SeoObservation[];
   schema: ProjectSchemaResponse | null;
   entities: EntityListResponse | null;
   consistency: EntityConsistencyResponse | null;
@@ -81,6 +85,9 @@ export interface GeoData {
   readiness: ReadinessOverview;
   structured: StructuredDataOverview;
   latestSeoAudit: SeoAudit | null;
+  /** Resolutions related to the next completed audit (VERIFY); null until a
+   * completed audit exists. */
+  verification: VerificationSummary | null;
   actions: {
     refresh: () => void;
     runCrawl: () => Promise<void>;
@@ -95,6 +102,8 @@ const MOCK_RAW: RawData = {
   crawlJobs: MOCK_CRAWL_JOBS,
   seoAudits: [MOCK_SEO_AUDIT],
   seoObservations: MOCK_SEO_OBSERVATIONS,
+  prevSeoAudit: null,
+  prevSeoObservations: [],
   schema: MOCK_SCHEMA,
   entities: MOCK_ENTITIES,
   consistency: MOCK_CONSISTENCY,
@@ -106,6 +115,8 @@ const EMPTY_RAW: RawData = {
   crawlJobs: [],
   seoAudits: [],
   seoObservations: [],
+  prevSeoAudit: null,
+  prevSeoObservations: [],
   schema: null,
   entities: null,
   consistency: null,
@@ -128,14 +139,23 @@ async function loadFromApi(projectId: string): Promise<RawData> {
     api.entities.consistency(projectId),
     api.aiReadiness.listAudits(projectId),
   ]);
-  const latestSeo = seoAudits.items.find((a) => a.status === "completed") ?? null;
-  const seoObservations = latestSeo ? (await api.seo.observations(latestSeo.id)).items : [];
+  const completedSeo = seoAudits.items.filter((a) => a.status === "completed");
+  const latestSeo = completedSeo[0] ?? null;
+  // The audit before the latest: the one whose resolutions the latest audit
+  // can verify. One extra request, only when a previous audit exists.
+  const prevSeo = completedSeo[1] ?? null;
+  const [seoObservations, prevSeoObservations] = await Promise.all([
+    latestSeo ? api.seo.observations(latestSeo.id).then((r) => r.items) : Promise.resolve([]),
+    prevSeo ? api.seo.observations(prevSeo.id).then((r) => r.items) : Promise.resolve([]),
+  ]);
   const latestReadiness = readinessList.items.find((a) => a.status === "completed") ?? readinessList.items[0];
   const readiness = latestReadiness ? await api.aiReadiness.getAudit(latestReadiness.id) : null;
   return {
     crawlJobs: crawls.items,
     seoAudits: seoAudits.items,
     seoObservations,
+    prevSeoAudit: prevSeo,
+    prevSeoObservations,
     schema,
     entities,
     consistency,
@@ -290,8 +310,12 @@ export function useGeoData(projectId: string | null): GeoData {
   );
 
   return React.useMemo<GeoData>(() => {
+    const prevResolved = previouslyResolvedKeys(raw.prevSeoObservations);
     const issues = [
-      ...raw.seoObservations.map(seoObservationToIssue),
+      ...raw.seoObservations.map((o) => ({
+        ...seoObservationToIssue(o),
+        verification: issueVerification(o, prevResolved),
+      })),
       ...(raw.readiness?.observations ?? []).map(readinessObservationToIssue),
     ];
     const latestSeoAudit = raw.seoAudits.find((a) => a.status === "completed") ?? raw.seoAudits[0] ?? null;
@@ -311,6 +335,10 @@ export function useGeoData(projectId: string | null): GeoData {
       readiness,
       structured,
       latestSeoAudit,
+      verification:
+        latestSeoAudit?.status === "completed"
+          ? verificationSummary(latestSeoAudit, raw.seoObservations, raw.prevSeoAudit, raw.prevSeoObservations)
+          : null,
       actions: { refresh, runCrawl, runGeoAudit, updateIssueStatus },
       busy,
     };

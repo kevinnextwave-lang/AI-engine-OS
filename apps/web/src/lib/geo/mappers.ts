@@ -79,6 +79,8 @@ export function seoObservationToIssue(o: SeoObservation): GeoIssue {
   const { pages, count } = affectedPagesFromEvidence(o.url, o.evidence);
   return {
     id: o.id,
+    detectedAt: o.created_at,
+    statusChangedAt: o.updated_at,
     origin: "technical_seo",
     severity: o.severity,
     title: o.title,
