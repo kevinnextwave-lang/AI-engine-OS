@@ -1,8 +1,13 @@
 FROM python:3.11-slim
 
+# The shipped image is production by default, so the startup safety checks in
+# get_settings() (strong secrets, secure cookies, explicit CORS) always run on
+# a real deploy even when the platform forgets to set APP_ENV. Local
+# docker-compose overrides this with APP_ENV=development explicitly.
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    APP_ENV=production
 
 WORKDIR /app
 

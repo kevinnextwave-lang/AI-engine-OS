@@ -2,7 +2,9 @@
 # Build from the repo root:  docker build -f workers/Dockerfile -t asg-worker .
 FROM python:3.11-slim
 
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
+# Production by default for the same reason as the API image: the settings
+# safety checks must run on real deploys. Local compose overrides it.
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 APP_ENV=production
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential libpq-dev \

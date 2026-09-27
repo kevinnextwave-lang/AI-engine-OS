@@ -180,16 +180,40 @@ class Settings(BaseSettings):
         return self.database_url.replace("+asyncpg", "").replace("+aiosqlite", "")
 
 
-@lru_cache
-def get_settings() -> Settings:
-    settings = Settings()
+# Substrings that mark a signing secret as a known placeholder rather than a
+# generated value. This deliberately catches the examples shipped in this
+# repo's own .env.example files ("change-me-…"): a deploy that copied them
+# verbatim must refuse to start, because those values are public.
+_PLACEHOLDER_SECRET_MARKERS = (
+    "dev-only",
+    "change-me",
+    "change_me",
+    "changeme",
+    "example",
+    "placeholder",
+    "insecure",
+    "your-secret",
+)
+
+_PRODUCTION_SECRET_MIN_LENGTH = 32
+
+
+def validate_settings(settings: Settings) -> Settings:
+    """Startup safety checks. Split from get_settings so tests can exercise
+    the production rules without touching the process environment."""
     if settings.is_production:
         for name, value in (
             ("JWT_SECRET", settings.jwt_secret),
             ("JWT_REFRESH_SECRET", settings.jwt_refresh_secret),
         ):
-            if value.startswith("dev-only"):
+            lowered = value.lower()
+            if any(marker in lowered for marker in _PLACEHOLDER_SECRET_MARKERS):
                 raise RuntimeError(f"{name} must be set to a strong secret in production")
+            if len(value) < _PRODUCTION_SECRET_MIN_LENGTH:
+                raise RuntimeError(
+                    f"{name} must be at least {_PRODUCTION_SECRET_MIN_LENGTH} characters "
+                    "in production (use e.g. `openssl rand -base64 48`)"
+                )
         if settings.jwt_secret == settings.jwt_refresh_secret:
             raise RuntimeError("JWT_SECRET and JWT_REFRESH_SECRET must differ")
         if not settings.cookie_secure:
@@ -203,3 +227,8 @@ def get_settings() -> Settings:
     if settings.cookie_samesite == "none" and not settings.cookie_secure:
         raise RuntimeError("COOKIE_SAMESITE=none requires COOKIE_SECURE=true (browser rule)")
     return settings
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return validate_settings(Settings())
