@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import * as React from "react";
 
 import { NAV_SECTIONS, isActive, sectionActive, type NavItem } from "@/components/shell/nav-items";
-import { cn } from "@ai-search-growth-os/ui";
+import { SimpleTooltip, cn } from "@ai-search-growth-os/ui";
 
 /**
  * Persisted section-collapse state, exposed through useSyncExternalStore so it
@@ -75,24 +75,30 @@ export function NavLink({ item, active, onNavigate }: { item: NavItem; active: b
     else if (er.bottom > sr.bottom) scroller.scrollTop += er.bottom - sr.bottom;
   }, [active]);
   return (
-    <Link
-      ref={ref}
-      href={item.href}
-      onClick={onNavigate}
-      aria-current={active ? "page" : undefined}
-      className={cn(
-        "flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13px] transition-colors",
-        active
-          ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-          : "text-sidebar-foreground/75 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
-      )}
-    >
-      <item.icon
-        className={cn("size-4 shrink-0", active ? "" : "text-sidebar-foreground/50")}
-        aria-hidden="true"
-      />
-      <span className="truncate">{item.label}</span>
-    </Link>
+    // Ambiguous labels (the three "Overview"s, the two gap analyses…) carry
+    // a one-line description: a tooltip for pointer users, sr-only text for
+    // screen readers. Sighted keyboard users still have the group context.
+    <SimpleTooltip label={item.description} side="right">
+      <Link
+        ref={ref}
+        href={item.href}
+        onClick={onNavigate}
+        aria-current={active ? "page" : undefined}
+        className={cn(
+          "flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13px] transition-colors",
+          active
+            ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+            : "text-sidebar-foreground/75 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+        )}
+      >
+        <item.icon
+          className={cn("size-4 shrink-0", active ? "" : "text-sidebar-foreground/50")}
+          aria-hidden="true"
+        />
+        <span className="truncate">{item.label}</span>
+        {item.description && <span className="sr-only">— {item.description}</span>}
+      </Link>
+    </SimpleTooltip>
   );
 }
 
@@ -122,17 +128,21 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
         return (
           <div key={section.label ?? "workspace"} className={cn("flex flex-col gap-px", i > 0 && "mt-5")}>
             {section.label && (
-              <button
-                type="button"
-                onClick={() => toggle(section.label!)}
-                aria-expanded={open}
-                className={cn(
-                  "group/section mb-1 flex h-6 w-full items-center justify-between rounded px-2.5 text-[11px] font-medium tracking-wider uppercase transition-colors",
-                  // ≥4.5:1 on the sidebar background (11px text needs AA small-text contrast)
-                  "text-sidebar-foreground/70 hover:text-sidebar-foreground/90",
-                )}
-              >
-                {section.label}
+              <SimpleTooltip label={section.description} side="right">
+                <button
+                  type="button"
+                  onClick={() => toggle(section.label!)}
+                  aria-expanded={open}
+                  className={cn(
+                    "group/section mb-1 flex h-6 w-full items-center justify-between rounded px-2.5 text-[11px] font-medium tracking-wider uppercase transition-colors",
+                    // ≥4.5:1 on the sidebar background (11px text needs AA small-text contrast)
+                    "text-sidebar-foreground/70 hover:text-sidebar-foreground/90",
+                  )}
+                >
+                  <span>
+                    {section.label}
+                    {section.description && <span className="sr-only">— {section.description}</span>}
+                  </span>
                 <ChevronDownIcon
                   className={cn(
                     "size-3.5 opacity-0 transition-[transform,opacity] group-hover/section:opacity-100",
@@ -140,7 +150,8 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
                   )}
                   aria-hidden="true"
                 />
-              </button>
+                </button>
+              </SimpleTooltip>
             )}
             {/* Animated collapse: the grid-rows trick transitions height
                 without measuring it. Items stay mounted; `inert` keeps the
