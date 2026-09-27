@@ -40,7 +40,9 @@ def utcnow() -> datetime:
     return datetime.now(UTC)
 
 
-def create_access_token(user_id: uuid.UUID, *, expires_minutes: int | None = None) -> str:
+def create_access_token(
+    user_id: uuid.UUID, *, token_version: int = 0, expires_minutes: int | None = None
+) -> str:
     settings = get_settings()
     now = utcnow()
     expire = now + timedelta(minutes=expires_minutes or settings.access_token_expire_minutes)
@@ -50,6 +52,9 @@ def create_access_token(user_id: uuid.UUID, *, expires_minutes: int | None = Non
         "iat": int(now.timestamp()),
         "exp": int(expire.timestamp()),
         "jti": secrets.token_urlsafe(8),
+        # Compared against users.token_version on every request: bumping the
+        # column revokes all outstanding access tokens at once.
+        "ver": token_version,
     }
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 

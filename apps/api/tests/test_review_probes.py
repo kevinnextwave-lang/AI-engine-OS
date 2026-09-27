@@ -90,14 +90,15 @@ async def test_suspended_organization_is_blocked(
     ).status_code in (403, 404)
 
 
-async def test_access_token_survives_logout_all(client: AsyncClient) -> None:
-    """HYPOTHESIS: logout-all revokes refresh tokens only; access token still valid."""
+async def test_access_token_dies_on_logout_all(client: AsyncClient) -> None:
+    """Formerly documented finding M1 (stateless JWT survived logout-all).
+    Fixed by users.token_version: bumping it on logout/logout-all/reset
+    invalidates every outstanding access token immediately."""
     a = await signup(client)
     h = auth_header(a["access_token"])
     await client.post("/api/v1/auth/logout-all", headers=h)
     resp = await client.get("/api/v1/auth/me", headers=h)
-    # Document current behaviour: stateless JWT remains valid until expiry.
-    assert resp.status_code == 200
+    assert resp.status_code == 401
 
 
 async def test_rate_limit_bypass_via_x_forwarded_for(client: AsyncClient) -> None:

@@ -1,6 +1,14 @@
 from fastapi import APIRouter, Depends, Request, Response, status
 
-from app.api.deps import CurrentUser, DBSession, SettingsDep, client_ip, rate_limit, user_rate_limit
+from app.api.deps import (
+    CurrentUser,
+    DBSession,
+    SettingsDep,
+    client_ip,
+    enforce_browser_origin,
+    rate_limit,
+    user_rate_limit,
+)
 from app.core.config import Settings
 from app.core.logging import get_logger
 from app.schemas.auth import (
@@ -117,7 +125,10 @@ async def login(
 @router.post(
     "/refresh",
     response_model=TokenResponse,
-    dependencies=[Depends(rate_limit("auth:refresh", per_minute=30))],
+    dependencies=[
+        Depends(rate_limit("auth:refresh", per_minute=30)),
+        Depends(enforce_browser_origin),
+    ],
 )
 async def refresh(
     request: Request, response: Response, session: DBSession, settings: SettingsDep
@@ -131,7 +142,11 @@ async def refresh(
     return _to_response(result, response, settings)
 
 
-@router.post("/logout", response_model=MessageResponse)
+@router.post(
+    "/logout",
+    response_model=MessageResponse,
+    dependencies=[Depends(enforce_browser_origin)],
+)
 async def logout(
     request: Request, response: Response, session: DBSession, settings: SettingsDep
 ) -> MessageResponse:

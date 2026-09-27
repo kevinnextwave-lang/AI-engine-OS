@@ -89,7 +89,7 @@ class AuthService:
         await self._tokens.add(record)
         return AuthResult(
             user=user,
-            access_token=create_access_token(user.id),
+            access_token=create_access_token(user.id, token_version=user.token_version),
             refresh_token=raw_refresh,
             expires_in=self._settings.access_token_expire_minutes * 60,
         )
@@ -247,6 +247,12 @@ class AuthService:
         record = await self._tokens.get_by_hash(hash_token(refresh_token))
         if record is not None and not record.is_revoked:
             await self._tokens.revoke_family(record.family_id, utcnow())
+            # Also revoke outstanding ACCESS tokens: bumping token_version
+            # makes them fail on the next request. Other live sessions of the
+            # same user recover transparently on their next cookie refresh.
+            user = await self._users.get_by_id(record.user_id)
+            if user is not None:
+                user.token_version += 1
             await self._audit.record(
                 AuthEvent.LOGOUT,
                 user_id=record.user_id,
@@ -257,6 +263,9 @@ class AuthService:
 
     async def logout_everywhere(self, *, user_id: uuid.UUID, client: ClientInfo) -> None:
         await self._tokens.revoke_all_for_user(user_id, utcnow())
+        user = await self._users.get_by_id(user_id)
+        if user is not None:
+            user.token_version += 1
         await self._audit.record(
             AuthEvent.LOGOUT_ALL,
             user_id=user_id,

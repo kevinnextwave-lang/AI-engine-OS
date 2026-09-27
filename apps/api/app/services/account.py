@@ -129,8 +129,11 @@ class AccountService:
         record.used_at = utcnow()
         user.password_hash = await asyncio.to_thread(hash_password, new_password)
         # A reset must end every existing session: that is the point when the
-        # reason for the reset is a stolen credential.
+        # reason for the reset is a stolen credential. Revoking refresh
+        # tokens kills future refreshes; bumping token_version kills every
+        # outstanding ACCESS token on its next request.
         await RefreshTokenRepository(self._session).revoke_all_for_user(user.id, utcnow())
+        user.token_version += 1
         await self._audit.record(
             AuthEvent.PASSWORD_RESET_COMPLETED,
             user_id=user.id,

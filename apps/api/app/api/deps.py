@@ -84,6 +84,27 @@ def client_ip(request: Request) -> str:
     return peer or "unknown"
 
 
+async def enforce_browser_origin(request: Request, settings: SettingsDep) -> None:
+    """CSRF guard for the cookie-authenticated auth endpoints.
+
+    Browsers send an Origin header on every cross-site POST; a request whose
+    Origin is not one of ours is a foreign site driving the user's cookie and
+    is refused. Requests WITHOUT an Origin header (curl, server-to-server,
+    same-origin GET navigations, tests) pass — they aren't CSRF, because no
+    ambient browser credential is being ridden. This matters most with
+    COOKIE_SAMESITE=none (web and API on different registrable domains).
+    """
+    origin = request.headers.get("origin")
+    if origin is None:
+        return
+    allowed = set(settings.cors_origins)
+    base = settings.web_base_url.rstrip("/")
+    if base:
+        allowed.add(base)
+    if origin.rstrip("/") not in allowed:
+        raise PermissionDeniedError("Cross-origin request refused")
+
+
 def rate_limit(
     scope: str, *, per_minute: int | None = None
 ) -> Callable[..., Coroutine[Any, Any, None]]:
@@ -118,6 +139,10 @@ async def get_current_user(
 
     user = await UserRepository(session).get_by_id(user_id)
     if user is None or not user.is_active:
+        raise InvalidTokenError()
+    # Tokens minted before users.token_version existed carry no "ver" and
+    # count as version 0 — exactly what existing rows default to.
+    if int(payload.get("ver", 0)) != user.token_version:
         raise InvalidTokenError()
     return user
 

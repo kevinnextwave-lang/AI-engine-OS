@@ -62,9 +62,7 @@ async def test_delete_account_blocked_for_sole_owner_with_members(
 
     # The member owns only their solo org; their own deletion goes through
     # (solo org soft-deleted, membership in Team Co cascades away).
-    ok = await client.request(
-        "DELETE", "/api/v1/auth/me", json={"password": PASSWORD}, headers=mh
-    )
+    ok = await client.request("DELETE", "/api/v1/auth/me", json={"password": PASSWORD}, headers=mh)
     assert ok.status_code == 200, ok.text
 
     # With the last other member gone, the owner can now delete too.

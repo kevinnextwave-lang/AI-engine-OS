@@ -3,7 +3,7 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from redis.asyncio import Redis
 
@@ -58,6 +58,21 @@ def create_app() -> FastAPI:
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type"],
     )
+
+    @app.middleware("http")
+    async def security_headers(request: Request, call_next):  # type: ignore[no-untyped-def]
+        response = await call_next(request)
+        # A JSON API needs few headers, but these close real holes: MIME
+        # sniffing, framing, and referrer leakage. HSTS only when the deploy
+        # is actually HTTPS (cookie_secure is required true in production).
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "no-referrer")
+        if settings.is_production and settings.cookie_secure:
+            response.headers.setdefault(
+                "Strict-Transport-Security", "max-age=63072000; includeSubDomains"
+            )
+        return response
 
     register_exception_handlers(app)
     app.include_router(health_router)

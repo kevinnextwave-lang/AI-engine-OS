@@ -237,3 +237,65 @@ async def test_create_additional_organization(client: AsyncClient) -> None:
 async def test_unknown_route_error_shape(client: AsyncClient) -> None:
     resp = await client.get("/api/v1/does-not-exist")
     assert resp.status_code == 404
+
+
+# --- P1 hardening: token revocation, CSRF origin guard, security headers ---
+
+
+async def test_logout_kills_outstanding_access_tokens(client: AsyncClient) -> None:
+    data = await register(client)
+    h = auth_header(data["access_token"])
+    assert (await client.get("/api/v1/auth/me", headers=h)).status_code == 200
+    assert (await client.post("/api/v1/auth/logout")).status_code == 200
+    # token_version bumped: the still-unexpired access token dies NOW,
+    # not 15 minutes from now.
+    assert (await client.get("/api/v1/auth/me", headers=h)).status_code == 401
+
+
+async def test_logout_all_kills_access_tokens(client: AsyncClient) -> None:
+    data = await register(client)
+    h = auth_header(data["access_token"])
+    assert (await client.post("/api/v1/auth/logout-all", headers=h)).status_code == 200
+    assert (await client.get("/api/v1/auth/me", headers=h)).status_code == 401
+
+
+async def test_refresh_recovers_after_single_logout_elsewhere(client: AsyncClient) -> None:
+    """Another session's refresh cookie survives a single logout (only the
+    family is revoked) and re-mints a WORKING access token at the new
+    version."""
+    email = unique_email()
+    await register(client, email)
+    first_cookie = client.cookies[REFRESH_COOKIE]
+    login = await client.post(
+        "/api/v1/auth/login", json={"email": email, "password": "CorrectHorseBattery1"}
+    )
+    second_access = login.json()["access_token"]
+    # Log out the SECOND session (its cookie is current in the jar).
+    assert (await client.post("/api/v1/auth/logout")).status_code == 200
+    assert (
+        await client.get("/api/v1/auth/me", headers=auth_header(second_access))
+    ).status_code == 401
+    # First session refreshes fine and its new access token works.
+    client.cookies.set(REFRESH_COOKIE, first_cookie, path="/api/v1/auth")
+    refreshed = await client.post("/api/v1/auth/refresh")
+    assert refreshed.status_code == 200, refreshed.text
+    assert (
+        await client.get("/api/v1/auth/me", headers=auth_header(refreshed.json()["access_token"]))
+    ).status_code == 200
+
+
+async def test_cookie_endpoints_refuse_foreign_origin(client: AsyncClient) -> None:
+    await register(client)
+    evil = {"Origin": "https://evil.example"}
+    assert (await client.post("/api/v1/auth/refresh", headers=evil)).status_code == 403
+    assert (await client.post("/api/v1/auth/logout", headers=evil)).status_code == 403
+    # Our own origin passes the guard (and the refresh itself succeeds).
+    ours = {"Origin": "http://localhost:3000"}
+    assert (await client.post("/api/v1/auth/refresh", headers=ours)).status_code == 200
+
+
+async def test_security_headers_present(client: AsyncClient) -> None:
+    resp = await client.get("/health")
+    assert resp.headers.get("x-content-type-options") == "nosniff"
+    assert resp.headers.get("x-frame-options") == "DENY"
+    assert resp.headers.get("referrer-policy") == "no-referrer"
