@@ -18,6 +18,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Path, Request
 from pydantic import BaseModel
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, DBSession, SettingsDep
 from app.billing import stripe_client
@@ -155,7 +156,9 @@ _SERVING = {"active", "trialing", "past_due"}  # past_due: Stripe is retrying
 _HOLD = {"unpaid", "incomplete_expired", "paused"}
 
 
-async def _org_by_customer(session: Any, customer_id: str) -> Organization | None:
+async def _org_by_customer(
+    session: AsyncSession, customer_id: str
+) -> Organization | None:
     return (
         await session.scalars(
             select(Organization).where(Organization.stripe_customer_id == customer_id)

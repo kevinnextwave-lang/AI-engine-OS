@@ -78,6 +78,16 @@ Resend setup: add + verify your domain in Resend (two DNS records), create an AP
 
 Create one Sentry project, set `SENTRY_DSN` on **both** the API and worker services. That's the whole integration — no DSN, no overhead.
 
+## 7b. Continuous deployment (optional)
+
+Merging to main already runs the full test matrix (CI). The Release
+workflow then builds all three Docker images to GHCR and, when wired,
+deploys automatically: add the `RAILWAY_TOKEN` secret plus
+`RAILWAY_API_SERVICE` / `RAILWAY_WORKER_SERVICE` variables, and a
+`VERCEL_DEPLOY_HOOK_URL` secret; set the `NEXT_PUBLIC_API_URL` repository
+variable to enable the web image. Every step says plainly when it was
+skipped for a missing secret.
+
 ## 8. Smoke test
 
 ```bash

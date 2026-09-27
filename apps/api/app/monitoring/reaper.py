@@ -176,21 +176,35 @@ async def reap_stale_jobs(session: AsyncSession, *, now: datetime | None = None)
         result.crawls += 1
         result.reaped_ids.append(job.id)
 
-    for model, counter in ((SeoAudit, "seo_audits"), (AiReadinessAudit, "readiness_audits")):
-        stale_queued_audits = (
-            await session.scalars(
-                select(model).where(
-                    model.status == AuditStatus.QUEUED,
-                    model.created_at < now - QUEUED_MAX_AGE,
-                )
+    stale_queued_seo = (
+        await session.scalars(
+            select(SeoAudit).where(
+                SeoAudit.status == AuditStatus.QUEUED,
+                SeoAudit.created_at < now - QUEUED_MAX_AGE,
             )
-        ).all()
-        for audit in stale_queued_audits:
-            audit.status = AuditStatus.FAILED
-            audit.error_message = _QUEUED_MESSAGE
-            audit.completed_at = now
-            setattr(result, counter, getattr(result, counter) + 1)
-            result.reaped_ids.append(audit.id)
+        )
+    ).all()
+    for seo_audit in stale_queued_seo:
+        seo_audit.status = AuditStatus.FAILED
+        seo_audit.error_message = _QUEUED_MESSAGE
+        seo_audit.completed_at = now
+        result.seo_audits += 1
+        result.reaped_ids.append(seo_audit.id)
+
+    stale_queued_readiness = (
+        await session.scalars(
+            select(AiReadinessAudit).where(
+                AiReadinessAudit.status == AuditStatus.QUEUED,
+                AiReadinessAudit.created_at < now - QUEUED_MAX_AGE,
+            )
+        )
+    ).all()
+    for readiness_audit in stale_queued_readiness:
+        readiness_audit.status = AuditStatus.FAILED
+        readiness_audit.error_message = _QUEUED_MESSAGE
+        readiness_audit.completed_at = now
+        result.readiness_audits += 1
+        result.reaped_ids.append(readiness_audit.id)
 
     stale_queued_runs = (
         await session.scalars(

@@ -1,0 +1,116 @@
+# Release: runs only after the CI workflow SUCCEEDS on main.
+#
+# 1. Builds and pushes all three Docker images to GHCR, tagged :latest and
+#    :<sha> (the web image only when the NEXT_PUBLIC_API_URL repo variable
+#    is set — a web bundle without it would ship pointing at localhost,
+#    which the app itself refuses in production builds).
+# 2. Optionally deploys: each step fires only when its secret exists, and
+#    says so when skipped. Wire-up:
+#      - secrets.RAILWAY_TOKEN + variables RAILWAY_API_SERVICE /
+#        RAILWAY_WORKER_SERVICE (service ids or names)
+#      - secrets.VERCEL_DEPLOY_HOOK_URL (Vercel project → Settings → Git →
+#        Deploy Hooks)
+name: Release
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+
+jobs:
+  images:
+    name: Build & push images
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      SHA: ${{ github.event.workflow_run.head_sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Image name prefix (lowercase, as GHCR requires)
+        run: echo "PREFIX=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
+
+      - name: API image
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/api
+          push: true
+          tags: |
+            ${{ env.PREFIX }}/api:latest
+            ${{ env.PREFIX }}/api:${{ env.SHA }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,scope=api,mode=max
+
+      - name: Worker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: workers/Dockerfile
+          push: true
+          tags: |
+            ${{ env.PREFIX }}/worker:latest
+            ${{ env.PREFIX }}/worker:${{ env.SHA }}
+          cache-from: type=gha,scope=worker
+          cache-to: type=gha,scope=worker,mode=max
+
+      - name: Web image (needs NEXT_PUBLIC_API_URL repo variable)
+        if: vars.NEXT_PUBLIC_API_URL != ''
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          push: true
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }}
+          tags: |
+            ${{ env.PREFIX }}/web:latest
+            ${{ env.PREFIX }}/web:${{ env.SHA }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,scope=web,mode=max
+      - name: Web image skipped
+        if: vars.NEXT_PUBLIC_API_URL == ''
+        run: echo "Skipped web image — set the NEXT_PUBLIC_API_URL repository variable to enable it."
+
+  deploy:
+    name: Deploy (only where secrets are wired)
+    needs: images
+    runs-on: ubuntu-latest
+    steps:
+      - name: Railway — redeploy API and worker
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          API_SERVICE: ${{ vars.RAILWAY_API_SERVICE }}
+          WORKER_SERVICE: ${{ vars.RAILWAY_WORKER_SERVICE }}
+        run: |
+          if [ -z "$RAILWAY_TOKEN" ]; then
+            echo "Skipped — RAILWAY_TOKEN secret not set."
+            exit 0
+          fi
+          npm install -g @railway/cli >/dev/null 2>&1
+          [ -n "$API_SERVICE" ] && railway redeploy --service "$API_SERVICE" --yes
+          [ -n "$WORKER_SERVICE" ] && railway redeploy --service "$WORKER_SERVICE" --yes
+          echo "Railway redeploys triggered."
+      - name: Vercel — trigger deploy hook
+        env:
+          HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "Skipped — VERCEL_DEPLOY_HOOK_URL secret not set."
+            exit 0
+          fi
+          curl -fsS -X POST "$HOOK" >/dev/null && echo "Vercel deploy hook fired."
