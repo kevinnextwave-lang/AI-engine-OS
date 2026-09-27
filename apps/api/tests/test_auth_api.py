@@ -324,3 +324,11 @@ async def test_login_throttled_per_account_across_ips(client: AsyncClient) -> No
         statuses.append(r.status_code)
     assert 429 in statuses, statuses
     assert statuses.index(429) <= 10
+
+
+async def test_request_id_header_on_responses(client: AsyncClient) -> None:
+    resp = await client.get("/api/v1/health")
+    assert len(resp.headers.get("x-request-id", "")) >= 8
+    # A caller-supplied id is echoed back (correlation across services).
+    resp = await client.get("/api/v1/health", headers={"X-Request-ID": "corr-abc-123"})
+    assert resp.headers["x-request-id"] == "corr-abc-123"

@@ -63,6 +63,11 @@ class Settings(BaseSettings):
     password_reset_token_expire_minutes: int = 60
     email_verification_token_expire_hours: int = 72
 
+    # Observability. Setting SENTRY_DSN turns on error tracking in both the
+    # API and the worker; unset means zero overhead.
+    sentry_dsn: str | None = None
+    sentry_traces_sample_rate: float = 0.0
+
     # Email delivery (password reset, email verification).
     # console: log the email instead of sending (development default).
     # smtp:    any SMTP relay (stdlib smtplib, STARTTLS by default).

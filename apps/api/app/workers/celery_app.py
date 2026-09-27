@@ -10,8 +10,10 @@ from celery import Celery
 from celery.schedules import crontab
 
 from app.core.config import get_settings
+from app.core.observability import init_sentry
 
 settings = get_settings()
+init_sentry(settings)  # no-op without SENTRY_DSN; covers worker + beat
 
 # No result backend: nothing in the app ever reads a task result (task state
 # lives in the database rows the tasks update). A configured backend makes
