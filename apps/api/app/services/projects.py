@@ -8,13 +8,16 @@ import secrets
 import uuid
 from collections.abc import Sequence
 
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.billing.plans import limits_for
 from app.competitors.service import CompetitorInput, CompetitorService
-from app.core.errors import ConflictError, NotFoundError
+from app.core.errors import ConflictError, NotFoundError, ValidationAppError
 from app.core.urls import normalize_website_url
 from app.models.competitor import Competitor
 from app.models.domain import Domain
+from app.models.organization import Organization, OrganizationPlan
 from app.models.project import Project, ProjectStatus
 from app.repositories.projects import CompetitorRepository, DomainRepository, ProjectRepository
 from app.services.organizations import slugify
@@ -47,6 +50,20 @@ class ProjectService:
         country: str | None = None,
     ) -> Project:
         """Create a project and its primary domain from the website URL."""
+        org = await self._session.get(Organization, organization_id)
+        limits = limits_for(org.plan if org else OrganizationPlan.FREE)
+        if limits.projects_per_org is not None:
+            existing = await self._session.scalar(
+                select(func.count())
+                .select_from(Project)
+                .where(Project.organization_id == organization_id)
+            )
+            if int(existing or 0) >= limits.projects_per_org:
+                raise ValidationAppError(
+                    f"The {limits.label} plan includes {limits.projects_per_org} "
+                    f"project{'s' if limits.projects_per_org != 1 else ''}. "
+                    "Upgrade the organization's plan to add more."
+                )
         normalized = normalize_website_url(website_url)
         project = Project(
             organization_id=organization_id,

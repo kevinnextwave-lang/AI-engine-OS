@@ -108,6 +108,22 @@ import type {
   VisibilityWindow,
 } from "@ai-search-growth-os/types";
 
+export interface BillingSummary {
+  plan: string;
+  plan_label: string;
+  status: "active" | "suspended" | "deleted";
+  billing_enabled: boolean;
+  has_subscription: boolean;
+  limits: {
+    projects_per_org: number | null;
+    prompts_per_batch: number;
+    ai_daily_cost_usd: number;
+    seo_audits_per_month: number | null;
+  };
+  ai_spend_today_usd: number;
+  can_manage: boolean;
+}
+
 export type {
   ApiErrorBody,
   Member,
@@ -278,6 +294,16 @@ export const api = {
         method: "DELETE",
         body: JSON.stringify({ password }),
       }),
+  },
+  billing: {
+    summary: (orgId: string) => request<BillingSummary>(`/organizations/${orgId}/billing`),
+    checkout: (orgId: string, plan: "starter" | "growth") =>
+      request<{ url: string }>(`/organizations/${orgId}/billing/checkout`, {
+        method: "POST",
+        body: JSON.stringify({ plan }),
+      }),
+    portal: (orgId: string) =>
+      request<{ url: string }>(`/organizations/${orgId}/billing/portal`, { method: "POST" }),
   },
   organizations: {
     list: () => request<Organization[]>("/organizations"),

@@ -327,6 +327,16 @@ async def test_organization_id_in_body_is_ignored(client: AsyncClient) -> None:
 async def test_rbac_matrix(client: AsyncClient, db_session: AsyncSession) -> None:
     owner = await signup(client, org="RBAC Co")
     org = await org_id_for(client, owner["access_token"])
+    # The matrix creates three projects; lift the Free plan's 1-project cap
+    # so this test stays about ROLES, not plan limits.
+    from app.models import Organization, OrganizationPlan
+
+    await db_session.execute(
+        update(Organization)
+        .where(Organization.id == uuid.UUID(org))
+        .values(plan=OrganizationPlan.GROWTH)
+    )
+    await db_session.flush()
 
     tokens = {}
     for role in (MembershipRole.ADMIN, MembershipRole.MEMBER, MembershipRole.VIEWER):

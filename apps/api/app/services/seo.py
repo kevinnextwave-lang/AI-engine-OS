@@ -7,12 +7,16 @@ it queued forever. The analysis itself runs in app.seo.engine on a worker.
 
 import uuid
 from collections.abc import Callable
+from datetime import UTC, datetime
 
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.errors import ConflictError, NotFoundError, ValidationAppError
+from app.billing.plans import limits_for
+from app.core.errors import ConflictError, NotFoundError, RateLimitedError, ValidationAppError
 from app.core.logging import get_logger
 from app.models.crawl import CrawlJob, CrawlStatus
+from app.models.organization import Organization, OrganizationPlan
 from app.models.project import Project
 from app.models.seo import (
     AuditStatus,
@@ -40,6 +44,30 @@ class SeoAuditService:
         self._observations = SeoObservationRepository(session)
         self._jobs = CrawlJobRepository(session)
 
+    async def _enforce_monthly_quota(self, project: Project) -> None:
+        """Per-plan audits-per-calendar-month (UTC) cap, counted per org."""
+        org = await self._session.get(Organization, project.organization_id)
+        limits = limits_for(org.plan if org else OrganizationPlan.FREE)
+        if limits.seo_audits_per_month is None:
+            return
+        now = datetime.now(UTC)
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        used = await self._session.scalar(
+            select(func.count())
+            .select_from(SeoAudit)
+            .join(Project, Project.id == SeoAudit.project_id)
+            .where(
+                Project.organization_id == project.organization_id,
+                SeoAudit.created_at >= month_start,
+            )
+        )
+        if int(used or 0) >= limits.seo_audits_per_month:
+            raise RateLimitedError(
+                f"The {limits.label} plan includes {limits.seo_audits_per_month} audits "
+                "per month; this organization has used them. Upgrade the plan or try "
+                "again next month."
+            )
+
     async def _resolve_crawl_job(
         self, project: Project, crawl_job_id: uuid.UUID | None
     ) -> CrawlJob:
@@ -59,6 +87,7 @@ class SeoAuditService:
     async def start(
         self, *, project: Project, requested_by: uuid.UUID, crawl_job_id: uuid.UUID | None
     ) -> SeoAudit:
+        await self._enforce_monthly_quota(project)
         job = await self._resolve_crawl_job(project, crawl_job_id)
         audit = SeoAudit(
             project_id=project.id, crawl_job_id=job.id, requested_by_user_id=requested_by

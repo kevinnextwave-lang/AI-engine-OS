@@ -175,9 +175,13 @@ class Settings(BaseSettings):
     monitoring_activity_window_days: int = 2  # only projects with recent responses
     monitoring_detection_window_days: int = 30
 
-    # Stripe (config only in Milestone 1; SecretStr keeps them out of reprs/dumps)
+    # Stripe (SecretStr keeps them out of reprs/dumps). Billing is enabled
+    # exactly when the secret key is set; price IDs map Stripe prices onto
+    # the self-serve plans.
     stripe_secret_key: SecretStr | None = None
     stripe_webhook_secret: SecretStr | None = None
+    stripe_price_starter: str | None = None
+    stripe_price_growth: str | None = None
 
     @field_validator("cors_origins", mode="before")
     @classmethod

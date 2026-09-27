@@ -9,9 +9,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import create_access_token
 from app.core.urls import InvalidURLError, normalize_website_url
-from app.models import MembershipRole
+from app.models import MembershipRole, Organization, OrganizationPlan
 from tests.conftest import auth_header
 from tests.test_authz import add_member, org_id_for, signup
+
+
+async def _set_plan(session: AsyncSession, org_id: str, plan: OrganizationPlan) -> None:
+    from sqlalchemy import update
+
+    await session.execute(
+        update(Organization).where(Organization.id == uuid.UUID(org_id)).values(plan=plan)
+    )
+    await session.flush()
 
 
 async def create_project(client: AsyncClient, headers: dict[str, str], **overrides: object) -> dict:  # type: ignore[type-arg]
@@ -80,9 +89,12 @@ async def test_create_project_registers_primary_domain(client: AsyncClient) -> N
     assert [d["hostname"] for d in domains] == ["acme.com"]
 
 
-async def test_list_get_update_delete(client: AsyncClient) -> None:
+async def test_list_get_update_delete(client: AsyncClient, db_session: AsyncSession) -> None:
     data = await signup(client, org="Acme")
     h = auth_header(data["access_token"])
+    org = await org_id_for(client, data["access_token"])
+    # Two projects need more than the Free plan.
+    await _set_plan(db_session, org, OrganizationPlan.STARTER)
     p1 = await create_project(client, h, name="First", website_url="first.com")
     p2 = await create_project(client, h, name="Second", website_url="second.com")
 
@@ -398,7 +410,8 @@ async def test_role_permissions_on_projects(client: AsyncClient, db_session: Asy
     ).status_code == 200
     assert (await client.delete(f"/api/v1/projects/{pid}", headers=m)).status_code == 403
 
-    # Admin and owner can delete
+    # Admin and owner can delete (second project needs more than Free)
+    await _set_plan(db_session, org, OrganizationPlan.STARTER)
     extra = (
         await create_project(client, h[MembershipRole.ADMIN], name="Temp", website_url="t.co")
     )["id"]

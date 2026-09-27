@@ -196,7 +196,14 @@ def user_rate_limit(scope: str, *, per_minute: int) -> Callable[..., Coroutine[A
 
 
 def org_is_usable(org: Organization) -> bool:
-    return org.deleted_at is None and org.status != OrganizationStatus.DELETED
+    """Deleted orgs are gone; SUSPENDED orgs (billing hold, set by the
+    Stripe webhook after payment failure) are blocked everywhere EXCEPT the
+    billing routes, which use their own dependency so the owner can still
+    fix payment and self-recover."""
+    return org.deleted_at is None and org.status not in (
+        OrganizationStatus.DELETED,
+        OrganizationStatus.SUSPENDED,
+    )
 
 
 async def get_current_membership(

@@ -5,6 +5,7 @@ from app.api.v1.routes import (
     ai_readiness,
     alerts,
     auth,
+    billing,
     competitive,
     competitors,
     content_briefs,
@@ -36,6 +37,8 @@ api_router = APIRouter()
 api_router.include_router(health.router)
 api_router.include_router(auth.router)
 api_router.include_router(organizations.router)
+api_router.include_router(billing.org_router)
+api_router.include_router(billing.webhook_router)
 api_router.include_router(projects.org_router)
 api_router.include_router(projects.router)
 api_router.include_router(competitors.project_router)

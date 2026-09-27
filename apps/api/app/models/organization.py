@@ -51,6 +51,12 @@ class Organization(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
         default=OrganizationStatus.ACTIVE,
         server_default=OrganizationStatus.ACTIVE.value,
     )
+    # Stripe linkage: set by checkout/webhooks; the webhook is the single
+    # source of truth for plan and (billing-driven) status changes.
+    stripe_customer_id: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, unique=True, index=True
+    )
+    stripe_subscription_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     memberships: Mapped[list["Membership"]] = relationship(
         back_populates="organization", cascade="all, delete-orphan"

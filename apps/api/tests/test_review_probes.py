@@ -66,11 +66,11 @@ async def test_viewer_cannot_create_project_via_body_selector(
     assert resp.status_code == 403
 
 
-@pytest.mark.xfail(strict=True, reason="Review finding H2: suspended status not enforced")
 async def test_suspended_organization_is_blocked(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """HYPOTHESIS: status=suspended is not enforced anywhere."""
+    """Formerly review finding H2 (suspended not enforced) — now a billing
+    hold: everything 404s except the billing routes."""
     a = await signup(client, org="Org A")
     org = await org_id_for(client, a["access_token"])
     h = auth_header(a["access_token"])

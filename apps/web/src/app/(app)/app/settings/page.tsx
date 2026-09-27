@@ -6,7 +6,7 @@ import * as React from "react";
 import { useAuth } from "@/components/auth-provider";
 import { useOrganization } from "@/components/organization-provider";
 import { PageHeader } from "@/components/shell/page-header";
-import { ApiError, api } from "@/lib/api";
+import { ApiError, api, type BillingSummary } from "@/lib/api";
 import {
   Button,
   Card,
@@ -25,6 +25,45 @@ export default function SettingsPage() {
   const orgPlaceholder = orgLoading ? "Loading…" : "—";
 
   const [resendState, setResendState] = React.useState<"idle" | "sending" | "sent">("idle");
+
+  // Plan & billing summary for the current organization.
+  const [billingState, setBillingState] = React.useState<{
+    orgId: string;
+    data: BillingSummary;
+  } | null>(null);
+  const [billingBusy, setBillingBusy] = React.useState(false);
+  const [billingError, setBillingError] = React.useState<string | null>(null);
+  const orgId = current?.id ?? null;
+  React.useEffect(() => {
+    if (!orgId) return;
+    let cancelled = false;
+    api.billing
+      .summary(orgId)
+      .then((data) => !cancelled && setBillingState({ orgId, data }))
+      .catch(() => !cancelled && setBillingState(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId]);
+  const billing = billingState?.orgId === orgId ? billingState.data : null;
+
+  async function openBilling(target: "starter" | "growth" | "portal") {
+    if (!orgId) return;
+    setBillingBusy(true);
+    setBillingError(null);
+    try {
+      const { url } =
+        target === "portal"
+          ? await api.billing.portal(orgId)
+          : await api.billing.checkout(orgId, target);
+      window.location.href = url; // external Stripe-hosted page
+    } catch (err) {
+      setBillingError(
+        err instanceof ApiError ? err.message : "Something went wrong. Please try again.",
+      );
+      setBillingBusy(false);
+    }
+  }
   const [confirming, setConfirming] = React.useState(false);
   const [deletePassword, setDeletePassword] = React.useState("");
   const [deleting, setDeleting] = React.useState(false);
@@ -124,6 +163,74 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle>Plan & billing</CardTitle>
+          <CardDescription>
+            Usage limits come from the organization&apos;s plan; the AI budget resets at midnight
+            UTC.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!billing ? (
+            <p className="text-muted-foreground text-sm">Loading…</p>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {billing.status === "suspended" && (
+                <p role="alert" className="text-destructive text-sm font-medium">
+                  This organization is on a billing hold — access is paused until payment is
+                  fixed via “Manage billing”.
+                </p>
+              )}
+              <p className="text-sm">
+                Current plan: <span className="font-semibold">{billing.plan_label}</span>
+                <span className="text-muted-foreground">
+                  {" "}
+                  · AI usage today ${billing.ai_spend_today_usd.toFixed(2)} of $
+                  {billing.limits.ai_daily_cost_usd.toFixed(2)}
+                </span>
+              </p>
+              <p className="text-muted-foreground text-xs">
+                {billing.limits.projects_per_org ?? "Unlimited"} project
+                {billing.limits.projects_per_org === 1 ? "" : "s"} ·{" "}
+                {billing.limits.prompts_per_batch} prompts per run ·{" "}
+                {billing.limits.seo_audits_per_month == null
+                  ? "unlimited audits"
+                  : `${billing.limits.seo_audits_per_month} audits/month`}
+              </p>
+              {billing.can_manage && billing.billing_enabled && (
+                <div className="flex flex-wrap gap-2">
+                  {billing.has_subscription ? (
+                    <Button variant="outline" onClick={() => openBilling("portal")} disabled={billingBusy}>
+                      Manage billing
+                    </Button>
+                  ) : (
+                    <>
+                      <Button onClick={() => openBilling("starter")} disabled={billingBusy}>
+                        Upgrade to Starter
+                      </Button>
+                      <Button variant="outline" onClick={() => openBilling("growth")} disabled={billingBusy}>
+                        Upgrade to Growth
+                      </Button>
+                    </>
+                  )}
+                </div>
+              )}
+              {billing.can_manage && !billing.billing_enabled && (
+                <p className="text-muted-foreground text-xs">
+                  Self-serve upgrades aren&apos;t configured on this deployment yet.
+                </p>
+              )}
+              {billingError && (
+                <p role="alert" className="text-destructive text-sm">
+                  {billingError}
+                </p>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="border-destructive/40 mt-4">
         <CardHeader>

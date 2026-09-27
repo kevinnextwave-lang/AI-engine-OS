@@ -10,10 +10,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.registry import ProviderRegistry
+from app.billing.plans import limits_for
 from app.core.config import Settings, get_settings
 from app.core.errors import ConflictError, RateLimitedError, ValidationAppError
 from app.core.logging import get_logger
 from app.models.ai import AiModel, AiProvider
+from app.models.organization import Organization, OrganizationPlan
 from app.models.project import Project
 from app.models.prompts import (
     BatchStatus,
@@ -115,14 +117,21 @@ class ExecutionService:
             prompts = [p for p in prompts if p.id in wanted]
         if not prompts:
             raise ValidationAppError("Prompt set has no active prompts to run")
+        org = await self._session.scalar(
+            select(Organization)
+            .join(Project, Project.organization_id == Organization.id)
+            .where(Project.id == prompt_set.project_id)
+        )
+        plan_limits = limits_for(org.plan if org else OrganizationPlan.FREE)
         # Cost control 1: bound the per-request blast radius. One batch is
-        # prompts × providers paid calls; without a cap a single POST could
-        # queue tens of thousands.
-        max_prompts = settings.ai_run_max_prompts_per_batch
+        # prompts × providers paid calls. The plan's cap and the operator's
+        # global cap both apply — the lower one wins.
+        max_prompts = min(settings.ai_run_max_prompts_per_batch, plan_limits.prompts_per_batch)
         if len(prompts) > max_prompts:
             raise ValidationAppError(
-                f"This run would execute {len(prompts)} prompts; the per-batch limit is "
-                f"{max_prompts}. Run a subset via prompt_ids or deactivate prompts."
+                f"This run would execute {len(prompts)} prompts; the "
+                f"{plan_limits.label} plan's per-batch limit is {max_prompts}. "
+                "Run a subset via prompt_ids or deactivate prompts."
             )
         # Cost control 2: one in-flight batch per project. Repeat-clicking
         # "run" (or a script in a loop) must not stack paid batches. Checked
@@ -136,20 +145,20 @@ class ExecutionService:
             )
         # Cost control 3: per-organization daily spend ceiling, enforced
         # against the usage metering that every provider call already writes.
-        daily_limit = settings.ai_daily_cost_limit_usd
-        if daily_limit > 0:
-            org_id = await self._session.scalar(
-                select(Project.organization_id).where(Project.id == prompt_set.project_id)
-            )
-            if org_id is not None:
-                day_start = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
-                spent = await self._batches.org_spend_since(org_id, day_start)
-                if spent >= daily_limit:
-                    raise RateLimitedError(
-                        "This organization has reached its daily AI usage budget "
-                        f"(${daily_limit:.2f}). Try again after midnight UTC, or raise "
-                        "AI_DAILY_COST_LIMIT_USD."
-                    )
+        # The plan's budget applies; a positive global setting is an operator
+        # ceiling on top (lower wins).
+        daily_limit = plan_limits.ai_daily_cost_usd
+        if settings.ai_daily_cost_limit_usd > 0:
+            daily_limit = min(daily_limit, settings.ai_daily_cost_limit_usd)
+        if daily_limit > 0 and org is not None:
+            day_start = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+            spent = await self._batches.org_spend_since(org.id, day_start)
+            if spent >= daily_limit:
+                raise RateLimitedError(
+                    f"This organization has reached its daily AI usage budget for the "
+                    f"{plan_limits.label} plan (${daily_limit:.2f}). Try again after "
+                    "midnight UTC, or upgrade the plan."
+                )
 
         batch = PromptRunBatch(
             project_id=prompt_set.project_id,
