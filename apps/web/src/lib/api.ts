@@ -117,9 +117,21 @@ export type {
   User,
 } from "@ai-search-growth-os/types";
 
+// Production builds must be told where the API is: silently shipping the
+// localhost fallback to a deployed site is a misconfiguration that would
+// break every request (and previously hid behind sample data). Throwing here
+// fails the `next build` itself, which is the earliest honest moment.
+const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL;
+if (!configuredApiUrl && process.env.NODE_ENV === "production") {
+  throw new Error(
+    "NEXT_PUBLIC_API_URL is not set. Production builds refuse to fall back to " +
+      "http://localhost:8000 — set it to the deployed API origin " +
+      "(e.g. https://api.yourdomain.com) in the build environment.",
+  );
+}
 // Trailing slashes are stripped so a value like "https://api.example.com/"
 // doesn't produce "//api/v1/..." paths (which servers reject with 404).
-const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/, "");
+const API_URL = (configuredApiUrl || "http://localhost:8000").replace(/\/+$/, "");
 const API_PREFIX = "/api/v1";
 
 export class ApiError extends Error {

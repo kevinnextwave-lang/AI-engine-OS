@@ -14,6 +14,7 @@ import * as React from "react";
 
 import { ApiError, api } from "@/lib/api";
 import { CACHE_TTL_MS, readCache, writeCache } from "@/lib/cache";
+import { API_UNREACHABLE_MESSAGE, MOCK_FALLBACK_ALLOWED } from "@/lib/mock-fallback";
 import { issueVerification, previouslyResolvedKeys, verificationSummary, type VerificationSummary } from "@/lib/verify";
 import type {
   AiReadinessAudit,
@@ -208,13 +209,22 @@ export function useGeoData(projectId: string | null): GeoData {
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        if (isNetworkFailure(err)) {
+        if (isNetworkFailure(err) && MOCK_FALLBACK_ALLOWED) {
           setLoaded({
             projectId,
             raw: MOCK_RAW,
             source: "mock",
             mockReason: "The API could not be reached — showing sample data.",
             error: null,
+          });
+        } else if (isNetworkFailure(err)) {
+          // Production: an unreachable API is an error, never sample data.
+          setLoaded({
+            projectId,
+            raw: EMPTY_RAW,
+            source: "api",
+            mockReason: null,
+            error: API_UNREACHABLE_MESSAGE,
           });
         } else {
           setLoaded({

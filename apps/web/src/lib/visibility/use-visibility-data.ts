@@ -12,6 +12,7 @@
 
 import * as React from "react";
 import { CACHE_TTL_MS, readCache, writeCache } from "@/lib/cache";
+import { API_UNREACHABLE_MESSAGE, MOCK_FALLBACK_ALLOWED } from "@/lib/mock-fallback";
 
 import { ApiError, api } from "@/lib/api";
 import type {
@@ -181,7 +182,7 @@ export function useVisibilityData(projectId: string | null, brandName: string | 
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        if (isNetworkFailure(err)) {
+        if (isNetworkFailure(err) && MOCK_FALLBACK_ALLOWED) {
           setLoaded({
             projectId,
             window,
@@ -189,6 +190,16 @@ export function useVisibilityData(projectId: string | null, brandName: string | 
             source: "mock",
             mockReason: "The API could not be reached — showing sample data.",
             error: null,
+          });
+        } else if (isNetworkFailure(err)) {
+          // Production: an unreachable API is an error, never sample data.
+          setLoaded({
+            projectId,
+            window,
+            raw: null,
+            source: "api",
+            mockReason: null,
+            error: API_UNREACHABLE_MESSAGE,
           });
         } else {
           setLoaded({
