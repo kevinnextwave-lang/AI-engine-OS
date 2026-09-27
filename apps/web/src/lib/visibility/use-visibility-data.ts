@@ -11,6 +11,7 @@
  */
 
 import * as React from "react";
+import { CACHE_TTL_MS, readCache, writeCache } from "@/lib/cache";
 
 import { ApiError, api } from "@/lib/api";
 import type {
@@ -166,9 +167,17 @@ export function useVisibilityData(projectId: string | null, brandName: string | 
   React.useEffect(() => {
     if (!projectId) return;
     let cancelled = false;
+    // Stale-while-revalidate (see lib/cache.ts): cached window renders
+    // instantly; the refetch is skipped while fresh. refresh() (version
+    // bump) always bypasses the TTL.
+    const cacheKey = `vis:${projectId}:${window}`;
+    const cached = version === 0 ? readCache<Loaded>(cacheKey) : null;
+    if (cached && cached.ageMs < CACHE_TTL_MS) return;
     loadFromApi(projectId, window)
       .then((raw) => {
-        if (!cancelled) setLoaded({ projectId, window, raw, source: "api", mockReason: null, error: null });
+        const next: Loaded = { projectId, window, raw, source: "api", mockReason: null, error: null };
+        writeCache(cacheKey, next);
+        if (!cancelled) setLoaded(next);
       })
       .catch((err: unknown) => {
         if (cancelled) return;
@@ -197,11 +206,14 @@ export function useVisibilityData(projectId: string | null, brandName: string | 
     };
   }, [projectId, window, version]);
 
+  const cachedNow = projectId ? readCache<Loaded>(`vis:${projectId}:${window}`) : null;
   const current: Omit<Loaded, "projectId" | "window"> | null = !projectId
     ? NO_PROJECT
     : loaded?.projectId === projectId && loaded.window === window
       ? loaded
-      : null;
+      : cachedNow && cachedNow.value.projectId === projectId && cachedNow.value.window === window
+        ? cachedNow.value
+        : null;
   const loading = current === null;
   const raw = current?.raw ?? null;
   const source: DataSource = current?.source ?? "api";

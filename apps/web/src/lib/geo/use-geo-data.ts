@@ -13,6 +13,7 @@
 import * as React from "react";
 
 import { ApiError, api } from "@/lib/api";
+import { CACHE_TTL_MS, readCache, writeCache } from "@/lib/cache";
 import { issueVerification, previouslyResolvedKeys, verificationSummary, type VerificationSummary } from "@/lib/verify";
 import type {
   AiReadinessAudit,
@@ -192,9 +193,18 @@ export function useGeoData(projectId: string | null): GeoData {
   React.useEffect(() => {
     if (!projectId) return;
     let cancelled = false;
+    // Stale-while-revalidate: the render path below already serves the
+    // cached snapshot (no skeleton flash between GEO pages); this effect
+    // only decides whether a refetch is needed. refresh() bumps `version`,
+    // which always bypasses the TTL.
+    const cacheKey = `geo:${projectId}`;
+    const cached = version === 0 ? readCache<Loaded>(cacheKey) : null;
+    if (cached && cached.ageMs < CACHE_TTL_MS) return;
     loadFromApi(projectId)
       .then((data) => {
-        if (!cancelled) setLoaded({ projectId, raw: data, source: "api", mockReason: null, error: null });
+        const next: Loaded = { projectId, raw: data, source: "api", mockReason: null, error: null };
+        writeCache(cacheKey, next);
+        if (!cancelled) setLoaded(next);
       })
       .catch((err: unknown) => {
         if (cancelled) return;
@@ -222,11 +232,16 @@ export function useGeoData(projectId: string | null): GeoData {
   }, [projectId, version]);
 
   // Resolve what to show for this render without touching state.
+  // Freshly-set state wins; otherwise the cached snapshot renders while
+  // (or instead of) the background refetch runs.
+  const cachedNow = projectId ? readCache<Loaded>(`geo:${projectId}`) : null;
   const current: Omit<Loaded, "projectId"> | null = !projectId
     ? NO_PROJECT
     : loaded?.projectId === projectId
       ? loaded
-      : null;
+      : cachedNow && cachedNow.value.projectId === projectId
+        ? cachedNow.value
+        : null;
   const loading = current === null;
   const raw = current?.raw ?? EMPTY_RAW;
   const source: DataSource = current?.source ?? "api";
@@ -236,7 +251,20 @@ export function useGeoData(projectId: string | null): GeoData {
   const setRaw = React.useCallback(
     (update: (prev: RawData) => RawData) => {
       if (!projectId) return;
-      setLoaded((prev) => (prev && prev.projectId === projectId ? { ...prev, raw: update(prev.raw) } : prev));
+      setLoaded((prev) => {
+        const base =
+          prev && prev.projectId === projectId
+            ? prev
+            : (readCache<Loaded>(`geo:${projectId}`)?.value.projectId === projectId
+                ? readCache<Loaded>(`geo:${projectId}`)!.value
+                : null);
+        if (!base) return prev;
+        const next = { ...base, raw: update(base.raw) };
+        // Mutations keep the cache in step so a remount within the TTL
+        // never resurrects pre-mutation data.
+        if (next.source === "api") writeCache(`geo:${projectId}`, next);
+        return next;
+      });
     },
     [projectId],
   );
