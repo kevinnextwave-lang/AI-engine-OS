@@ -12,8 +12,14 @@ from datetime import timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import passwords
 from app.core.config import get_settings
-from app.core.errors import ConflictError, InvalidCredentialsError, InvalidTokenError
+from app.core.errors import (
+    ConflictError,
+    InvalidCredentialsError,
+    InvalidTokenError,
+    ValidationAppError,
+)
 from app.core.security import (
     create_access_token,
     generate_refresh_token,
@@ -110,6 +116,8 @@ class AuthService:
         email = email.lower().strip()
         if await self._users.get_by_email(email):
             raise ConflictError("An account with this email already exists")
+        if await passwords.is_breached(password):
+            raise ValidationAppError(passwords.BREACHED_MESSAGE)
 
         user = User(
             email=email,

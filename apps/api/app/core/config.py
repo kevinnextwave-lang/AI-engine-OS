@@ -62,6 +62,9 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 30
     password_reset_token_expire_minutes: int = 60
     email_verification_token_expire_hours: int = 72
+    # Check new passwords against Have I Been Pwned (k-anonymity range API).
+    # Fails open when the API is unreachable. Off by default.
+    hibp_password_check: bool = False
 
     # Observability. Setting SENTRY_DSN turns on error tracking in both the
     # API and the worker; unset means zero overhead.

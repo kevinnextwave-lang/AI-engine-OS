@@ -18,6 +18,7 @@ from datetime import timedelta
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import passwords
 from app.core.config import get_settings
 from app.core.email import EmailMessage, EmailSender, get_email_sender
 from app.core.errors import ValidationAppError
@@ -126,6 +127,8 @@ class AccountService:
         if problems:
             # Policy failure must not burn the single-use link.
             raise ValidationAppError("; ".join(problems))
+        if await passwords.is_breached(new_password):
+            raise ValidationAppError(passwords.BREACHED_MESSAGE)
         record.used_at = utcnow()
         user.password_hash = await asyncio.to_thread(hash_password, new_password)
         # A reset must end every existing session: that is the point when the
