@@ -364,3 +364,61 @@ async def test_google_without_grounding_sends_no_tools() -> None:
     res = await p.generate(AIRequest(model="gemini-2.0-flash", prompt="q"))
     assert "tools" not in seen["body"]
     assert res.citations == [] and res.raw_response.get("grounded") is False
+
+
+OPENAI_SEARCH_OK = {
+    "id": "chatcmpl-s1",
+    "model": "gpt-4o-mini-search-preview",
+    "choices": [
+        {
+            "message": {
+                "role": "assistant",
+                "content": "Ledgerly is well reviewed.",
+                "annotations": [
+                    {
+                        "type": "url_citation",
+                        "url_citation": {"url": "https://web.example/review", "title": "Review"},
+                    },
+                    {
+                        "type": "url_citation",
+                        "url_citation": {"url": "https://web.example/review", "title": "dup"},
+                    },
+                    {"type": "other", "url_citation": {"url": "https://ignored.example"}},
+                ],
+            },
+            "finish_reason": "stop",
+        }
+    ],
+    "usage": {"prompt_tokens": 10, "completion_tokens": 6, "total_tokens": 16},
+}
+
+
+async def test_openai_search_model_omits_temperature_and_parses_citations() -> None:
+    seen: dict[str, Any] = {}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen["body"] = json.loads(req.content)
+        return json_response(200, OPENAI_SEARCH_OK)
+
+    p = OpenAIProvider("sk-test", client=transport(handler), default_timeout_seconds=2)
+    res = await p.generate(
+        AIRequest(model="gpt-4o-mini-search-preview", prompt="best tool?", temperature=0.7)
+    )
+    # Search models reject sampling params; the adapter must not send them.
+    assert "temperature" not in seen["body"]
+    assert [c.url for c in res.citations] == ["https://web.example/review"]
+    assert res.citations[0].title == "Review"
+    assert res.raw_response.get("grounded") is True
+
+
+async def test_openai_plain_model_keeps_temperature_no_citations() -> None:
+    seen: dict[str, Any] = {}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen["body"] = json.loads(req.content)
+        return json_response(200, OPENAI_OK)
+
+    p = OpenAIProvider("sk-test", client=transport(handler), default_timeout_seconds=2)
+    res = await p.generate(AIRequest(model="gpt-4o-mini", prompt="hi", temperature=0.7))
+    assert seen["body"]["temperature"] == 0.7
+    assert res.citations == [] and res.raw_response.get("grounded") is False

@@ -14,6 +14,7 @@ from app.ai.types import (
     AIResponse,
     FinishReason,
     ProviderCapabilities,
+    ProviderCitation,
 )
 
 _FINISH = {
@@ -54,7 +55,10 @@ class OpenAIProvider(AIProvider):
             messages.append({"role": "system", "content": request.system_prompt})
         messages.append({"role": "user", "content": request.prompt})
         payload: dict[str, Any] = {"model": request.model, "messages": messages}
-        if request.temperature is not None:
+        # The web-search models perform live retrieval and reject sampling
+        # parameters — sending temperature is a guaranteed 400.
+        grounded_model = "search-preview" in request.model
+        if request.temperature is not None and not grounded_model:
             payload["temperature"] = request.temperature
         if request.max_tokens is not None:
             payload["max_completion_tokens"] = request.max_tokens
@@ -83,6 +87,22 @@ class OpenAIProvider(AIProvider):
                 )
             )
         usage = body.get("usage") or {}
+        # Web-search models attach url_citation annotations: the sources the
+        # model's live retrieval actually consulted — genuine citations.
+        citations: list[ProviderCitation] = []
+        annotations = (choice.get("message") or {}).get("annotations")
+        if isinstance(annotations, list):
+            seen: set[str] = set()
+            for ann in annotations[:50]:
+                if not isinstance(ann, dict) or ann.get("type") != "url_citation":
+                    continue
+                cite = ann.get("url_citation") or {}
+                url = str(cite.get("url") or "").strip()
+                if not url or url in seen:
+                    continue
+                seen.add(url)
+                title = str(cite.get("title") or "").strip() or None
+                citations.append(ProviderCitation(url=url[:2048], title=title))
         return AIResponse(
             provider=self.key,
             model=str(body.get("model") or request.model),
@@ -97,5 +117,7 @@ class OpenAIProvider(AIProvider):
             raw_response={
                 "finish_reason": finish_raw,
                 "system_fingerprint": body.get("system_fingerprint"),
+                "grounded": grounded_model,
             },
+            citations=citations,
         )

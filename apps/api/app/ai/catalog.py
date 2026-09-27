@@ -29,6 +29,10 @@ DEFAULT_PRICING: dict[str, dict[str, Any]] = {
     # metered floor — edit ai_models.pricing to reflect your contract.
     "sonar": {"input_per_million": 1.00, "output_per_million": 1.00},
     "sonar-pro": {"input_per_million": 3.00, "output_per_million": 15.00},
+    # Search-preview models bill web-search calls separately; the token list
+    # price is the metered floor — edit ai_models.pricing per your contract.
+    "gpt-4o-mini-search-preview": {"input_per_million": 0.15, "output_per_million": 0.60},
+    "gpt-4o-search-preview": {"input_per_million": 2.50, "output_per_million": 10.00},
 }
 
 
@@ -61,6 +65,30 @@ DEFAULT_MODELS: tuple[tuple[str, str, str, dict[str, Any]], ...] = (
             "max_output_tokens": 16384,
             "context_window": 128000,
             "supports_json_mode": True,
+        },
+    ),
+    (
+        "openai",
+        "gpt-4o-mini-search-preview",
+        "GPT-4o mini + web search",
+        {
+            "supports_temperature": False,
+            "supports_system_prompt": True,
+            "max_output_tokens": 16384,
+            "context_window": 128000,
+            "grounded_search": True,
+        },
+    ),
+    (
+        "openai",
+        "gpt-4o-search-preview",
+        "GPT-4o + web search",
+        {
+            "supports_temperature": False,
+            "supports_system_prompt": True,
+            "max_output_tokens": 16384,
+            "context_window": 128000,
+            "grounded_search": True,
         },
     ),
     (
