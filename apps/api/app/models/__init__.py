@@ -73,6 +73,7 @@ from app.models.notification_channels import (
     NotificationChannelType,
 )
 from app.models.organization import Organization, OrganizationPlan, OrganizationStatus
+from app.models.organization_invite import OrganizationInvite
 from app.models.page_intelligence import (
     LinkStatus,
     LinkType,
@@ -198,6 +199,7 @@ __all__ = [
     "ObservationCategory",
     "ObservationStatus",
     "Organization",
+    "OrganizationInvite",
     "OrganizationMember",
     "OrganizationPlan",
     "OrganizationStatus",

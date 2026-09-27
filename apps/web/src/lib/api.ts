@@ -108,6 +108,14 @@ import type {
   VisibilityWindow,
 } from "@ai-search-growth-os/types";
 
+export interface OrgInvite {
+  id: string;
+  email: string;
+  role: string;
+  expires_at: string;
+  created_at: string;
+}
+
 export interface BillingSummary {
   plan: string;
   plan_label: string;
@@ -311,6 +319,32 @@ export const api = {
       request<Organization>("/organizations", { method: "POST", body: JSON.stringify(body) }),
     get: (id: string) => request<Organization>(`/organizations/${id}`),
     members: (id: string) => request<Member[]>(`/organizations/${id}/members`),
+  },
+  team: {
+    invites: (orgId: string) => request<OrgInvite[]>(`/organizations/${orgId}/invites`),
+    invite: (orgId: string, body: { email: string; role: string }) =>
+      request<OrgInvite>(`/organizations/${orgId}/invites`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    revokeInvite: (orgId: string, inviteId: string) =>
+      request<{ message: string }>(`/organizations/${orgId}/invites/${inviteId}`, {
+        method: "DELETE",
+      }),
+    removeMember: (orgId: string, userId: string) =>
+      request<{ message: string }>(`/organizations/${orgId}/members/${userId}`, {
+        method: "DELETE",
+      }),
+    changeRole: (orgId: string, userId: string, role: string) =>
+      request<Member>(`/organizations/${orgId}/members/${userId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ role }),
+      }),
+    acceptInvite: (token: string) =>
+      request<{ message: string }>("/invites/accept", {
+        method: "POST",
+        body: JSON.stringify({ token }),
+      }),
   },
   projects: {
     list: (organizationId?: string) =>

@@ -5,6 +5,7 @@ import * as React from "react";
 
 import { useAuth } from "@/components/auth-provider";
 import { useOrganization } from "@/components/organization-provider";
+import { TeamCard } from "@/components/settings/team-card";
 import { PageHeader } from "@/components/shell/page-header";
 import { ApiError, api, type BillingSummary } from "@/lib/api";
 import {
@@ -163,6 +164,8 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <TeamCard />
 
       <Card className="mt-4">
         <CardHeader>

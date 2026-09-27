@@ -29,6 +29,7 @@ from app.api.v1.routes import (
     recommendations,
     seo,
     sources,
+    team,
     visibility,
     workflows,
 )
@@ -37,6 +38,8 @@ api_router = APIRouter()
 api_router.include_router(health.router)
 api_router.include_router(auth.router)
 api_router.include_router(organizations.router)
+api_router.include_router(team.router)
+api_router.include_router(team.accept_router)
 api_router.include_router(billing.org_router)
 api_router.include_router(billing.webhook_router)
 api_router.include_router(projects.org_router)
