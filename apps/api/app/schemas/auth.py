@@ -45,6 +45,26 @@ class LoginRequest(APIModel):
         return _normalize_email(value)
 
 
+class ForgotPasswordRequest(APIModel):
+    email: EmailStr
+
+    @field_validator("email")
+    @classmethod
+    def _email(cls, value: str) -> str:
+        return _normalize_email(value)
+
+
+class ResetPasswordRequest(APIModel):
+    token: str = Field(min_length=16, max_length=256)
+    # Full policy (incl. the email-derived rules) is enforced in the service,
+    # where the account's email is known.
+    password: str = Field(min_length=MIN_LENGTH, max_length=MAX_LENGTH)
+
+
+class VerifyEmailRequest(APIModel):
+    token: str = Field(min_length=16, max_length=256)
+
+
 class UserResponse(APIModel):
     id: uuid.UUID
     email: EmailStr

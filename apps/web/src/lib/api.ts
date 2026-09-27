@@ -253,6 +253,26 @@ export const api = {
       rawRequest<TokenResponse>("/auth/login", { method: "POST", body: JSON.stringify(body) }, false),
     logout: () => rawRequest<{ message: string }>("/auth/logout", { method: "POST" }, false),
     me: () => request<User>("/auth/me"),
+    forgotPassword: (email: string) =>
+      rawRequest<{ message: string }>(
+        "/auth/forgot-password",
+        { method: "POST", body: JSON.stringify({ email }) },
+        false,
+      ),
+    resetPassword: (token: string, password: string) =>
+      rawRequest<{ message: string }>(
+        "/auth/reset-password",
+        { method: "POST", body: JSON.stringify({ token, password }) },
+        false,
+      ),
+    verifyEmail: (token: string) =>
+      rawRequest<{ message: string }>(
+        "/auth/verify-email",
+        { method: "POST", body: JSON.stringify({ token }) },
+        false,
+      ),
+    resendVerification: () =>
+      request<{ message: string }>("/auth/resend-verification", { method: "POST" }),
   },
   organizations: {
     list: () => request<Organization[]>("/organizations"),

@@ -1,10 +1,22 @@
 from fastapi import APIRouter, Depends, Request, Response, status
 
-from app.api.deps import CurrentUser, DBSession, SettingsDep, client_ip, rate_limit
+from app.api.deps import CurrentUser, DBSession, SettingsDep, client_ip, rate_limit, user_rate_limit
 from app.core.config import Settings
-from app.schemas.auth import LoginRequest, SignupRequest, TokenResponse, UserResponse
+from app.core.logging import get_logger
+from app.schemas.auth import (
+    ForgotPasswordRequest,
+    LoginRequest,
+    ResetPasswordRequest,
+    SignupRequest,
+    TokenResponse,
+    UserResponse,
+    VerifyEmailRequest,
+)
 from app.schemas.common import MessageResponse
+from app.services.account import AccountService
 from app.services.auth import AuthResult, AuthService, ClientInfo
+
+log = get_logger("routes.auth")
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -75,6 +87,11 @@ async def signup(
         organization_name=body.organization_name,
         client=_client(request),
     )
+    # Best-effort: a mail outage must never fail account creation.
+    try:
+        await AccountService(session).send_verification(result.user)
+    except Exception:  # noqa: BLE001
+        log.exception("signup_verification_email_failed", user_id=str(result.user.id))
     return _to_response(result, response, settings)
 
 
@@ -139,3 +156,59 @@ async def logout_all(
 @router.get("/me", response_model=UserResponse)
 async def me(user: CurrentUser) -> UserResponse:
     return UserResponse.model_validate(user)
+
+
+@router.post(
+    "/forgot-password",
+    response_model=MessageResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(rate_limit("auth:forgot", per_minute=5))],
+)
+async def forgot_password(
+    body: ForgotPasswordRequest, request: Request, session: DBSession
+) -> MessageResponse:
+    """Always answers 202 with the same message — whether or not the account
+    exists — so the endpoint can't be used to enumerate emails."""
+    await AccountService(session).request_password_reset(email=body.email, client=_client(request))
+    return MessageResponse(
+        message="If an account exists for that email, a reset link has been sent."
+    )
+
+
+@router.post(
+    "/reset-password",
+    response_model=MessageResponse,
+    dependencies=[Depends(rate_limit("auth:reset", per_minute=10))],
+)
+async def reset_password(
+    body: ResetPasswordRequest, request: Request, session: DBSession
+) -> MessageResponse:
+    """Single-use emailed token; completing the reset ends every existing
+    session for the account."""
+    await AccountService(session).reset_password(
+        token=body.token, new_password=body.password, client=_client(request)
+    )
+    return MessageResponse(message="Password updated. You can now log in.")
+
+
+@router.post(
+    "/verify-email",
+    response_model=MessageResponse,
+    dependencies=[Depends(rate_limit("auth:verify", per_minute=10))],
+)
+async def verify_email(
+    body: VerifyEmailRequest, request: Request, session: DBSession
+) -> MessageResponse:
+    await AccountService(session).verify_email(token=body.token, client=_client(request))
+    return MessageResponse(message="Email address verified.")
+
+
+@router.post(
+    "/resend-verification",
+    response_model=MessageResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(user_rate_limit("auth:resend-verify", per_minute=3))],
+)
+async def resend_verification(user: CurrentUser, session: DBSession) -> MessageResponse:
+    await AccountService(session).send_verification(user)
+    return MessageResponse(message="Verification email sent (if not already verified).")

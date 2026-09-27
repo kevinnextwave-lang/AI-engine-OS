@@ -1,6 +1,7 @@
 """Import all models here so Alembic and SQLAlchemy see the full metadata."""
 
 from app.db.base import Base
+from app.models.account_token import AccountToken, AccountTokenPurpose
 from app.models.agents import (
     ActionRiskLevel,
     ActionStatus,
@@ -222,6 +223,8 @@ __all__ = [
     "PromptSource",
     "FunnelStage",
     "ProjectStatus",
+    "AccountToken",
+    "AccountTokenPurpose",
     "RefreshToken",
     "SeoAudit",
     "SeoObservation",

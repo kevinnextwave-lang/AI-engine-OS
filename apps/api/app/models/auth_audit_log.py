@@ -17,6 +17,9 @@ class AuthEvent(enum.StrEnum):
     REFRESH_REUSE_DETECTED = "refresh_reuse_detected"
     LOGOUT = "logout"
     LOGOUT_ALL = "logout_all"
+    PASSWORD_RESET_REQUESTED = "password_reset_requested"  # noqa: S105
+    PASSWORD_RESET_COMPLETED = "password_reset_completed"  # noqa: S105
+    EMAIL_VERIFIED = "email_verified"
 
 
 class AuthAuditLog(UUIDPrimaryKeyMixin, Base):

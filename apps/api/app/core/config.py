@@ -60,6 +60,23 @@ class Settings(BaseSettings):
     jwt_algorithm: Literal["HS256", "HS384", "HS512"] = "HS256"
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 30
+    password_reset_token_expire_minutes: int = 60
+    email_verification_token_expire_hours: int = 72
+
+    # Email delivery (password reset, email verification).
+    # console: log the email instead of sending (development default).
+    # smtp:    any SMTP relay (stdlib smtplib, STARTTLS by default).
+    # resend:  Resend's HTTP API (RESEND_API_KEY required).
+    email_backend: Literal["console", "smtp", "resend"] = "console"
+    email_from: str = "AI Search Growth OS <no-reply@localhost>"
+    # Base URL of the web app, used to build emailed links (reset/verify).
+    web_base_url: str = "http://localhost:3000"
+    smtp_host: str = "localhost"
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: SecretStr | None = None
+    smtp_starttls: bool = True
+    resend_api_key: SecretStr | None = None
 
     # Cookies
     cookie_secure: bool = False
@@ -229,6 +246,13 @@ def validate_settings(settings: Settings) -> Settings:
             raise RuntimeError("CORS_ORIGINS must list explicit origins in production, not '*'")
         if "localhost" in settings.database_url:
             raise RuntimeError("DATABASE_URL still points at localhost in production")
+        if settings.email_backend == "resend" and settings.resend_api_key is None:
+            raise RuntimeError("EMAIL_BACKEND=resend requires RESEND_API_KEY")
+        if settings.email_backend != "console" and "localhost" in settings.web_base_url:
+            raise RuntimeError(
+                "WEB_BASE_URL still points at localhost in production — emailed "
+                "password-reset/verification links would be broken"
+            )
     if settings.cookie_samesite == "none" and not settings.cookie_secure:
         raise RuntimeError("COOKIE_SAMESITE=none requires COOKIE_SECURE=true (browser rule)")
     return settings
