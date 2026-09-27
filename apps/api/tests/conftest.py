@@ -67,6 +67,11 @@ async def client(db_session: AsyncSession) -> AsyncIterator[AsyncClient]:
 
     app.dependency_overrides[get_db_session] = _override
     app.state.redis = None
+    # get_redis lazily reconnects in real deployments; in tests that would
+    # pick up any Redis running on the machine and leak rate-limit counters
+    # across the suite. Never reconnect: tests use the in-memory limiter,
+    # which reset() above clears per test.
+    app.state.redis_retry_after = float("inf")
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
