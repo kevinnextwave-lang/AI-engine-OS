@@ -410,6 +410,9 @@ async def test_tenant_isolation(client: AsyncClient, db_session: AsyncSession) -
         assert (
             await client.post(f"/api/v1/recommendations/{rid}/{path}", headers=h_b)
         ).status_code == 404
+    assert (
+        await client.patch(f"/api/v1/recommendations/{rid}", json={}, headers=h_b)
+    ).status_code == 404
     assert (await client.get(f"/api/v1/recommendations/{rid}", headers=h_b)).status_code == 404
     assert (await client.get(f"/api/v1/recommendations/{rid}")).status_code == 401
     org_a = (await client.get("/api/v1/organizations", headers=h_a)).json()[0]["id"]

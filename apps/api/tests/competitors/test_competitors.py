@@ -409,6 +409,9 @@ async def test_authorization_and_tenant_isolation(
     ).json()["id"]
     c = (await client.get(f"/api/v1/competitors/{cid}", headers=h_a)).json()
     alias_id, domain_id = c["aliases"][0]["id"], c["domains"][0]["id"]
+    product_id = (
+        await client.post(f"/api/v1/competitors/{cid}/products", json={"name": "Prod"}, headers=h_a)
+    ).json()["id"]
     # tenant B: same competitor name/domain is allowed in its own project, nothing of A is reachable
     assert (
         await client.post(
@@ -426,6 +429,8 @@ async def test_authorization_and_tenant_isolation(
         ("POST", f"/api/v1/competitors/{cid}/domains", {"domain": "x.com"}),
         ("DELETE", f"/api/v1/competitors/{cid}/domains/{domain_id}", None),
         ("POST", f"/api/v1/competitors/{cid}/products", {"name": "X"}),
+        ("PATCH", f"/api/v1/competitors/{cid}/products/{product_id}", {"name": "Stolen"}),
+        ("DELETE", f"/api/v1/competitors/{cid}/products/{product_id}", None),
         ("GET", f"/api/v1/projects/{pid_a}/competitors", None),
         ("POST", f"/api/v1/projects/{pid_a}/competitors", {"name": "Y", "website_url": "y.com"}),
     ):
@@ -435,6 +440,7 @@ async def test_authorization_and_tenant_isolation(
     # nothing changed in A
     c2 = (await client.get(f"/api/v1/competitors/{cid}", headers=h_a)).json()
     assert c2["name"] == "Xero" and len(c2["aliases"]) == 1 and len(c2["domains"]) == 1
+    assert [x["name"] for x in c2["products"]] == ["Prod"]
     # viewer in A's org: read yes, write no (403)
     viewer = await add_member(db_session, org_a, "viewer-comp@example.com", MembershipRole.VIEWER)
     await db_session.commit()

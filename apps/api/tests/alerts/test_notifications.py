@@ -327,6 +327,15 @@ async def test_channel_tenant_isolation_and_roles(
     assert r.status_code == 404
     r = await client.get(f"/api/v1/notification-channels/{cid}", headers=out_headers)
     assert r.status_code == 404
+    # ... and on every WRITE surface of the child-id routes.
+    r = await client.patch(
+        f"/api/v1/notification-channels/{cid}", json={"name": "stolen"}, headers=out_headers
+    )
+    assert r.status_code == 404
+    r = await client.post(f"/api/v1/notification-channels/{cid}/test", headers=out_headers)
+    assert r.status_code == 404
+    r = await client.delete(f"/api/v1/notification-channels/{cid}", headers=out_headers)
+    assert r.status_code == 404
 
     # viewer: can list, cannot manage
     viewer_headers = auth_header(
