@@ -414,7 +414,9 @@ async def test_ignored_carries_forward_resolved_reopens(
     assert all(o["status"] == "open" for o in obs1)  # first audit: nothing carried
 
     ignored_src = obs1[0]
-    resolved_src = next(o for o in obs1 if (o["code"], o["url"]) != (ignored_src["code"], ignored_src["url"]))
+    resolved_src = next(
+        o for o in obs1 if (o["code"], o["url"]) != (ignored_src["code"], ignored_src["url"])
+    )
     for oid, status, note in (
         (ignored_src["id"], "ignored", "known false positive"),
         (resolved_src["id"], "resolved", None),

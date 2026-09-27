@@ -125,6 +125,24 @@ async def get_current_user(
 CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
+def user_rate_limit(scope: str, *, per_minute: int) -> Callable[..., Coroutine[Any, Any, None]]:
+    """Build a dependency that rate-limits an AUTHENTICATED endpoint per user.
+
+    IP keying is wrong for spend-sensitive endpoints: many users share one
+    office/VPN IP (they would throttle each other), and one abusive user can
+    rotate IPs. The user id is the identity that pays for the work.
+    """
+
+    async def _dependency(
+        user: CurrentUser,
+        limiter: Annotated[RateLimiter, Depends(get_rate_limiter)],
+    ) -> None:
+        if not await limiter.hit(f"{scope}:user:{user.id}", per_minute, 60):
+            raise RateLimitedError()
+
+    return _dependency
+
+
 # -- Organization scoping -------------------------------------------------
 
 

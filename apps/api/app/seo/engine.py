@@ -3,13 +3,12 @@
 from collections import Counter
 from datetime import UTC, datetime
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import safe_error_message
 from app.core.logging import get_logger
 from app.models.crawl import CrawlJob
-from sqlalchemy import select
-
 from app.models.seo import AuditStatus, ObservationStatus, SeoAudit, SeoObservation
 from app.seo.checks.canonical import check_canonical
 from app.seo.checks.headings import check_headings
@@ -42,7 +41,9 @@ def run_checks(ctx: AuditContext) -> list[Finding]:
     return findings
 
 
-async def _previously_ignored(session: AsyncSession, audit: SeoAudit) -> dict[tuple[str, str | None], str | None]:
+async def _previously_ignored(
+    session: AsyncSession, audit: SeoAudit
+) -> dict[tuple[str, str | None], str | None]:
     """(code, url) -> status_note for observations the user IGNORED on the
     most recent completed audit before this one. Chronology matters: only
     the immediately previous completed audit is consulted."""

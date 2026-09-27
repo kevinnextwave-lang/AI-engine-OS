@@ -6,12 +6,15 @@ import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.registry import ProviderRegistry
-from app.core.errors import ConflictError, ValidationAppError
+from app.core.config import Settings, get_settings
+from app.core.errors import ConflictError, RateLimitedError, ValidationAppError
 from app.core.logging import get_logger
 from app.models.ai import AiModel, AiProvider
+from app.models.project import Project
 from app.models.prompts import (
     BatchStatus,
     ExecutionPriority,
@@ -35,11 +38,16 @@ CELERY_PRIORITY = {ExecutionPriority.LOW: 3, ExecutionPriority.NORMAL: 5, Execut
 
 class ExecutionService:
     def __init__(
-        self, session: AsyncSession, registry: ProviderRegistry, dispatcher: RunDispatcher
+        self,
+        session: AsyncSession,
+        registry: ProviderRegistry,
+        dispatcher: RunDispatcher,
+        settings: Settings | None = None,
     ) -> None:
         self._session = session
         self._registry = registry
         self._dispatch = dispatcher
+        self._settings = settings or get_settings()
         self._batches = BatchRepository(session)
         self._runs = PromptRunRepository(session)
         self._catalog = AiCatalogRepository(session)
@@ -97,6 +105,7 @@ class ExecutionService:
     ) -> PromptRunBatch:
         if prompt_set.status == PromptSetStatus.ARCHIVED:
             raise ConflictError("Prompt set is archived")
+        settings = self._settings
         targets = await self.resolve_targets(providers, models)
         prompts, _ = await PromptRepository(self._session).list_for_set(
             prompt_set.id, is_active=True, limit=10_000
@@ -106,6 +115,41 @@ class ExecutionService:
             prompts = [p for p in prompts if p.id in wanted]
         if not prompts:
             raise ValidationAppError("Prompt set has no active prompts to run")
+        # Cost control 1: bound the per-request blast radius. One batch is
+        # prompts × providers paid calls; without a cap a single POST could
+        # queue tens of thousands.
+        max_prompts = settings.ai_run_max_prompts_per_batch
+        if len(prompts) > max_prompts:
+            raise ValidationAppError(
+                f"This run would execute {len(prompts)} prompts; the per-batch limit is "
+                f"{max_prompts}. Run a subset via prompt_ids or deactivate prompts."
+            )
+        # Cost control 2: one in-flight batch per project. Repeat-clicking
+        # "run" (or a script in a loop) must not stack paid batches. Checked
+        # after the set's own validation so an invalid request still gets its
+        # specific error even while another batch runs.
+        active = await self._batches.active_for_project(prompt_set.project_id)
+        if active is not None:
+            raise ConflictError(
+                "A prompt run batch is already in progress for this project. "
+                "Wait for it to finish or cancel it before starting another."
+            )
+        # Cost control 3: per-organization daily spend ceiling, enforced
+        # against the usage metering that every provider call already writes.
+        daily_limit = settings.ai_daily_cost_limit_usd
+        if daily_limit > 0:
+            org_id = await self._session.scalar(
+                select(Project.organization_id).where(Project.id == prompt_set.project_id)
+            )
+            if org_id is not None:
+                day_start = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+                spent = await self._batches.org_spend_since(org_id, day_start)
+                if spent >= daily_limit:
+                    raise RateLimitedError(
+                        "This organization has reached its daily AI usage budget "
+                        f"(${daily_limit:.2f}). Try again after midnight UTC, or raise "
+                        "AI_DAILY_COST_LIMIT_USD."
+                    )
 
         batch = PromptRunBatch(
             project_id=prompt_set.project_id,

@@ -21,6 +21,7 @@ from app.api.deps import (
     ProjectAccess,
     get_project_access,
     require_project_access,
+    user_rate_limit,
 )
 from app.api.v1.routes.prompts import _require
 from app.core.errors import NotFoundError
@@ -75,6 +76,7 @@ async def list_agents(access: ReadAccess, registry: RegistryDep) -> list[AgentIn
 
 @project_router.post(
     "/agents/{agent_name}/run",
+    dependencies=[Depends(user_rate_limit("ai:agent", per_minute=6))],
     response_model=AgentRunView,
     status_code=status.HTTP_202_ACCEPTED,
     summary="Queue an agent run (executed on the worker, never in the request)",

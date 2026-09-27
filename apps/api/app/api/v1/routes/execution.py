@@ -10,7 +10,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Path, Query, status
 
 from app.ai.registry import ProviderRegistry
-from app.api.deps import CurrentUser, DBSession, ProjectAccess, get_project_access
+from app.api.deps import CurrentUser, DBSession, ProjectAccess, get_project_access, user_rate_limit
 from app.api.v1.routes.prompts import PromptAccess, SetAccess, _require
 from app.core.errors import NotFoundError
 from app.core.permissions import Permission
@@ -99,6 +99,7 @@ async def list_providers(_user: CurrentUser, registry: RegistryDep) -> ProviderS
 
 @set_router.post(
     "/run",
+    dependencies=[Depends(user_rate_limit("ai:run", per_minute=6))],
     response_model=BatchResponse,
     status_code=status.HTTP_202_ACCEPTED,
     summary="Run a prompt set against AI providers",

@@ -13,6 +13,7 @@ from app.api.deps import (
     ProjectAccess,
     get_project_access,
     require_project_access,
+    user_rate_limit,
 )
 from app.api.v1.routes.execution import RegistryDep
 from app.api.v1.routes.prompts import _require
@@ -86,6 +87,7 @@ async def list_candidates(
 
 @project_router.post(
     "/discover",
+    dependencies=[Depends(user_rate_limit("ai:discovery", per_minute=6))],
     response_model=DiscoverResponse,
     summary="Run competitor discovery (deterministic + AI-assisted)",
     description=(

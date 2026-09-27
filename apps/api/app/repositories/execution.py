@@ -93,6 +93,34 @@ class BatchRepository:
         await self._session.flush()
         return batch
 
+    async def active_for_project(self, project_id: uuid.UUID) -> PromptRunBatch | None:
+        """The project's currently in-flight batch, if any (cost control:
+        one batch at a time per project)."""
+        return (
+            await self._session.scalars(
+                select(PromptRunBatch)
+                .where(
+                    PromptRunBatch.project_id == project_id,
+                    PromptRunBatch.status.in_(
+                        (BatchStatus.QUEUED, BatchStatus.RUNNING, BatchStatus.CANCELLING)
+                    ),
+                )
+                .order_by(PromptRunBatch.created_at.desc())
+                .limit(1)
+            )
+        ).first()
+
+    async def org_spend_since(self, organization_id: uuid.UUID, since: datetime) -> float:
+        """Sum of estimated AI cost (USD) recorded for the organization since
+        the given moment — the enforcement read for the daily spend ceiling."""
+        total = await self._session.scalar(
+            select(func.coalesce(func.sum(AiUsageRecord.estimated_cost), 0)).where(
+                AiUsageRecord.organization_id == organization_id,
+                AiUsageRecord.created_at >= since,
+            )
+        )
+        return float(total or 0)
+
     async def mark_running(self, batch_id: uuid.UUID) -> None:
         await self._session.execute(
             update(PromptRunBatch)

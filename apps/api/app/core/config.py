@@ -111,6 +111,11 @@ class Settings(BaseSettings):
     ai_run_max_attempts: int = 4
     ai_run_retry_base_seconds: float = 5.0
     ai_run_retry_max_seconds: float = 300.0
+    # Cost controls. One batch = prompts × providers paid LLM calls, so both
+    # knobs bound worst-case spend per request; the daily ceiling bounds it
+    # per organization per UTC day (0 disables the ceiling, e.g. self-hosted).
+    ai_run_max_prompts_per_batch: int = 500
+    ai_daily_cost_limit_usd: float = 25.0
     # Requests per minute per provider; 0 disables throttling for that provider.
     ai_rate_limit_openai_per_minute: int = 60
     ai_rate_limit_anthropic_per_minute: int = 50

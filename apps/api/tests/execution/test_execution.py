@@ -25,6 +25,7 @@ from app.models.prompts import (
     AiResponse,
     AiUsageRecord,
     BatchStatus,
+    ExecutionPriority,
     PromptRun,
     PromptRunBatch,
     PromptRunStatus,
@@ -612,3 +613,94 @@ def test_cost_estimation_is_config_driven() -> None:
     assert c.amount == Decimal("0.007500") and c.currency == "USD" and c.pricing_version == "v1"
     assert estimate_cost(None, 1000, 1000).amount == Decimal("0")
     assert estimate_cost({"input_per_million": 1}, None, None).amount == Decimal("0")
+
+
+# --- cost controls (P0) ---------------------------------------------------------------
+
+
+async def test_second_run_conflicts_while_batch_active(
+    client: AsyncClient, dispatched: Recorder, registry: ProviderRegistry
+) -> None:
+    """One in-flight batch per project: repeat-clicking run must not stack
+    paid batches."""
+    h, _, pid, set_id = await _setup(client, prompts=2)
+    first = await client.post(
+        f"/api/v1/prompt-sets/{set_id}/run", json={"providers": ["openai"]}, headers=h
+    )
+    assert first.status_code == 202, first.text
+    second = await client.post(
+        f"/api/v1/prompt-sets/{set_id}/run", json={"providers": ["openai"]}, headers=h
+    )
+    assert second.status_code == 409 and "already in progress" in second.text
+
+
+async def test_run_caps_prompts_per_batch(
+    client: AsyncClient, dispatched: Recorder, registry: ProviderRegistry, db_session: AsyncSession
+) -> None:
+    from app.models.prompts import PromptSet
+    from app.services.execution import ExecutionService
+
+    h, _, pid, set_id = await _setup(client, prompts=3)
+    prompt_set = await db_session.get(PromptSet, uuid.UUID(set_id))
+    assert prompt_set is not None
+    service = ExecutionService(
+        db_session,
+        registry_with({"openai": lambda r: json_response(200, OPENAI_OK)}),
+        Recorder(),
+        settings=settings(ai_run_max_prompts_per_batch=2),
+    )
+    from app.core.errors import ValidationAppError
+
+    with pytest.raises(ValidationAppError, match="per-batch limit is 2"):
+        await service.run_prompt_set(
+            prompt_set,
+            providers=["openai"],
+            models=None,
+            priority=ExecutionPriority.NORMAL,
+            requested_by=None,
+        )
+
+
+async def test_run_enforces_daily_spend_ceiling(
+    client: AsyncClient, dispatched: Recorder, registry: ProviderRegistry, db_session: AsyncSession
+) -> None:
+    """Once today's metered spend reaches the org ceiling, new batches are
+    refused with 429 — enforcement reads the same AiUsageRecord rows every
+    provider call writes."""
+    h, org, pid, set_id = await _setup(client, prompts=2)
+    db_session.add(
+        AiUsageRecord(
+            organization_id=uuid.UUID(org),
+            project_id=uuid.UUID(pid),
+            provider="openai",
+            model="gpt-4o-mini",
+            input_tokens=1,
+            output_tokens=1,
+            estimated_cost=Decimal("999.00"),
+        )
+    )
+    await db_session.commit()
+    resp = await client.post(
+        f"/api/v1/prompt-sets/{set_id}/run", json={"providers": ["openai"]}, headers=h
+    )
+    assert resp.status_code == 429, resp.text
+    assert "daily AI usage budget" in resp.text
+
+
+async def test_generate_endpoint_is_user_rate_limited(
+    client: AsyncClient,
+) -> None:
+    """The AI-adjacent endpoints are limited per user (6/min), so a loop
+    can't hammer spend-y work even from rotating IPs."""
+    h, _, pid, _ = await _setup(client, prompts=1)
+    ps = (
+        await client.post(f"/api/v1/projects/{pid}/prompt-sets", json={"name": "RL"}, headers=h)
+    ).json()
+    statuses = []
+    for _ in range(7):
+        r = await client.post(
+            f"/api/v1/prompt-sets/{ps['id']}/generate", json={"max_prompts": 5}, headers=h
+        )
+        statuses.append(r.status_code)
+    assert 429 in statuses, statuses
+    assert statuses.index(429) >= 6  # the first six went through

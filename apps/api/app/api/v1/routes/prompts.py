@@ -16,6 +16,7 @@ from app.api.deps import (
     ProjectAccess,
     get_project_access,
     require_project_access,
+    user_rate_limit,
 )
 from app.core.errors import NotFoundError, PermissionDeniedError
 from app.core.permissions import Permission, role_has
@@ -118,6 +119,7 @@ async def list_prompt_sets(
 
 @set_router.post(
     "/generate",
+    dependencies=[Depends(user_rate_limit("ai:generate", per_minute=6))],
     response_model=PromptGenerateResponse,
     summary="Generate prompts for a set",
     description=(
