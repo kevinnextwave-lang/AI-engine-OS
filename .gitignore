@@ -35,3 +35,7 @@ var/
 
 # Redis dumps
 dump.rdb
+
+# Session artifacts — never commit screenshots or git bundles.
+*.bundle
+/*.png

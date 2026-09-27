@@ -12,7 +12,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends build-essential
 
 COPY apps/api/pyproject.toml ./
 COPY apps/api/app ./app
-RUN pip install --upgrade pip && pip install .
+RUN pip install --upgrade pip && pip install . \
+    && apt-get purge -y build-essential && apt-get autoremove -y \
+    && rm -rf /var/lib/apt/lists/*
+
+# Non-root: Celery has no reason to run as root either.
+RUN useradd --create-home --uid 10001 appuser && chown -R appuser:appuser /app
+USER appuser
 
 # -B embeds celery beat in this worker, so the periodic schedule (hourly
 # stale-job reaper, daily monitoring) actually runs in a default single-worker

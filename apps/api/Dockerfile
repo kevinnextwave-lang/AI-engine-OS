@@ -20,7 +20,15 @@ COPY alembic ./alembic
 COPY alembic.ini ./
 
 # setuptools >= 83 clears PYSEC-2026-3447 in the shipped image.
-RUN pip install --upgrade pip "setuptools>=83" && pip install .
+# The compiler toolchain is only needed while pip builds any sdists; purge it
+# from the final filesystem so a compromised container has no build tools.
+RUN pip install --upgrade pip "setuptools>=83" && pip install . \
+    && apt-get purge -y build-essential && apt-get autoremove -y \
+    && rm -rf /var/lib/apt/lists/*
+
+# Run as a non-root user; nothing in the image needs root at runtime.
+RUN useradd --create-home --uid 10001 appuser && chown -R appuser:appuser /app
+USER appuser
 
 EXPOSE 8000
 # Run database migrations before serving so a fresh deploy always has its
