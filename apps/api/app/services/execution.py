@@ -212,7 +212,12 @@ class ExecutionService:
         return batch
 
     async def cancel(self, batch: PromptRunBatch) -> PromptRunBatch:
-        if batch.status in (BatchStatus.COMPLETED, BatchStatus.FAILED, BatchStatus.CANCELLED):
+        if batch.status in (
+            BatchStatus.COMPLETED,
+            BatchStatus.PARTIAL,
+            BatchStatus.FAILED,
+            BatchStatus.CANCELLED,
+        ):
             raise ConflictError(f"Batch is already {batch.status.value}")
         batch.status = BatchStatus.CANCELLING
         await self._session.flush()

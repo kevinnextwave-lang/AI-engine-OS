@@ -79,6 +79,9 @@ class BatchStatus(enum.StrEnum):
     QUEUED = "queued"
     RUNNING = "running"
     COMPLETED = "completed"
+    # Finished with BOTH successes and failures: the data exists but is not
+    # a complete measurement, and analytics built on it should say so.
+    PARTIAL = "partial"
     FAILED = "failed"
     CANCELLING = "cancelling"
     CANCELLED = "cancelled"

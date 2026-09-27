@@ -76,7 +76,12 @@ class BatchRepository:
             return None
         if batch.finished_runs < batch.total_runs:
             return batch
-        if batch.status in (BatchStatus.COMPLETED, BatchStatus.FAILED, BatchStatus.CANCELLED):
+        if batch.status in (
+            BatchStatus.COMPLETED,
+            BatchStatus.PARTIAL,
+            BatchStatus.FAILED,
+            BatchStatus.CANCELLED,
+        ):
             return batch
         if (
             batch.status == BatchStatus.CANCELLING
@@ -87,6 +92,10 @@ class BatchRepository:
             batch.status = BatchStatus.CANCELLED
         elif batch.completed_runs == 0 and batch.failed_runs > 0:
             batch.status = BatchStatus.FAILED
+        elif batch.completed_runs > 0 and batch.failed_runs > 0:
+            # Honest outcome: some runs measured, some didn't. COMPLETED
+            # would hide the gap from every downstream consumer.
+            batch.status = BatchStatus.PARTIAL
         else:
             batch.status = BatchStatus.COMPLETED
         batch.completed_at = datetime.now(UTC)

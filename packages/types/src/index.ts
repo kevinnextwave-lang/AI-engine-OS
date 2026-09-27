@@ -1223,7 +1223,14 @@ export type PromptCategory =
   | "transactional";
 export type FunnelStage = "awareness" | "consideration" | "decision" | "purchase" | "retention";
 export type PromptRunStatus = "queued" | "running" | "completed" | "failed" | "cancelled";
-export type BatchStatus = "queued" | "running" | "completed" | "failed" | "cancelling" | "cancelled";
+export type BatchStatus =
+  | "queued"
+  | "running"
+  | "completed"
+  | "partial" // finished with both successes and failures — not a complete measurement
+  | "failed"
+  | "cancelling"
+  | "cancelled";
 
 export interface PromptSet {
   id: string;

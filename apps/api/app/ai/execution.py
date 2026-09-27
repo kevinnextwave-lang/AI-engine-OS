@@ -139,6 +139,11 @@ async def execute_prompt_run(
             base=settings.ai_run_retry_base_seconds,
             cap=settings.ai_run_retry_max_seconds,
         )
+        # The provider's own Retry-After beats blind backoff when it's
+        # longer — retrying sooner than the provider asked just burns an
+        # attempt on a guaranteed second 429.
+        if error.retry_after_seconds is not None:
+            delay = max(delay, min(error.retry_after_seconds, settings.ai_run_retry_max_seconds))
         run.error_code = error.category.value
         run.error_message = error.message[:2000]
         run.latency_ms = response.latency_ms

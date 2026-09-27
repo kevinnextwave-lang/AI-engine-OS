@@ -704,3 +704,46 @@ async def test_generate_endpoint_is_user_rate_limited(
         statuses.append(r.status_code)
     assert 429 in statuses, statuses
     assert statuses.index(429) >= 6  # the first six went through
+
+
+# --- P1: honest batch outcomes + Retry-After ------------------------------------------
+
+
+async def test_mixed_outcomes_finalize_as_partial(
+    client: AsyncClient, dispatched: Recorder, registry: ProviderRegistry, db_session: AsyncSession
+) -> None:
+    """A batch with successes AND failures must not masquerade as COMPLETED."""
+    from app.repositories.execution import BatchRepository
+
+    h, _, pid, set_id = await _setup(client, prompts=2)
+    resp = await client.post(
+        f"/api/v1/prompt-sets/{set_id}/run", json={"providers": ["openai"]}, headers=h
+    )
+    batch_id = uuid.UUID(resp.json()["id"])
+    repo = BatchRepository(db_session)
+    await repo.record_outcome(batch_id, PromptRunStatus.COMPLETED)
+    refreshed = await repo.record_outcome(batch_id, PromptRunStatus.FAILED)
+    await db_session.commit()
+    assert refreshed is not None and refreshed.status is BatchStatus.PARTIAL
+    got = (await client.get(f"/api/v1/prompt-run-batches/{batch_id}", headers=h)).json()
+    assert got["status"] == "partial"
+
+
+def test_retry_after_header_is_parsed_and_clamped() -> None:
+    from app.ai.providers._http import raise_for_error
+    from app.ai.types import AIProviderError
+
+    def err_for(headers: dict[str, str]) -> AIProviderError:
+        resp = httpx.Response(
+            429, headers=headers, request=httpx.Request("POST", "http://p.example")
+        )
+        try:
+            raise_for_error(resp, provider="openai")
+        except AIProviderError as exc:
+            return exc
+        raise AssertionError("expected AIProviderError")
+
+    assert err_for({"retry-after": "30"}).error.retry_after_seconds == 30.0
+    assert err_for({"retry-after": "100000"}).error.retry_after_seconds == 600.0  # clamped
+    assert err_for({}).error.retry_after_seconds is None
+    assert err_for({"retry-after": "not-a-number"}).error.retry_after_seconds is None

@@ -27,6 +27,9 @@ class AIError:
     message: str
     status_code: int | None = None
     provider_code: str | None = None
+    # From the provider's Retry-After header on 429s, when sent; the retry
+    # scheduler prefers it over blind exponential backoff.
+    retry_after_seconds: float | None = None
 
     @property
     def retryable(self) -> bool:

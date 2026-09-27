@@ -22,6 +22,7 @@ const STATUS_VARIANTS: Record<string, BadgeVariant> = {
   running: "medium",
   completed: "success",
   partially_completed: "medium",
+  partial: "medium",
   failed: "critical",
   cancelled: "muted",
   paused: "info",
