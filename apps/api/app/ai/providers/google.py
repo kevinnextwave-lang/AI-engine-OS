@@ -14,6 +14,7 @@ from app.ai.types import (
     AIResponse,
     FinishReason,
     ProviderCapabilities,
+    ProviderCitation,
 )
 
 _FINISH = {
@@ -43,17 +44,24 @@ class GoogleProvider(AIProvider):
         base_url: str = "https://generativelanguage.googleapis.com/v1beta",
         client: httpx.AsyncClient | None = None,
         default_timeout_seconds: float = 60.0,
+        grounding: bool = False,
     ) -> None:
         super().__init__(default_timeout_seconds=default_timeout_seconds)
         self._api_key = api_key
         self._base_url = base_url.rstrip("/")
         self._client = client or httpx.AsyncClient()
         self._owns_client = client is None
+        # Google Search grounding: the model retrieves live results and the
+        # response carries groundingMetadata with the actual sources. Costs
+        # extra per grounded request — opt-in via GOOGLE_AI_GROUNDING.
+        self._grounding = grounding
 
     async def _generate(self, request: AIRequest, timeout_seconds: float) -> AIResponse:
         payload: dict[str, Any] = {
             "contents": [{"role": "user", "parts": [{"text": request.prompt}]}],
         }
+        if self._grounding:
+            payload["tools"] = [{"google_search": {}}]
         if request.system_prompt:
             payload["systemInstruction"] = {"parts": [{"text": request.system_prompt}]}
         config: dict[str, Any] = {}
@@ -99,6 +107,19 @@ class GoogleProvider(AIProvider):
                     finish_raw,
                 )
             )
+        citations: list[ProviderCitation] = []
+        grounding_meta = candidate.get("groundingMetadata") or {}
+        chunks = grounding_meta.get("groundingChunks")
+        if isinstance(chunks, list):
+            seen: set[str] = set()
+            for chunk in chunks[:50]:
+                web = (chunk or {}).get("web") or {}
+                url = str(web.get("uri") or "").strip()
+                if not url or url in seen:
+                    continue
+                seen.add(url)
+                title = str(web.get("title") or "").strip() or None
+                citations.append(ProviderCitation(url=url[:2048], title=title))
         usage = body.get("usageMetadata") or {}
         return AIResponse(
             provider=self.key,
@@ -111,5 +132,10 @@ class GoogleProvider(AIProvider):
             total_tokens=as_int(usage.get("totalTokenCount")),
             provider_request_id=res.headers.get("x-request-id")
             or (str(body.get("responseId")) if body.get("responseId") else None),
-            raw_response={"finish_reason": finish_raw, "model_version": body.get("modelVersion")},
+            raw_response={
+                "finish_reason": finish_raw,
+                "model_version": body.get("modelVersion"),
+                "grounded": self._grounding,
+            },
+            citations=citations,
         )

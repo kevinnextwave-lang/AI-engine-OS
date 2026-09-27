@@ -272,9 +272,22 @@ export function ResponseDrawer({
                             ) : (
                               <span>{c.anchor_text ?? c.domain ?? "Unresolved citation"}</span>
                             )}
+                            {c.citation_type === "provider_grounded" && (
+                              <Badge variant="secondary" className="shrink-0">
+                                retrieved
+                              </Badge>
+                            )}
                           </li>
                         ))}
                       </ul>
+                      {/* Honesty about provenance: retrieved sources are what
+                          the engine actually consulted; the rest are URLs the
+                          model wrote from memory. */}
+                      <p className="text-muted-foreground mt-1 text-xs">
+                        {summary.citations.some((c) => c.citation_type === "provider_grounded")
+                          ? "“Retrieved” sources were fetched by the AI engine's live search for this answer; unmarked ones are URLs written into the answer text."
+                          : "These URLs were written into the answer text from the model's own knowledge — this provider did not perform live retrieval."}
+                      </p>
                       {/* Close the loop: from this answer's citations into the
                           citation-intelligence views for all of them. */}
                       <p className="text-muted-foreground mt-1 text-xs">

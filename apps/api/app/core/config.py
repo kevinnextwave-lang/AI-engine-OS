@@ -114,14 +114,20 @@ class Settings(BaseSettings):
     openai_api_key: SecretStr | None = None
     anthropic_api_key: SecretStr | None = None
     google_ai_api_key: SecretStr | None = None
+    perplexity_api_key: SecretStr | None = None
     openai_base_url: str = "https://api.openai.com/v1"
     anthropic_base_url: str = "https://api.anthropic.com"
     google_ai_base_url: str = "https://generativelanguage.googleapis.com/v1beta"
+    perplexity_base_url: str = "https://api.perplexity.ai"
     anthropic_api_version: str = "2023-06-01"
+    # Google Search grounding for Gemini calls: real retrieval with real
+    # source citations, billed extra per grounded request. Off by default.
+    google_ai_grounding: bool = False
     # Default model per provider; the catalogue lives in the ai_models table.
     openai_default_model: str = "gpt-4o-mini"
     anthropic_default_model: str = "claude-3-5-haiku-latest"
     google_default_model: str = "gemini-2.0-flash"
+    perplexity_default_model: str = "sonar"
     ai_default_timeout_seconds: float = 60.0
     ai_default_max_tokens: int = 1024
     ai_store_response_text: bool = True

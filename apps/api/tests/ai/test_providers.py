@@ -92,6 +92,7 @@ async def test_successful_response_is_normalized(provider: str) -> None:
         "stop_sequence",
         "system_fingerprint",
         "model_version",
+        "grounded",
     }
     # parameter mapping per provider
     body = seen["body"]
@@ -262,3 +263,104 @@ async def test_length_finish_reason() -> None:
         AIRequest(model="m", prompt="x")
     )
     assert res.succeeded and res.finish_reason == FinishReason.LENGTH
+
+
+# --- grounded providers: Perplexity + Gemini grounding ------------------------------
+
+
+PERPLEXITY_OK = {
+    "id": "pplx-1",
+    "model": "sonar",
+    "choices": [
+        {
+            "message": {"role": "assistant", "content": "Ledgerly is a popular tool [1]."},
+            "finish_reason": "stop",
+        }
+    ],
+    "usage": {"prompt_tokens": 12, "completion_tokens": 8, "total_tokens": 20},
+    "search_results": [
+        {"title": "Best accounting tools 2026", "url": "https://reviews.example/best"},
+        {"title": "Ledgerly review", "url": "https://blog.example/ledgerly"},
+        {"title": "dup", "url": "https://reviews.example/best"},  # deduped
+    ],
+    "citations": [
+        "https://reviews.example/best",  # already present via search_results
+        "https://legacy.example/only-here",
+    ],
+}
+
+
+async def test_perplexity_returns_grounded_citations() -> None:
+    from app.ai.providers.perplexity import PerplexityProvider
+
+    seen: dict[str, Any] = {}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen["url"] = str(req.url)
+        seen["body"] = json.loads(req.content)
+        seen["auth"] = req.headers.get("authorization")
+        return json_response(200, PERPLEXITY_OK)
+
+    p = PerplexityProvider("pplx-test", client=transport(handler), default_timeout_seconds=2)
+    res = await p.generate(AIRequest(model="sonar", prompt="Best accounting tool?"))
+    assert seen["url"].endswith("/chat/completions") and seen["auth"] == "Bearer pplx-test"
+    assert res.succeeded and res.response_text.startswith("Ledgerly")
+    assert res.finish_reason is FinishReason.STOP
+    urls = [c.url for c in res.citations]
+    # search_results first (with titles), legacy citations appended, deduped.
+    assert urls == [
+        "https://reviews.example/best",
+        "https://blog.example/ledgerly",
+        "https://legacy.example/only-here",
+    ]
+    assert res.citations[0].title == "Best accounting tools 2026"
+    assert res.raw_response.get("grounded") is True
+
+
+async def test_google_grounding_sends_tool_and_parses_sources() -> None:
+    seen: dict[str, Any] = {}
+    body = {
+        **GOOGLE_OK,
+        "candidates": [
+            {
+                "content": {"parts": [{"text": "Grounded answer"}]},
+                "finishReason": "STOP",
+                "groundingMetadata": {
+                    "groundingChunks": [
+                        {"web": {"uri": "https://source.example/a", "title": "Source A"}},
+                        {"web": {"uri": "https://source.example/a", "title": "dup"}},
+                        {"web": {"uri": "https://source.example/b"}},
+                    ]
+                },
+            }
+        ],
+    }
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen["body"] = json.loads(req.content)
+        return json_response(200, body)
+
+    p = GoogleProvider(
+        "g-test", client=transport(handler), default_timeout_seconds=2, grounding=True
+    )
+    res = await p.generate(AIRequest(model="gemini-2.0-flash", prompt="q"))
+    assert seen["body"]["tools"] == [{"google_search": {}}]
+    assert [c.url for c in res.citations] == [
+        "https://source.example/a",
+        "https://source.example/b",
+    ]
+    assert res.citations[0].title == "Source A"
+    assert res.raw_response.get("grounded") is True
+
+
+async def test_google_without_grounding_sends_no_tools() -> None:
+    seen: dict[str, Any] = {}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen["body"] = json.loads(req.content)
+        return json_response(200, GOOGLE_OK)
+
+    p = GoogleProvider("g-test", client=transport(handler), default_timeout_seconds=2)
+    res = await p.generate(AIRequest(model="gemini-2.0-flash", prompt="q"))
+    assert "tools" not in seen["body"]
+    assert res.citations == [] and res.raw_response.get("grounded") is False

@@ -179,6 +179,14 @@ async def _finish_completed(
 ) -> Outcome:
     now = datetime.now(UTC)
     model = await session.get(AiModel, run.model_id) if run.model_id else None
+    raw_metadata = dict(response.raw_response)
+    if response.citations:
+        # Native retrieval citations (grounded providers). Persisted with the
+        # response so intelligence parsing — including later reprocessing —
+        # can store them as provider_grounded ResponseCitation rows.
+        raw_metadata["grounded_citations"] = [
+            {"url": c.url, "title": c.title} for c in response.citations[:50]
+        ]
     stored = AiResponse(
         prompt_run_id=run.id,
         provider_id=run.provider_id,
@@ -190,7 +198,7 @@ async def _finish_completed(
         total_tokens=response.total_tokens,
         latency_ms=response.latency_ms,
         provider_request_id=response.provider_request_id,
-        raw_metadata=response.raw_response,
+        raw_metadata=raw_metadata,
     )
     session.add(stored)
     await session.flush()

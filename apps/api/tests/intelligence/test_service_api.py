@@ -245,3 +245,59 @@ async def test_tenant_isolation_and_roles(client: AsyncClient, db_session: Async
     assert (
         await client.post(f"/api/v1/prompt-run-batches/{batch_id}/reprocess", headers=v)
     ).status_code == 403
+
+
+async def test_grounded_citations_are_stored_and_deduped(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Provider-native retrieval citations (raw_metadata.grounded_citations)
+    become provider_grounded ResponseCitation rows; a URL both retrieved and
+    written into the answer text counts once — as grounded."""
+    h, _, pid, set_id, reg = await _setup(client, fx.NEGATIVE)
+    _, run_id = await _run_batch(client, db_session, h, set_id, reg)
+    response = (
+        await db_session.scalars(select(AiResponse).where(AiResponse.prompt_run_id == run_id))
+    ).one()
+
+    # Attach grounded citations, one duplicating a URL already in the text.
+    text_urls = [
+        c.url
+        for c in (
+            await db_session.scalars(
+                select(ResponseCitation).where(ResponseCitation.ai_response_id == response.id)
+            )
+        ).all()
+        if c.url
+    ]
+    dup = text_urls[0] if text_urls else "https://dup.example/none-in-text"
+    response.parser_version = "response-parser/v0"  # force reparse
+    response.raw_metadata = {
+        **(response.raw_metadata or {}),
+        "grounded_citations": [
+            {"url": "https://retrieved.example/source-1", "title": "Retrieved One"},
+            {"url": dup, "title": "Also in text"},
+            {"url": "https://retrieved.example/source-1"},  # dedup within grounded
+        ],
+    }
+    await db_session.flush()
+
+    service = ResponseIntelligenceService(db_session)
+    assert await service.parse_and_store(response, force=True) is not None
+    await db_session.commit()
+
+    rows = (
+        await db_session.scalars(
+            select(ResponseCitation).where(ResponseCitation.ai_response_id == response.id)
+        )
+    ).all()
+    grounded = [r for r in rows if r.citation_type == "provider_grounded"]
+    grounded_urls = sorted(r.url for r in grounded if r.url)
+    assert "https://retrieved.example/source-1" in grounded_urls
+    assert grounded_urls.count("https://retrieved.example/source-1") == 1
+    # The duplicated URL appears exactly once across ALL citation rows, and
+    # it carries the grounded label (the stronger signal wins).
+    dup_rows = [r for r in rows if r.url == dup]
+    assert len(dup_rows) == 1 and dup_rows[0].citation_type == "provider_grounded"
+    # Titles land as anchor text; domains are resolved.
+    one = next(r for r in grounded if r.url == "https://retrieved.example/source-1")
+    assert one.anchor_text == "Retrieved One" and one.domain == "retrieved.example"

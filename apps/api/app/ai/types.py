@@ -75,6 +75,15 @@ class AIRequest:
     request_id: uuid.UUID = field(default_factory=uuid.uuid4)
 
 
+@dataclass(frozen=True)
+class ProviderCitation:
+    """A source the provider itself retrieved and cited (grounded search),
+    as opposed to a URL merely written into the answer text from memory."""
+
+    url: str
+    title: str | None = None
+
+
 @dataclass
 class AIResponse:
     provider: str
@@ -90,6 +99,10 @@ class AIResponse:
     # Small, provider-neutral metadata (e.g. model version, stop sequence).
     # Never the full provider payload.
     raw_response: dict[str, Any] = field(default_factory=dict)
+    # Native retrieval citations from grounded providers (Perplexity, Gemini
+    # grounding). Empty for plain chat completions — that absence is itself
+    # honest data: those answers come from model memory.
+    citations: list[ProviderCitation] = field(default_factory=list)
     error: AIError | None = None
 
     @property

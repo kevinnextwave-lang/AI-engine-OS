@@ -8,6 +8,7 @@ row itself is never duplicated.
 import uuid
 from datetime import UTC, datetime
 from typing import Any
+from urllib.parse import urlsplit
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,7 +18,7 @@ from app.intelligence import PARSER_VERSION
 from app.intelligence.context import ParseContext, brand_from
 from app.intelligence.interpreter import Interpreter
 from app.intelligence.pipeline import parse_response
-from app.intelligence.schema import ParsedResponse
+from app.intelligence.schema import Citation, CitationType, ParsedResponse
 from app.models.intelligence import BrandMention, CompetitorMention, ResponseCitation, ResponseClaim
 from app.models.project import Project
 from app.models.prompts import AiResponse, PromptRun
@@ -58,6 +59,7 @@ class ResponseIntelligenceService:
             return None
         ctx = await self.build_context(project)
         parsed = await parse_response(response.response_text, ctx, self._interpreter)
+        parsed = _merge_grounded_citations(parsed, response.raw_metadata)
         await self._replace_rows(response, project.id, parsed, ctx)
         await self._session.flush()
         # Citation Intelligence (4A): link new citations into the source graph.
@@ -163,6 +165,46 @@ class ResponseIntelligenceService:
             )
             for c in parsed.citations
         )
+
+
+def _merge_grounded_citations(
+    parsed: ParsedResponse, raw_metadata: dict[str, Any] | None
+) -> ParsedResponse:
+    """Fold the provider's own retrieval citations (grounded search) into the
+    parsed result, ahead of text-derived ones. A URL both retrieved by the
+    provider and written into the answer counts once — as provider_grounded,
+    the stronger, honest signal."""
+    grounded = (raw_metadata or {}).get("grounded_citations")
+    if not isinstance(grounded, list) or not grounded:
+        return parsed
+    extra: list[Citation] = []
+    seen: set[str] = set()
+    for item in grounded[:50]:
+        if not isinstance(item, dict):
+            continue
+        url = str(item.get("url") or "").strip()[:2048]
+        if not url or url in seen:
+            continue
+        seen.add(url)
+        title = str(item.get("title") or "").strip()[:500] or None
+        extra.append(
+            Citation(
+                url=url,
+                domain=_grounded_domain(url),
+                anchor_text=title,
+                citation_position=min(len(extra) + 1, 500),
+                citation_type=CitationType.PROVIDER_GROUNDED,
+            )
+        )
+    if not extra:
+        return parsed
+    text_citations = [c for c in parsed.citations if not (c.url and c.url in seen)]
+    return parsed.model_copy(update={"citations": [*extra, *text_citations]})
+
+
+def _grounded_domain(url: str) -> str | None:
+    host = (urlsplit(url).hostname or "").lower()
+    return (host.removeprefix("www.") or None) if host else None
 
 
 def summary_of(parsed: ParsedResponse) -> dict[str, Any]:

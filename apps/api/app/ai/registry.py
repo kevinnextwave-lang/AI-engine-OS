@@ -9,6 +9,7 @@ from app.ai.base import AIProvider
 from app.ai.providers.anthropic import AnthropicProvider
 from app.ai.providers.google import GoogleProvider
 from app.ai.providers.openai import OpenAIProvider
+from app.ai.providers.perplexity import PerplexityProvider
 from app.ai.types import AIError, AIErrorCategory, AIProviderError
 from app.core.config import Settings, get_settings
 
@@ -47,15 +48,33 @@ def _google(s: Settings, client: httpx.AsyncClient | None) -> AIProvider | None:
         base_url=s.google_ai_base_url,
         client=client,
         default_timeout_seconds=s.ai_default_timeout_seconds,
+        grounding=s.google_ai_grounding,
     )
 
 
-FACTORIES: dict[str, Factory] = {"openai": _openai, "anthropic": _anthropic, "google": _google}
+def _perplexity(s: Settings, client: httpx.AsyncClient | None) -> AIProvider | None:
+    if not s.perplexity_api_key:
+        return None
+    return PerplexityProvider(
+        s.perplexity_api_key.get_secret_value(),
+        base_url=s.perplexity_base_url,
+        client=client,
+        default_timeout_seconds=s.ai_default_timeout_seconds,
+    )
+
+
+FACTORIES: dict[str, Factory] = {
+    "openai": _openai,
+    "anthropic": _anthropic,
+    "google": _google,
+    "perplexity": _perplexity,
+}
 
 DEFAULT_MODEL_SETTING = {
     "openai": "openai_default_model",
     "anthropic": "anthropic_default_model",
     "google": "google_default_model",
+    "perplexity": "perplexity_default_model",
 }
 
 

@@ -28,6 +28,9 @@ class CitationType(enum.StrEnum):
     MARKDOWN_LINK = "markdown_link"
     DOMAIN_REFERENCE = "domain_reference"
     SOURCE_LIST = "source_list"
+    # The provider's own retrieval cited this source (grounded search) —
+    # a genuine citation, not a URL recalled from model memory.
+    PROVIDER_GROUNDED = "provider_grounded"
     UNKNOWN = "unknown"
 
 

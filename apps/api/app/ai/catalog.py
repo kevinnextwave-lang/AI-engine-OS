@@ -12,6 +12,7 @@ DEFAULT_PROVIDERS: tuple[tuple[str, str], ...] = (
     ("openai", "OpenAI"),
     ("anthropic", "Anthropic"),
     ("google", "Google AI"),
+    ("perplexity", "Perplexity"),
 )
 
 # Default list prices (USD per million tokens). Editable in ai_models.pricing; the
@@ -24,6 +25,10 @@ DEFAULT_PRICING: dict[str, dict[str, Any]] = {
     "claude-sonnet-4-0": {"input_per_million": 3.00, "output_per_million": 15.00},
     "gemini-2.0-flash": {"input_per_million": 0.10, "output_per_million": 0.40},
     "gemini-2.5-pro": {"input_per_million": 1.25, "output_per_million": 10.00},
+    # Perplexity also bills per request tier; the token list price is the
+    # metered floor — edit ai_models.pricing to reflect your contract.
+    "sonar": {"input_per_million": 1.00, "output_per_million": 1.00},
+    "sonar-pro": {"input_per_million": 3.00, "output_per_million": 15.00},
 }
 
 
@@ -104,6 +109,30 @@ DEFAULT_MODELS: tuple[tuple[str, str, str, dict[str, Any]], ...] = (
             "max_output_tokens": 65536,
             "context_window": 1048576,
             "supports_json_mode": True,
+        },
+    ),
+    (
+        "perplexity",
+        "sonar",
+        "Perplexity Sonar",
+        {
+            "supports_temperature": True,
+            "max_temperature": 1.99,
+            "supports_system_prompt": True,
+            "context_window": 128000,
+            "grounded_search": True,
+        },
+    ),
+    (
+        "perplexity",
+        "sonar-pro",
+        "Perplexity Sonar Pro",
+        {
+            "supports_temperature": True,
+            "max_temperature": 1.99,
+            "supports_system_prompt": True,
+            "context_window": 200000,
+            "grounded_search": True,
         },
     ),
 )

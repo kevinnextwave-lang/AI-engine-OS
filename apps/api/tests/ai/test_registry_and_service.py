@@ -33,7 +33,7 @@ def test_unknown_provider_raises_normalized_error() -> None:
 
 def test_provider_without_credentials_is_not_configured() -> None:
     reg = ProviderRegistry(settings())
-    assert reg.known_keys == ["openai", "anthropic", "google"]
+    assert reg.known_keys == ["openai", "anthropic", "google", "perplexity"]
     assert not reg.is_configured("openai")
     with pytest.raises(AIProviderError) as exc:
         reg.get("openai")
