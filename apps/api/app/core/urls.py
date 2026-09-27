@@ -65,6 +65,10 @@ def normalize_website_url(raw: str) -> NormalizedURL:
 
     port = parts.port
     default_port = 443 if parts.scheme == "https" else 80
+    # Websites live on 80/443. Accepting arbitrary ports would let the
+    # crawler be aimed at other services on a public host (port probing).
+    if port not in (None, 80, 443):
+        raise InvalidURLError("URL must use the standard ports (80/443)")
     netloc = host if port in (None, default_port) else f"{host}:{port}"
 
     path = parts.path or ""

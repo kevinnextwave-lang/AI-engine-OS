@@ -40,7 +40,7 @@ async def create_project(client: AsyncClient, headers: dict[str, str], **overrid
         ("acme.com", "https://acme.com", "acme.com"),
         ("https://WWW.Acme.com/", "https://www.acme.com", "www.acme.com"),
         ("http://acme.com:80/pricing/", "http://acme.com/pricing/", "acme.com"),
-        ("https://acme.com:8443/a?b=1#frag", "https://acme.com:8443/a?b=1", "acme.com"),
+        ("https://acme.com:443/a?b=1#frag", "https://acme.com/a?b=1", "acme.com"),
         ("  acme.co.uk  ", "https://acme.co.uk", "acme.co.uk"),
         ("https://münchen.de", "https://xn--mnchen-3ya.de", "xn--mnchen-3ya.de"),
     ],
@@ -62,6 +62,9 @@ def test_normalize_website_url(raw: str, url: str, host: str) -> None:
         "https://user:pw@acme.com",
         "https://-bad-.com",
         "https://acme.123",
+        # Non-standard ports would let the crawler probe arbitrary services.
+        "https://acme.com:8443",
+        "http://acme.com:6379",
     ],
 )
 def test_invalid_urls_rejected(raw: str) -> None:

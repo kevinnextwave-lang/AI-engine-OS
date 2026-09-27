@@ -630,3 +630,32 @@ async def test_db_error_mid_crawl_finalizes_job_as_failed(
         assert row is not None
         assert row.status == CrawlStatus.FAILED
         assert row.completed_at is not None
+
+
+async def test_offsite_redirect_target_is_skipped_not_stored(
+    engine_session: AsyncSession,
+) -> None:
+    """An on-site URL that redirects to another (public) site is fetched
+    safely but never persisted as one of this project's pages."""
+    site = FakeSite(
+        {
+            f"{ROOT}/": FakePage(html("Home", ["/away", "/stays"])),
+            f"{ROOT}/away": FakePage(
+                status=302, headers={"location": "https://other.example/landed"}
+            ),
+            "https://other.example/landed": FakePage(html("Elsewhere")),
+            f"{ROOT}/stays": FakePage(html("Local")),
+        }
+    )
+    project = await make_project(engine_session)
+    job = await make_job(engine_session, project)
+    await engine_session.commit()
+    result = await run_crawl_job(engine_session, job.id, options(site))
+    assert result is not None
+
+    pages = {p.normalized_url for p in (await engine_session.scalars(select(WebsitePage))).all()}
+    assert f"{ROOT}/stays" in pages
+    assert not any("other.example" in u for u in pages)
+    urls = await urls_for(engine_session, job)
+    assert urls[f"{ROOT}/away"].status == CrawlUrlStatus.SKIPPED
+    assert "redirected off-site" in (urls[f"{ROOT}/away"].error_message or "")

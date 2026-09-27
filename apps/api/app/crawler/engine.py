@@ -345,7 +345,20 @@ class CrawlEngine:
             return
 
         try:
-            processed = process_html(result.body, normalize_crawl_url(result.final_url))
+            final = normalize_crawl_url(result.final_url)
+        except Exception as exc:  # noqa: BLE001 - unparseable final URL
+            await self._record_failure(item, f"invalid final URL: {type(exc).__name__}", result)
+            return
+        if not self._is_allowed_host(final):
+            # An on-site URL that redirected off the allowed hosts. The fetch
+            # itself was safe (every hop passed the public-IP checks), but the
+            # content belongs to another site — persisting it would pollute
+            # this project's pages with third-party documents.
+            await self._record_skip(item, f"redirected off-site to {final.host}", result)
+            return
+
+        try:
+            processed = process_html(result.body, final)
         except Exception as exc:  # noqa: BLE001 - parser errors become page failures
             await self._record_failure(item, f"processing error: {type(exc).__name__}", result)
             return
