@@ -605,3 +605,38 @@ def run_due_schedules_task(self) -> str:  # type: ignore[no-untyped-def]
             await dispose_engine()
 
     return asyncio.run(_main())
+
+
+@celery_app.task(
+    name="app.workers.tasks.monitoring.send_weekly_digests",
+    bind=True,
+    acks_late=True,
+    autoretry_for=(Exception,),
+    max_retries=2,
+    retry_backoff=300,
+    retry_jitter=True,
+    soft_time_limit=60 * 20,
+    time_limit=60 * 20 + 60,
+)
+def send_weekly_digests_task(self) -> str:  # type: ignore[no-untyped-def]
+    """Weekly per-org activity email to owners/admins. Orgs with nothing to
+    report are skipped. Per-org failures are logged and never block the rest;
+    a task-level retry may re-send an org that already got its email this
+    firing — acceptable for a weekly summary, and rare (DB/broker outage)."""
+    configure_logging()
+
+    async def _main() -> str:
+        from app.db.session import dispose_engine, get_session_factory
+        from app.monitoring.digest import send_weekly_digests
+
+        try:
+            async with get_session_factory()() as session:
+                result = await send_weekly_digests(session)
+                return (
+                    f"orgs={result.orgs_considered} emails={result.emails_sent} "
+                    f"quiet={result.orgs_skipped_quiet} failed={result.orgs_failed}"
+                )
+        finally:
+            await dispose_engine()
+
+    return asyncio.run(_main())

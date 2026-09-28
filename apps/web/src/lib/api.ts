@@ -321,6 +321,11 @@ export const api = {
     create: (body: { name: string }) =>
       request<Organization>("/organizations", { method: "POST", body: JSON.stringify(body) }),
     get: (id: string) => request<Organization>(`/organizations/${id}`),
+    update: (id: string, body: { name?: string; weekly_digest_enabled?: boolean }) =>
+      request<Organization>(`/organizations/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
     members: (id: string) => request<Member[]>(`/organizations/${id}/members`),
   },
   team: {

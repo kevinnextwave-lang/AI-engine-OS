@@ -81,6 +81,11 @@ celery_app.conf.update(
             "task": "app.workers.tasks.monitoring.run_due_schedules",
             "schedule": crontab(minute=3),
         },
+        # Monday-morning activity summary for owners/admins of opted-in orgs.
+        "weekly-digest-email": {
+            "task": "app.workers.tasks.monitoring.send_weekly_digests",
+            "schedule": crontab(minute=23, hour=7, day_of_week=1),
+        },
         "daily-retention-prune": {
             "task": "app.workers.tasks.monitoring.prune_expired_data",
             "schedule": crontab(minute=41, hour=4),

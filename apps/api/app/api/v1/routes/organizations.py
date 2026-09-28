@@ -12,6 +12,7 @@ from app.schemas.organizations import (
     MemberResponse,
     OrganizationCreateRequest,
     OrganizationResponse,
+    OrganizationUpdateRequest,
     OrganizationWithRoleResponse,
 )
 from app.services.organizations import OrganizationService
@@ -38,7 +39,35 @@ async def create_organization(
 async def get_organization(membership: CurrentMembership) -> OrganizationWithRoleResponse:
     org = membership.organization
     return OrganizationWithRoleResponse(
-        id=org.id, name=org.name, slug=org.slug, created_at=org.created_at, role=membership.role
+        id=org.id,
+        name=org.name,
+        slug=org.slug,
+        created_at=org.created_at,
+        role=membership.role,
+        weekly_digest_enabled=org.weekly_digest_enabled,
+    )
+
+
+@router.patch("/{organization_id}", response_model=OrganizationWithRoleResponse)
+async def update_organization(
+    body: OrganizationUpdateRequest,
+    membership: Annotated[Membership, Depends(require_permission(Permission.ORG_MANAGE))],
+    session: DBSession,
+) -> OrganizationWithRoleResponse:
+    """Rename the organization or flip org-level settings (owner/admin)."""
+    org = membership.organization
+    if body.name is not None:
+        org.name = body.name.strip()
+    if body.weekly_digest_enabled is not None:
+        org.weekly_digest_enabled = body.weekly_digest_enabled
+    await session.flush()
+    return OrganizationWithRoleResponse(
+        id=org.id,
+        name=org.name,
+        slug=org.slug,
+        created_at=org.created_at,
+        role=membership.role,
+        weekly_digest_enabled=org.weekly_digest_enabled,
     )
 
 

@@ -48,6 +48,33 @@ export default function SettingsPage() {
   }, [orgId]);
   const billing = billingState?.orgId === orgId ? billingState.data : null;
 
+  // Weekly digest preference: optimistic local override until the provider
+  // refetches; the server value from the org list is the baseline.
+  const canManageOrg = current?.role === "owner" || current?.role === "admin";
+  const [digestPref, setDigestPref] = React.useState<{ orgId: string; value: boolean } | null>(
+    null,
+  );
+  const [digestBusy, setDigestBusy] = React.useState(false);
+  const [digestError, setDigestError] = React.useState<string | null>(null);
+  const digestEnabled =
+    digestPref?.orgId === orgId ? digestPref.value : (current?.weekly_digest_enabled ?? true);
+
+  async function saveDigestPref(value: boolean) {
+    if (!orgId) return;
+    setDigestBusy(true);
+    setDigestError(null);
+    const previous = digestEnabled;
+    setDigestPref({ orgId, value });
+    try {
+      await api.organizations.update(orgId, { weekly_digest_enabled: value });
+    } catch (err) {
+      setDigestPref({ orgId, value: previous });
+      setDigestError(err instanceof Error ? err.message : "Could not save.");
+    } finally {
+      setDigestBusy(false);
+    }
+  }
+
   async function openBilling(target: "starter" | "growth" | "portal") {
     if (!orgId) return;
     setBillingBusy(true);
@@ -160,6 +187,23 @@ export default function SettingsPage() {
             <div className="grid gap-2">
               <Label htmlFor="org-role">Your role</Label>
               <Input id="org-role" readOnly className="capitalize" value={current?.role ?? ""} placeholder={orgPlaceholder} />
+            </div>
+            <div className="flex items-start gap-2 pt-1">
+              <input
+                id="org-digest"
+                type="checkbox"
+                className="accent-primary mt-0.5 size-4"
+                checked={digestEnabled}
+                disabled={!canManageOrg || digestBusy}
+                onChange={(e) => void saveDigestPref(e.target.checked)}
+              />
+              <div className="grid gap-0.5">
+                <Label htmlFor="org-digest">Weekly digest email</Label>
+                <p className="text-muted-foreground text-xs">
+                  Monday summary of visibility movement, collections, and audits — sent to
+                  owners and admins. {digestError ?? ""}
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>

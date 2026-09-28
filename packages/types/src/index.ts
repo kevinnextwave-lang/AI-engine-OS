@@ -34,6 +34,7 @@ export interface Organization {
   slug: string;
   created_at: string;
   role: MembershipRole;
+  weekly_digest_enabled?: boolean;
 }
 
 export interface Member {

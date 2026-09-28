@@ -44,7 +44,12 @@ class OrganizationService:
         rows = await self._orgs.list_for_user(user_id)
         return [
             OrganizationWithRoleResponse(
-                id=org.id, name=org.name, slug=org.slug, created_at=org.created_at, role=m.role
+                id=org.id,
+                name=org.name,
+                slug=org.slug,
+                created_at=org.created_at,
+                role=m.role,
+                weekly_digest_enabled=org.weekly_digest_enabled,
             )
             for org, m in rows
         ]

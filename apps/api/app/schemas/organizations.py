@@ -20,6 +20,12 @@ class OrganizationResponse(APIModel):
 
 class OrganizationWithRoleResponse(OrganizationResponse):
     role: MembershipRole
+    weekly_digest_enabled: bool = True
+
+
+class OrganizationUpdateRequest(APIModel):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    weekly_digest_enabled: bool | None = None
 
 
 class MemberResponse(APIModel):
