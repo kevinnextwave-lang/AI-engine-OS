@@ -1371,6 +1371,51 @@ export interface PromptSchedule {
   updated_at: string;
 }
 
+export interface ShareLink {
+  id: string;
+  project_id: string;
+  label: string | null;
+  revoked_at: string | null;
+  last_accessed_at: string | null;
+  created_at: string;
+}
+
+export interface ShareLinkCreated extends ShareLink {
+  /** Present only in the create response; never retrievable again. */
+  token: string;
+  url_path: string;
+}
+
+export interface PublicReportEngine {
+  provider: string;
+  score: number | null;
+  data_quality?: { sample_size?: number };
+  [key: string]: unknown;
+}
+
+export interface PublicReport {
+  project_name: string;
+  window: string;
+  generated_at: string;
+  overview: {
+    current: {
+      score: number | null;
+      data_quality?: { sample_size?: number };
+      [key: string]: unknown;
+    };
+    previous: {
+      score: number | null;
+      data_quality?: { sample_size?: number };
+      [key: string]: unknown;
+    };
+    change: number | null;
+    trend: string | null;
+    [key: string]: unknown;
+  };
+  engines: PublicReportEngine[];
+  series: Array<{ [key: string]: unknown }>;
+}
+
 export interface ScheduleUpsertRequest {
   cadence: ScheduleCadence;
   hour_utc: number;

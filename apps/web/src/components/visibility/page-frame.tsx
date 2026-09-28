@@ -5,7 +5,9 @@ import * as React from "react";
 import { AppPageFrame } from "@/components/shell/app-page-frame";
 import { DataBasis } from "@/components/visibility/confidence";
 import { VisibilityPageTools } from "@/components/visibility/page-tools";
+import { useProject } from "@/components/project-provider";
 import { ScheduleDrawer } from "@/components/visibility/schedule-drawer";
+import { ShareDrawer } from "@/components/visibility/share-drawer";
 import { NoDataState, runDisabledReason } from "@/components/visibility/states";
 import type { useProjectVisibility } from "@/components/visibility/use-project-visibility";
 
@@ -31,6 +33,8 @@ export function VisibilityPageFrame({
   hasOwnContent?: boolean;
   children: React.ReactNode;
 }) {
+  const { current: currentProject } = useProject();
+  const projectId = currentProject?.id ?? null;
   const loading = vis.loading || vis.projectLoading;
   const showEmpty = !loading && vis.empty && !hasOwnContent;
   return (
@@ -46,6 +50,7 @@ export function VisibilityPageFrame({
               configuredProviders={vis.configuredProviders}
             />
           )}
+          {vis.source === "api" && projectId && <ShareDrawer projectId={projectId} />}
         </div>
       }
       source={vis.source}

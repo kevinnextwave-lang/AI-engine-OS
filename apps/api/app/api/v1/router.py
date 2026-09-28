@@ -28,6 +28,7 @@ from app.api.v1.routes import (
     prompts,
     recommendations,
     seo,
+    share_links,
     sources,
     team,
     visibility,
@@ -66,6 +67,9 @@ api_router.include_router(execution.prompt_router)
 api_router.include_router(intelligence.run_router)
 api_router.include_router(intelligence.batch_router)
 api_router.include_router(visibility.router)
+api_router.include_router(share_links.project_router)
+api_router.include_router(share_links.link_router)
+api_router.include_router(share_links.public_router)
 api_router.include_router(competitive.router)
 api_router.include_router(insights.project_router)
 api_router.include_router(insights.router)

@@ -85,6 +85,7 @@ import type {
   PromptRunBatch,
   PromptRunBatchListResponse,
   PromptSchedule,
+  PublicReport,
   PromptRunListResponse,
   PromptSet,
   PromptSetCreateRequest,
@@ -103,6 +104,8 @@ import type {
   GraphSourceView,
   RunPromptSetRequest,
   ScheduleUpsertRequest,
+  ShareLink,
+  ShareLinkCreated,
   VisibilityByEngine,
   VisibilityByPrompt,
   VisibilityCompetitors,
@@ -703,6 +706,20 @@ export const api = {
       }),
     deleteSchedule: (promptSetId: string) =>
       request<void>(`/prompt-sets/${promptSetId}/schedule`, { method: "DELETE" }),
+  },
+  shareLinks: {
+    list: (projectId: string) => request<ShareLink[]>(`/projects/${projectId}/share-links`),
+    create: (projectId: string, body: { label?: string | null } = {}) =>
+      request<ShareLinkCreated>(`/projects/${projectId}/share-links`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    revoke: (linkId: string) => request<ShareLink>(`/share-links/${linkId}`, { method: "DELETE" }),
+  },
+  public: {
+    // Unauthenticated by design: the report page works logged-out.
+    report: (token: string) =>
+      rawRequest<PublicReport>(`/public/reports/${encodeURIComponent(token)}`, {}, false),
   },
   intelligence: {
     forRun: (runId: string) => request<ResponseIntelligence>(`/prompt-runs/${runId}/intelligence`),

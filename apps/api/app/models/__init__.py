@@ -118,6 +118,7 @@ from app.models.seo import (
     SeoObservation,
     Severity,
 )
+from app.models.share_link import ProjectShareLink
 from app.models.sources import (
     CitationEntity,
     CitationEntityType,
@@ -201,6 +202,7 @@ __all__ = [
     "ObservationStatus",
     "Organization",
     "OrganizationInvite",
+    "ProjectShareLink",
     "PromptSchedule",
     "ScheduleCadence",
     "OrganizationMember",

@@ -110,7 +110,7 @@ async def _project_summary(
         score=current.get("score"),
         previous_score=previous.get("score"),
         trend=overview.get("trend"),
-        sample_size=int(current.get("sample_size") or 0),
+        sample_size=int((current.get("data_quality") or {}).get("sample_size") or 0),
         batches=int(batch_rows[0]),
         total_runs=int(batch_rows[1]),
         failed_runs=int(batch_rows[2]),
