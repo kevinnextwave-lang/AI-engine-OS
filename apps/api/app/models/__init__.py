@@ -86,6 +86,7 @@ from app.models.page_intelligence import (
     StructuredDataFormat,
 )
 from app.models.project import Project, ProjectStatus
+from app.models.prompt_schedule import PromptSchedule, ScheduleCadence
 from app.models.prompts import (
     AiResponse,
     AiUsageRecord,
@@ -200,6 +201,8 @@ __all__ = [
     "ObservationStatus",
     "Organization",
     "OrganizationInvite",
+    "PromptSchedule",
+    "ScheduleCadence",
     "OrganizationMember",
     "OrganizationPlan",
     "OrganizationStatus",

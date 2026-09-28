@@ -1350,6 +1350,35 @@ export interface PromptRunBatchListResponse {
   total: number;
 }
 
+export type ScheduleCadence = "daily" | "weekly";
+
+export interface PromptSchedule {
+  id: string;
+  prompt_set_id: string;
+  cadence: ScheduleCadence;
+  hour_utc: number;
+  /** 0 = Monday … 6 = Sunday; null for daily. */
+  weekday: number | null;
+  providers: string[];
+  models: Record<string, string> | null;
+  is_active: boolean;
+  next_run_at: string;
+  last_run_at: string | null;
+  last_batch_id: string | null;
+  last_error: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ScheduleUpsertRequest {
+  cadence: ScheduleCadence;
+  hour_utc: number;
+  weekday?: number | null;
+  providers: string[];
+  models?: Record<string, string> | null;
+  is_active?: boolean;
+}
+
 export interface AiResponseView {
   response_text: string;
   finish_reason: string | null;

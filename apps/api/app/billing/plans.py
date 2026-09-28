@@ -21,6 +21,9 @@ class PlanLimits:
     # setting remains an operator ceiling on top (the lower one wins).
     ai_daily_cost_usd: float
     seo_audits_per_month: int | None
+    # Cadences a plan may schedule recurring collections at ("daily"/"weekly");
+    # empty means manual runs only. Enforced at save AND at fire time.
+    schedule_cadences: tuple[str, ...]
     label: str
 
 
@@ -30,6 +33,7 @@ PLAN_LIMITS: dict[OrganizationPlan, PlanLimits] = {
         prompts_per_batch=25,
         ai_daily_cost_usd=0.50,
         seo_audits_per_month=4,
+        schedule_cadences=(),
         label="Free",
     ),
     OrganizationPlan.STARTER: PlanLimits(
@@ -37,6 +41,7 @@ PLAN_LIMITS: dict[OrganizationPlan, PlanLimits] = {
         prompts_per_batch=150,
         ai_daily_cost_usd=5.0,
         seo_audits_per_month=20,
+        schedule_cadences=("weekly",),
         label="Starter",
     ),
     OrganizationPlan.GROWTH: PlanLimits(
@@ -44,6 +49,7 @@ PLAN_LIMITS: dict[OrganizationPlan, PlanLimits] = {
         prompts_per_batch=500,
         ai_daily_cost_usd=20.0,
         seo_audits_per_month=None,
+        schedule_cadences=("daily", "weekly"),
         label="Growth",
     ),
     # Not self-serve yet; generous so a manual upgrade never fights limits.
@@ -52,6 +58,7 @@ PLAN_LIMITS: dict[OrganizationPlan, PlanLimits] = {
         prompts_per_batch=1000,
         ai_daily_cost_usd=50.0,
         seo_audits_per_month=None,
+        schedule_cadences=("daily", "weekly"),
         label="Pro",
     ),
     OrganizationPlan.AGENCY: PlanLimits(
@@ -59,6 +66,7 @@ PLAN_LIMITS: dict[OrganizationPlan, PlanLimits] = {
         prompts_per_batch=2000,
         ai_daily_cost_usd=150.0,
         seo_audits_per_month=None,
+        schedule_cadences=("daily", "weekly"),
         label="Agency",
     ),
     OrganizationPlan.ENTERPRISE: PlanLimits(
@@ -66,6 +74,7 @@ PLAN_LIMITS: dict[OrganizationPlan, PlanLimits] = {
         prompts_per_batch=5000,
         ai_daily_cost_usd=500.0,
         seo_audits_per_month=None,
+        schedule_cadences=("daily", "weekly"),
         label="Enterprise",
     ),
 }

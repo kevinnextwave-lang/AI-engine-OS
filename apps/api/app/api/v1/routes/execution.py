@@ -26,7 +26,9 @@ from app.schemas.execution import (
     ProviderStatusList,
     RunPromptSetRequest,
 )
+from app.schemas.schedules import ScheduleResponse, ScheduleUpsertRequest
 from app.services.execution import ExecutionService, RunDispatcher
+from app.services.schedules import ScheduleService
 from app.workers.tasks import dispatch_prompt_run
 
 providers_router = APIRouter(prefix="/ai/providers", tags=["execution"])
@@ -233,3 +235,75 @@ async def cancel_batch(
     _require(access, Permission.DATA_MANAGE)
     updated = await ExecutionService(session, registry, dispatcher).cancel(batch)
     return await _batch_response(session, updated)
+
+
+# -- recurring collection schedules -------------------------------------------
+
+
+@set_router.get(
+    "/schedule",
+    response_model=ScheduleResponse,
+    summary="Get a prompt set's recurring collection schedule",
+    responses={**_ERRORS, 404: {"description": "No schedule configured (or set not found)"}},
+)
+async def get_schedule(set_access: SetAccess, session: DBSession) -> ScheduleResponse:
+    prompt_set, access = set_access
+    _require(access, Permission.DATA_READ)
+    schedule = await ScheduleService(session).get_for_set(prompt_set.id)
+    if schedule is None:
+        raise NotFoundError("No schedule is configured for this prompt set")
+    return ScheduleResponse.model_validate(schedule)
+
+
+@set_router.put(
+    "/schedule",
+    response_model=ScheduleResponse,
+    summary="Create or replace the recurring collection schedule",
+    description=(
+        "Runs the set automatically at the chosen cadence (UTC). Scheduled runs go through "
+        "the same cost controls as manual ones; cadence availability depends on the plan."
+    ),
+    responses={**_ERRORS, 422: {"description": "Cadence not allowed on plan, or bad targets"}},
+)
+async def put_schedule(
+    body: ScheduleUpsertRequest,
+    set_access: SetAccess,
+    user: CurrentUser,
+    session: DBSession,
+    registry: RegistryDep,
+) -> ScheduleResponse:
+    prompt_set, access = set_access
+    _require(access, Permission.DATA_MANAGE)
+    schedule = await ScheduleService(session).upsert(
+        prompt_set,
+        plan=access.organization.plan,
+        registry=registry,
+        cadence=body.cadence,
+        hour_utc=body.hour_utc,
+        weekday=body.weekday,
+        providers=body.providers,
+        models=body.models,
+        is_active=body.is_active,
+        user_id=user.id,
+    )
+    await session.commit()
+    # updated_at/created_at are server defaults; load them before validating.
+    await session.refresh(schedule)
+    return ScheduleResponse.model_validate(schedule)
+
+
+@set_router.delete(
+    "/schedule",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Remove the recurring collection schedule",
+    responses=_ERRORS,
+)
+async def delete_schedule(set_access: SetAccess, session: DBSession) -> None:
+    prompt_set, access = set_access
+    _require(access, Permission.DATA_MANAGE)
+    service = ScheduleService(session)
+    schedule = await service.get_for_set(prompt_set.id)
+    if schedule is None:
+        raise NotFoundError("No schedule is configured for this prompt set")
+    await service.delete(schedule)
+    await session.commit()

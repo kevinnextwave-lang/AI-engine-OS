@@ -5,6 +5,7 @@ import * as React from "react";
 import { AppPageFrame } from "@/components/shell/app-page-frame";
 import { DataBasis } from "@/components/visibility/confidence";
 import { VisibilityPageTools } from "@/components/visibility/page-tools";
+import { ScheduleDrawer } from "@/components/visibility/schedule-drawer";
 import { NoDataState, runDisabledReason } from "@/components/visibility/states";
 import type { useProjectVisibility } from "@/components/visibility/use-project-visibility";
 
@@ -36,7 +37,17 @@ export function VisibilityPageFrame({
     <AppPageFrame
       title={title}
       description={description}
-      tools={<VisibilityPageTools source={vis.source} reason={vis.mockReason} window={vis.window} onWindowChange={vis.setWindow} />}
+      tools={
+        <div className="flex flex-wrap items-center gap-2">
+          <VisibilityPageTools source={vis.source} reason={vis.mockReason} window={vis.window} onWindowChange={vis.setWindow} />
+          {vis.source === "api" && vis.runnableSet && (
+            <ScheduleDrawer
+              promptSetId={vis.runnableSet.id}
+              configuredProviders={vis.configuredProviders}
+            />
+          )}
+        </div>
+      }
       source={vis.source}
       mockReason={vis.mockReason}
       error={vis.error}

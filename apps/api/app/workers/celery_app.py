@@ -75,6 +75,12 @@ celery_app.conf.update(
         },
         # History past its retention window (settings-driven; see
         # app/monitoring/retention.py). Quiet hour, off the reaper's minute.
+        # Recurring collection schedules: fire batches whose next_run_at has
+        # passed. Cheap when nothing is due. Minute 3, off the reaper's 17.
+        "hourly-collection-schedules": {
+            "task": "app.workers.tasks.monitoring.run_due_schedules",
+            "schedule": crontab(minute=3),
+        },
         "daily-retention-prune": {
             "task": "app.workers.tasks.monitoring.prune_expired_data",
             "schedule": crontab(minute=41, hour=4),

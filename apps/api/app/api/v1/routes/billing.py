@@ -156,9 +156,7 @@ _SERVING = {"active", "trialing", "past_due"}  # past_due: Stripe is retrying
 _HOLD = {"unpaid", "incomplete_expired", "paused"}
 
 
-async def _org_by_customer(
-    session: AsyncSession, customer_id: str
-) -> Organization | None:
+async def _org_by_customer(session: AsyncSession, customer_id: str) -> Organization | None:
     return (
         await session.scalars(
             select(Organization).where(Organization.stripe_customer_id == customer_id)

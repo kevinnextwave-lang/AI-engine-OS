@@ -569,3 +569,39 @@ def prune_expired_data_task(self) -> str:  # type: ignore[no-untyped-def]
             await dispose_engine()
 
     return asyncio.run(_main())
+
+
+@celery_app.task(
+    name="app.workers.tasks.monitoring.run_due_schedules",
+    bind=True,
+    acks_late=True,
+    autoretry_for=(Exception,),
+    max_retries=2,
+    retry_backoff=60,
+    retry_jitter=True,
+    soft_time_limit=60 * 10,
+    time_limit=60 * 10 + 30,
+)
+def run_due_schedules_task(self) -> str:  # type: ignore[no-untyped-def]
+    """Hourly sweep for recurring collection schedules whose next_run_at has
+    passed. Batches go through ExecutionService, so every cost control that
+    guards a manual run guards a scheduled one. Idempotent per sweep: a fired
+    schedule's next_run_at moves forward before the task returns."""
+    configure_logging()
+
+    async def _main() -> str:
+        from app.ai.registry import ProviderRegistry
+        from app.db.session import dispose_engine, get_session_factory
+        from app.services.schedules import run_due_schedules
+
+        try:
+            async with get_session_factory()() as session:
+                counts = await run_due_schedules(session, ProviderRegistry(), dispatch_prompt_run)
+                return (
+                    f"started={counts['started']} deferred={counts['deferred']} "
+                    f"skipped={counts['skipped']}"
+                )
+        finally:
+            await dispose_engine()
+
+    return asyncio.run(_main())

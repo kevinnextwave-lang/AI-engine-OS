@@ -84,6 +84,7 @@ import type {
   PromptListResponse,
   PromptRunBatch,
   PromptRunBatchListResponse,
+  PromptSchedule,
   PromptRunListResponse,
   PromptSet,
   PromptSetCreateRequest,
@@ -101,6 +102,7 @@ import type {
   GraphSourcesResponse,
   GraphSourceView,
   RunPromptSetRequest,
+  ScheduleUpsertRequest,
   VisibilityByEngine,
   VisibilityByPrompt,
   VisibilityCompetitors,
@@ -687,6 +689,15 @@ export const api = {
       request<PromptRunListResponse>(`/prompts/${promptId}/runs?limit=${limit}`),
     batches: (promptSetId: string, limit = 1) =>
       request<PromptRunBatchListResponse>(`/prompt-sets/${promptSetId}/batches?limit=${limit}`),
+    getSchedule: (promptSetId: string) =>
+      request<PromptSchedule>(`/prompt-sets/${promptSetId}/schedule`),
+    saveSchedule: (promptSetId: string, body: ScheduleUpsertRequest) =>
+      request<PromptSchedule>(`/prompt-sets/${promptSetId}/schedule`, {
+        method: "PUT",
+        body: JSON.stringify(body),
+      }),
+    deleteSchedule: (promptSetId: string) =>
+      request<void>(`/prompt-sets/${promptSetId}/schedule`, { method: "DELETE" }),
   },
   intelligence: {
     forRun: (runId: string) => request<ResponseIntelligence>(`/prompt-runs/${runId}/intelligence`),
