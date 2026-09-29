@@ -63,7 +63,7 @@ export default function TermsPage() {
       <h2 className="mt-6 text-base font-semibold">Changes and contact</h2>
       <p className="mt-2">
         We may update these terms; material changes will be announced in the product with
-        reasonable notice. Questions: support@aisearchgrowth.example
+        reasonable notice. Questions: kevin.nextwave@gmail.com
       </p>
 
       <p className="text-muted-foreground mt-8">

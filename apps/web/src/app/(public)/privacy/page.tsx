@@ -61,7 +61,7 @@ export default function PrivacyPage() {
       <p className="mt-2">
         You can access and correct your account data in the product, and delete it as described
         above. For export requests or anything else, contact us and we will respond within 30
-        days: support@aisearchgrowth.example
+        days: kevin.nextwave@gmail.com
       </p>
 
       <p className="text-muted-foreground mt-8">
