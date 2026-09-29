@@ -12,6 +12,8 @@ interface ProjectContextValue {
   loading: boolean;
   error: string | null;
   select: (id: string) => void;
+  /** Refetch the org's projects — call after creating/removing one. */
+  refresh: () => void;
 }
 
 interface Loaded {
@@ -36,6 +38,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const { current: organization, loading: orgLoading } = useOrganization();
   const [loaded, setLoaded] = React.useState<Loaded | null>(null);
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
+  const [version, setVersion] = React.useState(0);
 
   React.useEffect(() => {
     if (!organization) return;
@@ -57,7 +60,9 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [organization]);
+  }, [organization, version]);
+
+  const refresh = React.useCallback(() => setVersion((v) => v + 1), []);
 
   const select = React.useCallback((id: string) => {
     setSelectedId(id);
@@ -82,8 +87,9 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       loading: orgLoading || (organization !== null && !ready),
       error: ready ? loaded.error : null,
       select,
+      refresh,
     };
-  }, [organization, orgLoading, loaded, selectedId, select]);
+  }, [organization, orgLoading, loaded, selectedId, select, refresh]);
   return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;
 }
 

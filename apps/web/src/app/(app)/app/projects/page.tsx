@@ -4,6 +4,7 @@ import { CheckIcon, FolderKanbanIcon, XIcon } from "lucide-react";
 import * as React from "react";
 
 import { useOrganization } from "@/components/organization-provider";
+import { useProject } from "@/components/project-provider";
 import { PageHeader } from "@/components/shell/page-header";
 import { api } from "@/lib/api";
 import type { Competitor, Project } from "@ai-search-growth-os/types";
@@ -188,6 +189,7 @@ function ProjectCard({
 
 export default function ProjectsPage() {
   const { current: organization, loading: orgLoading, error: orgError } = useOrganization();
+  const { select: providerSelect, refresh: providerRefresh } = useProject();
   // Keyed by organization so a slow response for org A can never overwrite
   // org B's list after a switch.
   const [loaded, setLoaded] = React.useState<{ orgId: string; items: Project[] } | null>(null);
@@ -247,6 +249,11 @@ export default function ProjectsPage() {
       setShowForm(false);
       select(project.id);
       load();
+      // Keep the app-wide project context in step: without this, every
+      // project-scoped page (Crawls, Visibility, ...) still shows the
+      // pre-creation "Select a project" state until a full reload.
+      providerSelect(project.id);
+      providerRefresh();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Could not create the project");
     } finally {
