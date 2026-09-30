@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import * as React from "react";
 
 import { useAuth } from "@/components/auth-provider";
@@ -19,7 +19,7 @@ import {
   Label,
 } from "@ai-search-growth-os/ui";
 
-export default function SettingsPage() {
+function SettingsBody() {
   const { user } = useAuth();
   const { current, loading: orgLoading, error: orgError } = useOrganization();
   const router = useRouter();
@@ -35,6 +35,46 @@ export default function SettingsPage() {
   const [billingBusy, setBillingBusy] = React.useState(false);
   const [billingError, setBillingError] = React.useState<string | null>(null);
   const orgId = current?.id ?? null;
+
+  // Stripe checkout sends the user back with ?billing=success|cancelled.
+  // Capture it once (the URL is cleaned right after), then poll the summary
+  // until the webhook has applied the new plan so the banner can say so.
+  const searchParams = useSearchParams();
+  const [billingReturn] = React.useState<string | null>(() => searchParams.get("billing"));
+  const [upgradeConfirmed, setUpgradeConfirmed] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    if (!billingReturn) return;
+    // DOM-only cleanup: a refresh or copied link must not replay the banner.
+    const url = new URL(window.location.href);
+    url.searchParams.delete("billing");
+    window.history.replaceState(null, "", url.toString());
+  }, [billingReturn]);
+  React.useEffect(() => {
+    if (billingReturn !== "success" || !orgId) return;
+    let cancelled = false;
+    let tries = 0;
+    const tick = () => {
+      api.billing
+        .summary(orgId)
+        .then((data) => {
+          if (cancelled) return;
+          setBillingState({ orgId, data });
+          if (data.has_subscription || data.plan !== "free") {
+            setUpgradeConfirmed(data.plan_label);
+          } else if (tries++ < 10) {
+            setTimeout(tick, 2000); // webhook usually lands within seconds
+          }
+        })
+        .catch(() => {
+          if (!cancelled && tries++ < 10) setTimeout(tick, 2000);
+        });
+    };
+    tick();
+    return () => {
+      cancelled = true;
+    };
+  }, [billingReturn, orgId]);
+
   React.useEffect(() => {
     if (!orgId) return;
     let cancelled = false;
@@ -224,6 +264,30 @@ export default function SettingsPage() {
             <p className="text-muted-foreground text-sm">Loading…</p>
           ) : (
             <div className="flex flex-col gap-3">
+              {billingReturn === "success" && (
+                <p
+                  role="status"
+                  className="border-primary/40 bg-primary/5 rounded-md border px-3 py-2 text-sm"
+                >
+                  {upgradeConfirmed ? (
+                    <>
+                      Payment successful — this organization is now on the{" "}
+                      <span className="font-semibold">{upgradeConfirmed}</span> plan. Invoices
+                      and receipts live under “Manage billing”.
+                    </>
+                  ) : (
+                    <>Payment received — confirming your upgrade with Stripe…</>
+                  )}
+                </p>
+              )}
+              {billingReturn === "cancelled" && (
+                <p
+                  role="status"
+                  className="text-muted-foreground rounded-md border px-3 py-2 text-sm"
+                >
+                  Checkout was cancelled — nothing was charged.
+                </p>
+              )}
               {billing.status === "suspended" && (
                 <p role="alert" className="text-destructive text-sm font-medium">
                   This organization is on a billing hold — access is paused until payment is
@@ -331,5 +395,15 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
     </>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    // useSearchParams (for the Stripe checkout return banner) needs a
+    // Suspense boundary during prerender.
+    <React.Suspense fallback={null}>
+      <SettingsBody />
+    </React.Suspense>
   );
 }
